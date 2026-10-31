@@ -61,7 +61,7 @@ function ContextCard({ c, active }: { c: Context; active?: Active }) {
         {c.user && <Badge>user {c.user}</Badge>}
         <Badge>{c.mode === "jwt" ? "JWT / operator" : "static config"}</Badge>
         <SecretBadge secret={c.secret} />
-        <Badge>{c.source === "cli" ? "nats CLI context" : "Natter context"}</Badge>
+        <Badge>{c.source === "cli" ? "nats CLI Context" : "Natter Context"}</Badge>
       </div>
       {c.secret === "plaintext" && (
         <p className="mt-3 rounded-lg border border-warning/25 bg-warning/5 px-3 py-2 text-[11px] text-warning">
@@ -150,7 +150,7 @@ function MoveIntoVault({ c }: { c: Context }) {
       ) : (
         <div role="status" className="grid gap-2">
           <p>
-            Copied to the Natter context <span className="font-mono">{move.data.name}</span> with its secret in the Vault. The nats CLI file is unchanged and still holds the Plaintext secret.
+            Copied to the Natter Context <span className="font-mono">{move.data.name}</span> with its secret in the Vault. The nats CLI file is unchanged and still holds the Plaintext secret.
           </p>
           {!confirming ? (
             <Button size="sm" variant="outline" onClick={() => setConfirming(true)}>
