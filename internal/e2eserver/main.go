@@ -92,6 +92,11 @@ func seedJetStream(url string) error {
 	if _, err := js.CreateStream(ctx, jetstream.StreamConfig{Name: "ORDERS", Subjects: []string{"orders.>"}}); err != nil {
 		return err
 	}
+	for _, subj := range []string{"orders.eu.new", "orders.eu.new", "orders.us.paid"} {
+		if _, err := js.Publish(ctx, subj, []byte(`{"id":1}`)); err != nil {
+			return err
+		}
+	}
 	_, err = js.CreateKeyValue(ctx, jetstream.KeyValueConfig{Bucket: "config"})
 	return err
 }

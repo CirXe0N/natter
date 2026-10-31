@@ -23,7 +23,7 @@ test("the command palette switches Context, opens a stream, and returns focus", 
   await page.keyboard.type("orders")
   await expect(palette.getByRole("option", { name: /Open stream ORDERS/ })).toContainText("nats stream info ORDERS")
   await page.keyboard.press("Enter")
-  await expect(page).toHaveURL(/\/streams$/)
+  await expect(page).toHaveURL(/\/streams\/ORDERS$/)
 
   await page.keyboard.press("Control+k")
   await page.keyboard.type("config")

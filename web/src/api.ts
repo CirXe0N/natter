@@ -1,6 +1,7 @@
 // The hand-written REST client. Response shapes come from Go via tygo (src/gen).
 // Add one function per endpoint to `api`; screens call them from TanStack Query.
 import type { Active, Context, Health, Info, JetStreamNames, NewContext, PassphraseChange, Ref, Settings, Vault } from "@/gen/api"
+import type { StreamDetail, StreamList, StreamSubjects } from "@/gen/api"
 
 async function request<T>(method: string, path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
   const res = await fetch(path, {
@@ -31,4 +32,8 @@ export const api = {
   unlockVault: (passphrase: string) => request<Vault>("POST", "/api/vault/unlock", { passphrase }),
   setPassphrase: (change: PassphraseChange) => request<Vault>("PUT", "/api/vault/passphrase", change),
   setKeyring: (on: boolean) => request<Vault>(on ? "POST" : "DELETE", "/api/vault/keyring"),
+  streams: (subject: string, signal?: AbortSignal) => request<StreamList>("GET", `/api/streams?${new URLSearchParams({ subject })}`, undefined, signal),
+  stream: (name: string, signal?: AbortSignal) => request<StreamDetail>("GET", `/api/streams/${encodeURIComponent(name)}`, undefined, signal),
+  streamSubjects: (name: string, filter: string, signal?: AbortSignal) =>
+    request<StreamSubjects>("GET", `/api/streams/${encodeURIComponent(name)}/subjects?${new URLSearchParams({ filter })}`, undefined, signal),
 }

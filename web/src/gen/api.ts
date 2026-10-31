@@ -349,3 +349,115 @@ export interface JetStreamUsage {
  * Num is one point of a series. NaN marks a missing point and is null in JSON.
  */
 export type Num = number /* float32 */;
+
+//////////
+// source: streams.go
+
+/**
+ * StreamKind tells a plain stream from one that backs a KV bucket (KV_*) or
+ * an Object Store (OBJ_*).
+ */
+export const StreamKindStream = "stream";
+export const StreamKindKV = "kv";
+export const StreamKindObject = "object";
+export type StreamKind = typeof StreamKindStream | typeof StreamKindKV | typeof StreamKindObject;
+/**
+ * StreamHealth is the health dot on a stream. Problem says why it is not ok.
+ */
+export const StreamHealthOK = "ok";
+export const StreamHealthWarning = "warning";
+export const StreamHealthError = "error";
+export type StreamHealth = typeof StreamHealthOK | typeof StreamHealthWarning | typeof StreamHealthError;
+/**
+ * StreamSummary is one row of the Streams list.
+ */
+export interface StreamSummary {
+  name: string;
+  kind: StreamKind;
+  subjects: string[];
+  storage: string; // file or memory
+  replicas: number /* int */;
+  msgs: number /* uint64 */;
+  bytes: number /* uint64 */;
+  /**
+   * FirstTime and LastTime are absent while the stream is empty.
+   */
+  firstTime?: string;
+  lastTime?: string;
+  consumers: number /* int */;
+  leader: string;
+  health: StreamHealth;
+  problem?: string;
+}
+/**
+ * StreamList is every stream in the active Context's account. Offline maps a
+ * stream the server knows but could not describe to the reason.
+ */
+export interface StreamList {
+  streams: StreamSummary[];
+  offline: { [key: string]: string};
+}
+/**
+ * StreamDetail is one stream's stats, config, replicas and sources.
+ */
+export interface StreamDetail extends StreamSummary {
+  description: string;
+  created: string;
+  firstSeq: number /* uint64 */;
+  lastSeq: number /* uint64 */;
+  numDeleted: number /* int */;
+  numSubjects: number /* int */;
+  /**
+   * MaxPayload is the server's max_payload: the real size limit of one
+   * message when the stream's max_msg_size is -1.
+   */
+  maxPayload: number /* int64 */;
+  /**
+   * Config is the stream config exactly as the server sent it.
+   */
+  config: { [key: string]: unknown };
+  cluster?: string;
+  /**
+   * ReplicaState lists the leader first, then the followers.
+   */
+  replicaState: Replica[];
+  mirror?: SourceState;
+  sources: SourceState[];
+}
+/**
+ * Replica is one server holding a copy of a stream.
+ */
+export interface Replica {
+  name: string;
+  leader: boolean;
+  current: boolean;
+  offline: boolean;
+  lag: number /* uint64 */; // operations behind the leader
+  /**
+   * Active is nanoseconds since the leader last heard from it.
+   */
+  active: number /* int64 */;
+}
+/**
+ * SourceState is how far a mirror or source is behind its origin stream.
+ */
+export interface SourceState {
+  name: string;
+  filter?: string;
+  lag: number /* uint64 */;
+  /**
+   * Active is nanoseconds since the last contact with the origin, -1 for never.
+   */
+  active: number /* int64 */;
+  error?: string;
+}
+/**
+ * StreamSubjects is the subjects a stream holds and their message counts,
+ * as STREAM.INFO with subjects_filter returns them. Truncated is set when the
+ * server returned only its first page.
+ */
+export interface StreamSubjects {
+  filter: string;
+  subjects: { [key: string]: number /* uint64 */};
+  truncated: boolean;
+}

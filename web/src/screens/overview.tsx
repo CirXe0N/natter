@@ -223,11 +223,11 @@ function mostCommonVersion(servers: ServerSummary[]) {
 
 const compact = new Intl.NumberFormat(undefined, { notation: "compact", maximumFractionDigits: 1 })
 
-function count(v: number | null) {
+export function count(v: number | null) {
   return v === null ? "–" : compact.format(v)
 }
 
-function bytes(v: number | null) {
+export function bytes(v: number | null) {
   if (v === null) return "–"
   const units = ["B", "KiB", "MiB", "GiB", "TiB", "PiB"]
   let i = 0
@@ -242,7 +242,7 @@ function pct(used: number, max: number) {
   return max > 0 ? Math.min(100, (used / max) * 100) : 0
 }
 
-function uptime(start: string, now: number) {
+export function uptime(start: string, now: number) {
   let s = Math.max(0, now - Math.floor(Date.parse(start) / 1000))
   const parts: string[] = []
   for (const [unit, size] of [["d", 86400], ["h", 3600], ["m", 60], ["s", 1]] as const) {

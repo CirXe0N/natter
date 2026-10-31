@@ -5,11 +5,15 @@ import { ContextsScreen } from "@/screens/contexts"
 import { EmptyScreen } from "@/screens/empty-screen"
 import { HealthScreen } from "@/screens/health"
 import { OverviewScreen } from "@/screens/overview"
+import { StreamConfig, StreamOverview, StreamScreen } from "@/screens/stream"
+import { StreamsScreen } from "@/screens/streams"
 
 // Each screen is one route here. staticData.title names it in the top bar,
 // the browser tab and the left nav. Replace EmptyScreen with the real screen.
 const root = createRootRoute({ component: Shell })
 const screen = { getParentRoute: () => root, component: EmptyScreen }
+// A stream's tabs are its child routes; StreamScreen lists them.
+const stream = createRoute({ ...screen, path: "/streams/$stream", staticData: { title: "Stream" }, component: StreamScreen })
 
 const routeTree = root.addChildren([
   createRoute({ getParentRoute: () => root, path: "/", beforeLoad: () => { throw redirect({ to: "/overview", replace: true }) } }),
@@ -18,11 +22,15 @@ const routeTree = root.addChildren([
   createRoute({ ...screen, path: "/connections", staticData: { title: "Connections" } }),
   createRoute({ ...screen, path: "/publish", staticData: { title: "Publish / request" } }),
   createRoute({ ...screen, path: "/tail", staticData: { title: "Live tail" } }),
-  createRoute({ ...screen, path: "/streams", staticData: { title: "Streams" } }),
+  createRoute({ ...screen, path: "/streams", staticData: { title: "Streams" }, component: StreamsScreen, validateSearch: (s: Record<string, unknown>): { subject?: string } => (typeof s.subject === "string" && s.subject ? { subject: s.subject } : {}) }),
   createRoute({ ...screen, path: "/consumers", staticData: { title: "Consumers" } }),
   createRoute({ ...screen, path: "/messages", staticData: { title: "Message browser" } }),
   createRoute({ ...screen, path: "/kv", staticData: { title: "Key-Value" } }),
   createRoute({ ...screen, path: "/contexts", staticData: { title: "Contexts" }, component: ContextsScreen }),
+  stream.addChildren([
+    createRoute({ getParentRoute: () => stream, path: "/", staticData: { title: "Stream" }, component: StreamOverview }),
+    createRoute({ getParentRoute: () => stream, path: "config", staticData: { title: "Stream" }, component: StreamConfig }),
+  ]),
 ])
 
 export const router = createRouter({ routeTree })
