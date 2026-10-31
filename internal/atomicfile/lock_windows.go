@@ -1,4 +1,4 @@
-package vault
+package atomicfile
 
 import (
 	"os"

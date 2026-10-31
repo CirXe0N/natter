@@ -30,6 +30,7 @@ import (
 	"github.com/nats-io/nats.go"
 
 	"github.com/CirXe0N/natter/internal/api"
+	"github.com/CirXe0N/natter/internal/atomicfile"
 	"github.com/CirXe0N/natter/internal/vault"
 )
 
@@ -420,7 +421,13 @@ func (m *Manager) activate(ctx context.Context, ref api.Ref) error {
 	if err != nil {
 		return err
 	}
-	if err := writeFileAtomic(m.activePath(), []byte(key(ref)+"\n")); err != nil {
+	unlock, err := m.lockFile()
+	if err != nil {
+		return err
+	}
+	err = atomicfile.Write(m.activePath(), []byte(key(ref)+"\n"))
+	unlock()
+	if err != nil {
 		return err
 	}
 	m.swap(&Conn{Context: c, Status: api.ConnStatusConnecting})
@@ -503,8 +510,14 @@ func (m *Manager) SetSettings(ctx context.Context, ref api.Ref, s api.Settings) 
 	return nil
 }
 
-// writeSettings runs with m.switching held.
+// writeSettings runs with m.switching held. The lock file covers the read
+// too, so another natter process cannot slip a write in between.
 func (m *Manager) writeSettings(ref api.Ref, s api.Settings) error {
+	unlock, err := m.lockFile()
+	if err != nil {
+		return err
+	}
+	defer unlock()
 	all, err := m.readSettings()
 	if err != nil {
 		return err
@@ -518,7 +531,7 @@ func (m *Manager) writeSettings(ref api.Ref, s api.Settings) error {
 	if err != nil {
 		return err
 	}
-	return writeFileAtomic(m.settingsPath(), b)
+	return atomicfile.Write(m.settingsPath(), b)
 }
 
 // readSettings reads contexts.json, which maps "source/name" to Settings.
@@ -537,42 +550,13 @@ func (m *Manager) readSettings() (map[string]api.Settings, error) {
 	return all, nil
 }
 
+// lockFile serialises writes to Natter's Context files across processes.
+func (m *Manager) lockFile() (unlock func(), err error) {
+	return atomicfile.Lock(filepath.Join(m.dir, "contexts.lock"))
+}
+
 func (m *Manager) activePath() string   { return filepath.Join(m.dir, "active-context") }
 func (m *Manager) settingsPath() string { return filepath.Join(m.dir, "contexts.json") }
 
 // key is a Ref as one string. natscontext names cannot hold "/", so it splits back.
 func key(r api.Ref) string { return string(r.Source) + "/" + r.Name }
-
-// writeFileAtomic replaces path with data at mode 0600: temp file, fsync,
-// rename, then a best-effort fsync of the directory (Windows cannot). A crash
-// leaves the old file or the new one.
-func writeFileAtomic(path string, data []byte) error {
-	dir := filepath.Dir(path)
-	if err := os.MkdirAll(dir, 0o700); err != nil {
-		return err
-	}
-	f, err := os.CreateTemp(dir, filepath.Base(path)+".tmp-*") // CreateTemp makes it 0600
-	if err != nil {
-		return err
-	}
-	defer os.Remove(f.Name()) // no-op after the rename
-	if _, err := f.Write(data); err != nil {
-		f.Close()
-		return err
-	}
-	if err := f.Sync(); err != nil {
-		f.Close()
-		return err
-	}
-	if err := f.Close(); err != nil {
-		return err
-	}
-	if err := os.Rename(f.Name(), path); err != nil {
-		return err
-	}
-	if d, err := os.Open(dir); err == nil {
-		d.Sync()
-		d.Close()
-	}
-	return nil
-}

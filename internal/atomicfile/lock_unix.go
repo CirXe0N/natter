@@ -1,6 +1,6 @@
 //go:build unix
 
-package vault
+package atomicfile
 
 import (
 	"os"

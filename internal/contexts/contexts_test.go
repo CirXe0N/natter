@@ -4,11 +4,13 @@ import (
 	"context"
 	"crypto/sha256"
 	"errors"
+	"fmt"
 	"io/fs"
 	"maps"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/nats-io/jsm.go/natscontext"
@@ -240,4 +242,36 @@ func tree(t *testing.T, dir string) map[string][32]byte {
 		t.Fatal(err)
 	}
 	return out
+}
+
+// Two Managers on one directory stand in for two natter processes: each
+// read-modify-write of contexts.json holds the lock file, so no entry is lost.
+func TestConcurrentSettingsWritersKeepEveryEntry(t *testing.T) {
+	root := t.TempDir()
+	refs := make([]api.Ref, 20)
+	for i := range refs {
+		refs[i] = api.Ref{Source: api.SourceCLI, Name: fmt.Sprint("c", i)}
+		if err := natstest.WriteContext(root, refs[i].Name, map[string]string{"url": "nats://127.0.0.1:1"}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	ms := []*Manager{New(root, vault.Open(t.TempDir())), New(root, vault.Open(t.TempDir()))}
+	var wg sync.WaitGroup
+	for i, ref := range refs {
+		wg.Go(func() {
+			if err := ms[i%2].SetSettings(t.Context(), ref, api.Settings{ReadOnly: true}); err != nil {
+				t.Error(err)
+			}
+		})
+	}
+	wg.Wait()
+	list, err := ms[0].List(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range list {
+		if !c.ReadOnly {
+			t.Errorf("%s lost its Settings", c.Name)
+		}
+	}
 }
