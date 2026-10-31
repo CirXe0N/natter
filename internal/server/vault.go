@@ -11,6 +11,8 @@ func init() {
 		route{pattern: "GET /api/vault", handle: (*server).vaultStatus},
 		route{pattern: "POST /api/vault", handle: (*server).createVault, allowReadOnly: true},
 		route{pattern: "POST /api/vault/unlock", handle: (*server).unlockVault, allowReadOnly: true},
+		route{pattern: "POST /api/vault/keyring", handle: (*server).keyringOn, allowReadOnly: true},
+		route{pattern: "DELETE /api/vault/keyring", handle: (*server).keyringOff, allowReadOnly: true},
 		route{pattern: "POST /api/contexts", handle: (*server).createContext, allowReadOnly: true},
 		// Both write only Natter's own files. Removing a CLI file is natscli's state, so it stays refused in Read-only mode.
 		route{pattern: "POST /api/contexts/{source}/{name}/move-to-vault", handle: (*server).moveIntoVault, allowReadOnly: true},
@@ -49,6 +51,19 @@ func (s *server) unlockVault(w http.ResponseWriter, r *http.Request) {
 			writeError(w, err)
 			return
 		}
+	}
+	writeJSON(w, s.Contexts.Vault().Status())
+}
+
+// keyringOn and keyringOff move the Vault key into or out of the OS keyring.
+// Only the key moves; the secrets stay in vault.age.
+func (s *server) keyringOn(w http.ResponseWriter, r *http.Request)  { s.setKeyring(w, r, true) }
+func (s *server) keyringOff(w http.ResponseWriter, r *http.Request) { s.setKeyring(w, r, false) }
+
+func (s *server) setKeyring(w http.ResponseWriter, r *http.Request, on bool) {
+	if err := s.Contexts.Vault().SetKeyring(r.Context(), on); err != nil {
+		writeError(w, err)
+		return
 	}
 	writeJSON(w, s.Contexts.Vault().Status())
 }

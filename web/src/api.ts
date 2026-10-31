@@ -36,4 +36,5 @@ export const api = {
   vault: (signal?: AbortSignal) => request<Vault>("GET", "/api/vault", undefined, signal),
   createVault: (passphrase: string) => request<Vault>("POST", "/api/vault", { passphrase }),
   unlockVault: (passphrase: string) => request<Vault>("POST", "/api/vault/unlock", { passphrase }),
+  setKeyring: (on: boolean) => request<Vault>(on ? "POST" : "DELETE", "/api/vault/keyring"),
 }

@@ -11,15 +11,18 @@ tool github.com/gzuidhof/tygo
 require (
 	filippo.io/age v1.3.2
 	github.com/coder/websocket v1.8.15
+	github.com/godbus/dbus/v5 v5.2.2
 	github.com/nats-io/jsm.go v0.5.1
 	github.com/nats-io/nats-server/v2 v2.15.2
 	github.com/nats-io/nats.go v1.55.0
+	github.com/zalando/go-keyring v0.2.8
 	golang.org/x/sys v0.49.0
 )
 
 require (
 	filippo.io/hpke v0.4.0 // indirect
 	github.com/antithesishq/antithesis-sdk-go v0.8.0 // indirect
+	github.com/danieljoos/wincred v1.2.3 // indirect
 	github.com/dustin/go-humanize v1.1.0 // indirect
 	github.com/expr-lang/expr v1.17.8 // indirect
 	github.com/fatih/structtag v1.2.0 // indirect

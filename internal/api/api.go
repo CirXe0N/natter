@@ -171,11 +171,21 @@ const (
 	VaultStateUnlocked VaultState = "unlocked"
 )
 
+// KeyringState says whether the OS keyring holds the Vault key.
+type KeyringState string
+
+const (
+	KeyringUnavailable KeyringState = "unavailable" // no OS keyring answered at startup
+	KeyringOff         KeyringState = "off"
+	KeyringOn          KeyringState = "on" // the Vault unlocks from the keyring at startup
+)
+
 // Vault is the state of the Vault. HasPassphrase is false for a Vault that
 // only the key file passed with -vault-key can unlock.
 type Vault struct {
-	State         VaultState `json:"state"`
-	HasPassphrase bool       `json:"hasPassphrase"`
+	State         VaultState   `json:"state"`
+	HasPassphrase bool         `json:"hasPassphrase"`
+	Keyring       KeyringState `json:"keyring"`
 }
 
 // Passphrase is the body that creates or unlocks the Vault.

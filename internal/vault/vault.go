@@ -46,6 +46,9 @@ type Vault struct {
 	dir string
 	mu  sync.Mutex
 	id  *age.HybridIdentity
+	// keyring is nil unless an OS keyring passed the canary at startup.
+	keyring   Keyring
+	inKeyring bool
 }
 
 type payload struct {
@@ -67,7 +70,15 @@ func (v *Vault) identity() *age.HybridIdentity {
 // Status reports whether the Vault exists, is unlocked, and has a passphrase.
 func (v *Vault) Status() api.Vault {
 	_, err := os.Stat(v.path("vault.key.age"))
-	out := api.Vault{State: api.VaultStateUnlocked, HasPassphrase: err == nil}
+	out := api.Vault{State: api.VaultStateUnlocked, HasPassphrase: err == nil, Keyring: api.KeyringUnavailable}
+	v.mu.Lock()
+	if v.keyring != nil {
+		out.Keyring = api.KeyringOff
+		if v.inKeyring {
+			out.Keyring = api.KeyringOn
+		}
+	}
+	v.mu.Unlock()
 	if v.identity() == nil {
 		out.State = api.VaultStateLocked
 		if _, err := os.Stat(v.path("vault.age")); errors.Is(err, os.ErrNotExist) {
@@ -131,7 +142,8 @@ func (v *Vault) UnlockPassphrase(passphrase api.Secret) error {
 }
 
 // Create makes a new Vault with a fresh identity wrapped by passphrase, and
-// leaves it unlocked.
+// leaves it unlocked. If an OS keyring is attached, it also gets the key, so
+// the Vault unlocks at startup; failing that is not an error.
 func (v *Vault) Create(passphrase api.Secret) error {
 	id, err := age.GenerateHybridIdentity()
 	if err != nil {
@@ -152,7 +164,13 @@ func (v *Vault) Create(passphrase api.Secret) error {
 	if err := writeAtomic(v.path("vault.key.age"), wrapped); err != nil {
 		return err
 	}
-	return v.unlockLocked(id, true)
+	if err := v.unlockLocked(id, true); err != nil {
+		return err
+	}
+	if v.keyringAttached() {
+		_ = v.SetKeyring(context.Background(), true)
+	}
+	return nil
 }
 
 // SetPassphrase wraps the unlocked identity with a new passphrase. vault.age
