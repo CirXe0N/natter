@@ -4,7 +4,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { api } from "@/api"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { contextKeys } from "@/contexts"
+import { contextKeys, useBlockedReason } from "@/contexts"
 import type { NewContext, SecretKind } from "@/gen/api"
 import { useVault } from "@/vault"
 
@@ -32,6 +32,7 @@ const empty: NewContext = { name: "", description: "", urls: "", user: "" }
 export function NewContextForm() {
   const qc = useQueryClient()
   const vault = useVault()
+  const blocked = useBlockedReason()
   const [form, setForm] = useState(empty)
   const [kind, setKind] = useState<SecretKind | "">("")
   const [secret, setSecret] = useState("")
@@ -40,7 +41,7 @@ export function NewContextForm() {
   const create = useMutation({
     mutationFn: () => {
       const secretField = storage === "vault" ? { secret } : { secretRef: secret }
-      return api.createContext({ ...form, ...(kind && { secretKind: kind, ...secretField }), ...(cliOK && forCLI && { source: "cli" as const }) })
+      return api.createContext({ ...form, ...(kind && { secretKind: kind, ...secretField }), ...(cliOK && forCLI && !blocked && { source: "cli" as const }) })
     },
     onSuccess: () => {
       setForm(empty)
@@ -112,8 +113,9 @@ export function NewContextForm() {
         )}
         {cliOK && (
           <label className="flex items-center gap-2 text-xs text-muted-foreground sm:col-span-2">
-            <input type="checkbox" checked={forCLI} onChange={(e) => setForCLI(e.target.checked)} />
+            <input type="checkbox" checked={forCLI && !blocked} disabled={!!blocked} onChange={(e) => setForCLI(e.target.checked)} />
             Also usable by the nats CLI: save it in ~/.config/nats/context instead of Natter's directory
+            {blocked && <span className="text-warning">{blocked}</span>}
           </label>
         )}
         <div className="flex items-center gap-3 sm:col-span-2">

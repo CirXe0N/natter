@@ -102,7 +102,20 @@ test("a secret can be an env:// reference, and a Plaintext secret can move into 
   await expect(sys.getByText("Plaintext secret", { exact: true })).toBeVisible() // still flagged until the user deletes it
   const moved = page.getByRole("listitem", { name: "sys" }).filter({ hasText: "Natter Context" })
   await expect(moved.getByText("Vault", { exact: true })).toBeVisible()
-  await sys.getByRole("button", { name: "Delete the nats CLI file…" }).click()
+
+  // Under Read-only (by-env is the active Context) the delete button stays, cannot act, and says why.
+  await byEnv.getByRole("button", { name: "Read-only: off" }).click()
+  const del = sys.getByRole("button", { name: "Delete the nats CLI file…" })
+  await expect(del).toHaveAttribute("aria-disabled", "true")
+  await expect(del).toHaveAccessibleDescription(/Read-only mode is on for this Context/)
+  await del.focus()
+  await expect(del).toBeFocused()
+  await del.click({ force: true })
+  await expect(sys.getByRole("button", { name: "Keep it" })).toHaveCount(0)
+  await expect(page.getByLabel("Also usable by the nats CLI")).toBeDisabled()
+  await byEnv.getByRole("button", { name: "Read-only: on" }).click()
+
+  await del.click()
   await sys.getByRole("button", { name: "Keep it" }).click() // the file is shared with other specs, so it stays
   await expect(sys.getByRole("button", { name: "Delete the nats CLI file…" })).toBeVisible()
 })
