@@ -549,3 +549,77 @@ export interface FieldError {
   error: string;
   field?: string;
 }
+/**
+ * ConsumerSummary is one row of a stream's Consumers table.
+ */
+export interface ConsumerSummary {
+  name: string;
+  /**
+   * Natter is set for Natter's own browsing consumers (prefix natter_).
+   */
+  natter: boolean;
+  /**
+   * Durable is false for an ephemeral consumer, which the server removes
+   * after its inactive threshold.
+   */
+  durable: boolean;
+  /**
+   * Push is set when the server pushes to a deliver subject.
+   */
+  push: boolean;
+  filter: string[];
+  ackPolicy: string;
+  /**
+   * Pending is the lag: messages in the stream the consumer has not delivered yet.
+   */
+  pending: number /* uint64 */;
+  ackPending: number /* int */;
+  redelivered: number /* int */;
+  waiting: number /* int */;
+  paused: boolean;
+  /**
+   * PauseUntil is when a paused consumer resumes by itself.
+   */
+  pauseUntil?: string;
+  /**
+   * LastActive is the later of the last delivery and the last ack.
+   */
+  lastActive?: string;
+}
+/**
+ * ConsumerSequence is a position of a consumer in its own and the stream's numbering.
+ */
+export interface ConsumerSequence {
+  consumer: number /* uint64 */;
+  stream: number /* uint64 */;
+}
+/**
+ * ConsumerDetail adds the full config and the delivery state to a summary.
+ */
+export interface ConsumerDetail extends ConsumerSummary {
+  stream: string;
+  created: string;
+  delivered: ConsumerSequence;
+  ackFloor: ConsumerSequence;
+  pushBound: boolean;
+  /**
+   * Config is the consumer config exactly as the server sent it.
+   */
+  config: { [key: string]: unknown };
+  cluster?: string;
+  leader?: string;
+}
+/**
+ * ConsumerPause asks to pause a consumer for Seconds from now.
+ */
+export interface ConsumerPause {
+  seconds: number /* int */;
+}
+/**
+ * ConsumerList is a stream's consumers. Offline maps a consumer the server
+ * listed but could not describe to the reason.
+ */
+export interface ConsumerList {
+  consumers: ConsumerSummary[];
+  offline: { [key: string]: string};
+}

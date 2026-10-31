@@ -11,6 +11,7 @@ export class ApiError extends Error {
     super(message)
   }
 }
+import type { ConsumerDetail, ConsumerList, ConsumerSummary } from "@/gen/api"
 
 async function request<T>(method: string, path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
   const res = await fetch(path, {
@@ -58,4 +59,12 @@ export const api = {
   updateStream: (name: string, config: object) => request<StreamSummary>("PUT", `/api/streams/${encodeURIComponent(name)}`, config),
   purgeStream: (name: string, p: StreamPurge) => request<StreamPurged>("POST", `/api/streams/${encodeURIComponent(name)}/purge`, p),
   deleteStream: (name: string) => request<object>("DELETE", `/api/streams/${encodeURIComponent(name)}`, { confirm: name }),
+  consumers: (stream: string, signal?: AbortSignal) => request<ConsumerList>("GET", `/api/streams/${encodeURIComponent(stream)}/consumers`, undefined, signal),
+  consumer: (stream: string, name: string, signal?: AbortSignal) =>
+    request<ConsumerDetail>("GET", `/api/streams/${encodeURIComponent(stream)}/consumers/${encodeURIComponent(name)}`, undefined, signal),
+  pauseConsumer: (stream: string, name: string, seconds: number) =>
+    request<ConsumerSummary>("PUT", `/api/streams/${encodeURIComponent(stream)}/consumers/${encodeURIComponent(name)}/pause`, { seconds }),
+  resumeConsumer: (stream: string, name: string) =>
+    request<ConsumerSummary>("DELETE", `/api/streams/${encodeURIComponent(stream)}/consumers/${encodeURIComponent(name)}/pause`),
+  deleteConsumer: (stream: string, name: string) => request<object>("DELETE", `/api/streams/${encodeURIComponent(stream)}/consumers/${encodeURIComponent(name)}`),
 }

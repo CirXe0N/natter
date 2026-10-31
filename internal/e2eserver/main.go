@@ -106,6 +106,15 @@ func seedJetStream(url string) error {
 			return err
 		}
 	}
+	for _, c := range []jetstream.ConsumerConfig{
+		{Durable: "billing", AckPolicy: jetstream.AckExplicitPolicy, FilterSubject: "orders.eu.>"},
+		{Durable: "shipping", AckPolicy: jetstream.AckExplicitPolicy},
+		{Name: "natter_browse_e2e", AckPolicy: jetstream.AckNonePolicy, InactiveThreshold: 24 * time.Hour},
+	} {
+		if _, err := js.CreateOrUpdateConsumer(ctx, "ORDERS", c); err != nil {
+			return err
+		}
+	}
 	_, err = js.CreateKeyValue(ctx, jetstream.KeyValueConfig{Bucket: "config"})
 	return err
 }
