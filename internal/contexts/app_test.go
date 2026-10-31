@@ -1,12 +1,15 @@
 package contexts
 
 import (
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
+
+	"filippo.io/age"
 
 	"github.com/CirXe0N/natter/internal/api"
 	"github.com/CirXe0N/natter/internal/vault"
@@ -119,5 +122,71 @@ func TestCreateRejects(t *testing.T) {
 	entries, err := os.ReadDir(filepath.Join(root, "natter", "nats", "context"))
 	if err != nil || len(entries) != 1 {
 		t.Fatalf("Context files: %v %v", entries, err)
+	}
+}
+
+// A Create or move whose save fails takes its secrets back out of the Vault.
+func TestAFailedSaveLeavesNoVaultEntry(t *testing.T) {
+	ns, root, m := setup(t)
+	id, err := age.GenerateHybridIdentity()
+	if err != nil {
+		t.Fatal(err)
+	}
+	keyFile := filepath.Join(t.TempDir(), "vault.key")
+	if err := os.WriteFile(keyFile, []byte(id.String()+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := m.Vault().UnlockKeyFile(keyFile); err != nil {
+		t.Fatal(err)
+	}
+	entries := func() int {
+		t.Helper()
+		f, err := os.Open(filepath.Join(root, "natter", "vault.age"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer f.Close()
+		r, err := age.Decrypt(f, id)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var p struct{ Entries map[string][]byte }
+		if err := json.NewDecoder(r).Decode(&p); err != nil {
+			t.Fatal(err)
+		}
+		return len(p.Entries)
+	}
+
+	// A file where Natter's context directory belongs makes every app save fail.
+	appDir := filepath.Join(root, "natter", "nats", "context")
+	if err := os.MkdirAll(filepath.Dir(appDir), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(appDir, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := m.Create(t.Context(), newVaulted("app")); err == nil {
+		t.Fatal("Create saved into a file")
+	}
+	if _, err := m.MoveIntoVault(t.Context(), api.Ref{Source: api.SourceCLI, Name: "sys"}, ""); err == nil {
+		t.Fatal("MoveIntoVault saved into a file")
+	}
+	if n := entries(); n != 0 {
+		t.Fatalf("%d Vault entries left after failed saves", n)
+	}
+
+	if err := os.Remove(appDir); err != nil {
+		t.Fatal(err)
+	}
+	n := newVaulted("app")
+	n.URLs = ns.ClientURL()
+	if _, err := m.Create(t.Context(), n); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := m.MoveIntoVault(t.Context(), api.Ref{Source: api.SourceCLI, Name: "sys"}, ""); err != nil {
+		t.Fatal(err)
+	}
+	if n := entries(); n != 2 {
+		t.Fatalf("%d Vault entries after two saves, want 2", n)
 	}
 }

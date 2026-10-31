@@ -253,6 +253,29 @@ func (v *Vault) Put(s api.Secret) (string, error) {
 	return Scheme + "://" + key, nil
 }
 
+// Delete removes the entries the natter-vault:// refs name. An unknown entry
+// is not an error.
+func (v *Vault) Delete(refs ...string) error {
+	id := v.identity()
+	if id == nil {
+		return ErrLocked
+	}
+	unlockFile, err := v.lockFile()
+	if err != nil {
+		return err
+	}
+	defer unlockFile()
+	entries, err := read(v.path("vault.age"), id)
+	if err != nil {
+		return err
+	}
+	for _, ref := range refs {
+		_, key, _ := strings.Cut(ref, "://")
+		delete(entries, key)
+	}
+	return write(v.path("vault.age"), id, entries)
+}
+
 // Schemes and Resolve make the Vault a natscontext.CredentialResolver.
 func (v *Vault) Schemes() []string { return []string{Scheme} }
 

@@ -122,7 +122,7 @@ var secretOption = map[api.SecretKind]func(string) natscontext.Option{
 // Create saves a new Context, in Natter's directory unless n.Source is the CLI.
 // A Secret goes into the Vault and the file holds only the natter-vault://
 // reference; a SecretRef is stored as is. Natter never writes a Plaintext secret.
-func (m *Manager) Create(ctx context.Context, n api.NewContext) (api.Context, error) {
+func (m *Manager) Create(ctx context.Context, n api.NewContext) (_ api.Context, err error) {
 	target := n.Source
 	switch {
 	case target == "":
@@ -162,15 +162,17 @@ func (m *Manager) Create(ctx context.Context, n api.NewContext) (api.Context, er
 		}
 	}
 	opts := []natscontext.Option{natscontext.WithServerURL(n.URLs), natscontext.WithDescription(n.Description), natscontext.WithUser(n.User)}
+	var put []string
+	defer m.forgetOnError(&err, &put)
 	switch {
 	case n.SecretRef != "":
 		opts = append(opts, opt(n.SecretRef))
 	case n.Secret != "":
-		// shortcut: a failed Save leaves an unreferenced Vault entry; sweep orphans if Contexts become deletable.
 		ref, err := m.vault.Put(n.Secret)
 		if err != nil {
 			return api.Context{}, err
 		}
+		put = append(put, ref)
 		opts = append(opts, opt(ref))
 	}
 	c, err := natscontext.New(n.Name, false, opts...)
@@ -180,7 +182,16 @@ func (m *Manager) Create(ctx context.Context, n api.NewContext) (api.Context, er
 	if err := reg.Save(ctx, c, n.Name); err != nil {
 		return api.Context{}, err
 	}
+	put = nil // the saved file references them now
 	return m.Get(ctx, api.Ref{Source: target, Name: n.Name})
+}
+
+// forgetOnError deletes the Vault entries in *put when *err is set, so a
+// Create or move that fails before its save leaves no orphan in the Vault.
+func (m *Manager) forgetOnError(err *error, put *[]string) {
+	if *err != nil && len(*put) > 0 {
+		*err = errors.Join(*err, m.vault.Delete(*put...))
+	}
 }
 
 // invalid is the error for a value the user supplied.
@@ -205,7 +216,7 @@ func checkRef(kind api.SecretKind, ref string) error {
 // MoveIntoVault copies a CLI Context with a Plaintext secret into Natter's
 // directory under newName (empty keeps the name), with its password, token,
 // creds and nkey in the Vault. It never touches the CLI file; RemoveCLI does that.
-func (m *Manager) MoveIntoVault(ctx context.Context, ref api.Ref, newName string) (api.Context, error) {
+func (m *Manager) MoveIntoVault(ctx context.Context, ref api.Ref, newName string) (_ api.Context, err error) {
 	if ref.Source != api.SourceCLI {
 		return invalid("only a nats CLI Context can be moved into the Vault")
 	}
@@ -240,6 +251,8 @@ func (m *Manager) MoveIntoVault(ctx context.Context, ref api.Ref, newName string
 		}
 	}
 	var opts []natscontext.Option
+	var put []string
+	defer m.forgetOnError(&err, &put)
 	for _, f := range []struct {
 		kind api.SecretKind
 		val  string
@@ -255,6 +268,7 @@ func (m *Manager) MoveIntoVault(ctx context.Context, ref api.Ref, newName string
 		if err != nil {
 			return api.Context{}, err
 		}
+		put = append(put, vref)
 		opts = append(opts, secretOption[f.kind](vref))
 	}
 	// Load applies the options to the raw Context, so everything else is copied as is.
@@ -265,6 +279,7 @@ func (m *Manager) MoveIntoVault(ctx context.Context, ref api.Ref, newName string
 	if err := app.Save(ctx, moved, newName); err != nil {
 		return api.Context{}, err
 	}
+	put = nil // the saved file references them now
 	return m.Get(ctx, api.Ref{Source: api.SourceApp, Name: newName})
 }
 
