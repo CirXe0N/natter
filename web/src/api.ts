@@ -1,6 +1,6 @@
 // The hand-written REST client. Response shapes come from Go via tygo (src/gen).
 // Add one function per endpoint to `api`; screens call them from TanStack Query.
-import type { Info } from "@/gen/api"
+import type { Active, Context, Info, Ref, Settings } from "@/gen/api"
 
 export class ApiError extends Error {
   status: number
@@ -23,4 +23,9 @@ async function request<T>(method: string, path: string, body?: unknown, signal?:
 
 export const api = {
   info: (signal?: AbortSignal) => request<Info>("GET", "/api/info", undefined, signal),
+  contexts: (signal?: AbortSignal) => request<Context[]>("GET", "/api/contexts", undefined, signal),
+  activeContext: (signal?: AbortSignal) => request<Active>("GET", "/api/contexts/active", undefined, signal),
+  activateContext: (ref: Ref) => request<Active>("PUT", "/api/contexts/active", { source: ref.source, name: ref.name }),
+  setContextSettings: (ref: Ref, settings: Settings) =>
+    request<Context>("PUT", `/api/contexts/${encodeURIComponent(ref.source)}/${encodeURIComponent(ref.name)}/settings`, settings),
 }

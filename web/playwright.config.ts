@@ -7,7 +7,7 @@ export default defineConfig({
   webServer: {
     command: "go run ./internal/e2eserver",
     cwd: "..",
-    wait: { stdout: /E2E READY url=(?<e2e_url>\S+) token=(?<e2e_token>\S+)/ },
+    wait: { stdout: /E2E READY url=(?<e2e_url>\S+) token=(?<e2e_token>\S+) monitoring=(?<e2e_monitoring>\S+)/ },
     timeout: 120_000, // the first `go run` compiles nats-server
     gracefulShutdown: { signal: "SIGTERM", timeout: 5_000 },
   },

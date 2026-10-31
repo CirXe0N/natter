@@ -1,6 +1,7 @@
 import { createRootRoute, createRoute, createRouter, redirect } from "@tanstack/react-router"
 
 import { Shell } from "@/shell"
+import { ContextsScreen } from "@/screens/contexts"
 import { EmptyScreen } from "@/screens/empty-screen"
 
 // Each screen is one route here. staticData.title names it in the top bar,
@@ -18,7 +19,7 @@ const routeTree = root.addChildren([
   createRoute({ ...screen, path: "/consumers", staticData: { title: "Consumers" } }),
   createRoute({ ...screen, path: "/messages", staticData: { title: "Message browser" } }),
   createRoute({ ...screen, path: "/kv", staticData: { title: "Key-Value" } }),
-  createRoute({ ...screen, path: "/contexts", staticData: { title: "Contexts" } }),
+  createRoute({ ...screen, path: "/contexts", staticData: { title: "Contexts" }, component: ContextsScreen }),
 ])
 
 export const router = createRouter({ routeTree })

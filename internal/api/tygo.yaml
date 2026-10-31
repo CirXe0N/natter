@@ -1,3 +1,4 @@
 packages:
   - path: github.com/CirXe0N/natter/internal/api
     output_path: ../../web/src/gen/api.ts
+    enum_style: union

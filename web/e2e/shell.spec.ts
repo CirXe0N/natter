@@ -54,7 +54,7 @@ test("keyboard focus draws a 2 px outline", async ({ page }) => {
       const s = getComputedStyle(document.activeElement!)
       return `${s.outlineStyle} ${s.outlineWidth}`
     })
-  const context = page.getByRole("link", { name: /No Context/ })
+  const context = page.getByRole("button", { name: /Switch Context/ })
   for (let i = 0; i < 3 && !(await context.evaluate((el) => el === document.activeElement)); i++) await page.keyboard.press("Tab")
   await expect(context).toBeFocused()
   expect(await outline()).toBe("solid 2px")

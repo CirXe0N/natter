@@ -1,9 +1,10 @@
 import { useEffect, type ComponentType } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { Link, Outlet, useMatches, useRouter, type LinkProps } from "@tanstack/react-router"
-import { Activity, Boxes, Cable, ChevronRight, Database, KeyRound, Layers, Radio, Send } from "lucide-react"
+import { Activity, Boxes, Cable, Database, KeyRound, Layers, Radio, Send } from "lucide-react"
 
 import { api } from "@/api"
+import { ConnectionStatus, ContextSwitcher } from "@/contexts"
 import { DensityToggle } from "@/density"
 
 type NavItem = { to: NonNullable<LinkProps["to"]>; Icon: ComponentType<{ size?: number }> }
@@ -35,6 +36,7 @@ export function Shell() {
               <li aria-current="page" className="truncate">{title}</li>
             </ol>
           </nav>
+          <ConnectionStatus />
           <DensityToggle />
         </header>
         <main className="min-h-0 flex-1 overflow-auto">
@@ -42,20 +44,6 @@ export function Shell() {
         </main>
       </div>
     </div>
-  )
-}
-
-// Until Contexts exist this only leads to the Contexts screen.
-function ContextSwitcher() {
-  return (
-    <Link to="/contexts" className="flex w-full items-center gap-2.5 rounded-lg border bg-popover px-2.5 py-2 hover:border-input">
-      <span aria-hidden className="grid size-7 place-items-center rounded-md bg-primary/15 font-mono text-xs font-bold text-primary">?</span>
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-xs font-semibold">No Context</span>
-        <span className="block truncate text-[11px] text-fg-faint">Choose a Context</span>
-      </span>
-      <ChevronRight size={14} className="text-fg-faint" />
-    </Link>
   )
 }
 

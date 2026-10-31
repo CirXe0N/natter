@@ -16,6 +16,7 @@ import (
 	"sync"
 
 	"github.com/CirXe0N/natter/internal/api"
+	"github.com/CirXe0N/natter/internal/contexts"
 )
 
 type Config struct {
@@ -34,7 +35,18 @@ type Config struct {
 	TrustedOrigins []string
 	// Version is reported by GET /api/info.
 	Version string
+	// Contexts lists the Contexts and holds the connection to the active one.
+	Contexts *contexts.Manager
 }
+
+// route is one API endpoint. Each feature file appends its routes in init(),
+// so features built in parallel never edit the same lines of New.
+type route struct {
+	pattern string
+	handle  func(*server, http.ResponseWriter, *http.Request)
+}
+
+var routes []route
 
 type server struct {
 	Config
@@ -61,6 +73,9 @@ func New(c Config) http.Handler {
 	mux.HandleFunc("GET /api/info", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, api.Info{Version: s.Version})
 	})
+	for _, rt := range routes {
+		mux.HandleFunc(rt.pattern, func(w http.ResponseWriter, r *http.Request) { rt.handle(s, w, r) })
+	}
 
 	return s.checkHost(s.checkSession(s.checkOrigin(mux)))
 }
