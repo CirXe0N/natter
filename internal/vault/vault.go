@@ -26,6 +26,7 @@ import (
 	"filippo.io/age"
 
 	"github.com/CirXe0N/natter/internal/api"
+	"github.com/CirXe0N/natter/internal/atomicfile"
 )
 
 // Scheme is the Secret reference scheme: natter-vault://<opaque-id>.
@@ -161,7 +162,7 @@ func (v *Vault) Create(passphrase api.Secret) error {
 	if _, err := os.Stat(v.path("vault.age")); err == nil {
 		return ErrExists
 	}
-	if err := writeAtomic(v.path("vault.key.age"), wrapped); err != nil {
+	if err := atomicfile.Write(v.path("vault.key.age"), wrapped); err != nil {
 		return err
 	}
 	if err := v.unlockLocked(id, true); err != nil {
@@ -189,7 +190,7 @@ func (v *Vault) SetPassphrase(passphrase api.Secret) error {
 		return err
 	}
 	defer unlockFile()
-	return writeAtomic(v.path("vault.key.age"), wrapped)
+	return atomicfile.Write(v.path("vault.key.age"), wrapped)
 }
 
 func wrap(id *age.HybridIdentity, passphrase api.Secret) ([]byte, error) {
@@ -307,7 +308,7 @@ func write(path string, id *age.HybridIdentity, entries map[string][]byte) error
 	if err != nil {
 		return err
 	}
-	return writeAtomic(path, b)
+	return atomicfile.Write(path, b)
 }
 
 func encrypt(plain []byte, r age.Recipient) ([]byte, error) {
@@ -326,49 +327,5 @@ func encrypt(plain []byte, r age.Recipient) ([]byte, error) {
 }
 
 // lockFile takes vault.lock, which serialises writers across goroutines and
-// processes. The OS drops it if natter dies, so a crash never wedges it.
-func (v *Vault) lockFile() (unlock func(), err error) {
-	if err := os.MkdirAll(v.dir, 0o700); err != nil {
-		return nil, err
-	}
-	f, err := os.OpenFile(v.path("vault.lock"), os.O_RDWR|os.O_CREATE, 0o600)
-	if err != nil {
-		return nil, err
-	}
-	if err := lock(f); err != nil {
-		f.Close()
-		return nil, fmt.Errorf("locking %s: %w", f.Name(), err)
-	}
-	return func() { f.Close() }, nil // closing releases the lock
-}
-
-// writeAtomic replaces path with data at mode 0600: temp file, fsync, rename,
-// then fsync of the directory (best effort: Windows cannot). A crash leaves
-// the old file or the new one. Callers hold vault.lock.
-func writeAtomic(path string, data []byte) error {
-	dir := filepath.Dir(path)
-	f, err := os.CreateTemp(dir, filepath.Base(path)+".tmp-*") // 0600
-	if err != nil {
-		return err
-	}
-	defer os.Remove(f.Name()) // no-op after the rename
-	if _, err := f.Write(data); err != nil {
-		f.Close()
-		return err
-	}
-	if err := f.Sync(); err != nil {
-		f.Close()
-		return err
-	}
-	if err := f.Close(); err != nil {
-		return err
-	}
-	if err := os.Rename(f.Name(), path); err != nil {
-		return err
-	}
-	if d, err := os.Open(dir); err == nil {
-		d.Sync()
-		d.Close()
-	}
-	return nil
-}
+// processes.
+func (v *Vault) lockFile() (unlock func(), err error) { return atomicfile.Lock(v.path("vault.lock")) }
