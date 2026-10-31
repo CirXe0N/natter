@@ -26,10 +26,10 @@ test("Consumers tab shows lag, labels Natter's own consumers, and pauses, resume
 
   // Delete asks first; cancelling keeps it.
   await page.goto("/streams/ORDERS/consumers/shipping")
-  await page.getByRole("button", { name: "Delete…" }).click()
+  await page.getByRole("button", { name: "Delete consumer…" }).click()
   await page.getByRole("button", { name: "Keep it" }).click()
   await expect(page.getByRole("dialog")).toHaveCount(0)
-  await page.getByRole("button", { name: "Delete…" }).click()
+  await page.getByRole("button", { name: "Delete consumer…" }).click()
   await page.getByRole("button", { name: "Delete consumer" }).click()
   await expect(page).toHaveURL(/\/streams\/ORDERS\/consumers$/)
   await expect(table.getByRole("link", { name: "shipping" })).toHaveCount(0)
@@ -40,7 +40,7 @@ test("Pause, resume and delete are blocked under Read-only mode", async ({ page 
   await page.request.put("/api/contexts/cli/app/settings", { data: { readOnly: true } })
   try {
     await page.goto("/streams/ORDERS/consumers/billing")
-    for (const name of ["Pause", "Delete…"]) {
+    for (const name of ["Pause", "Delete consumer…"]) {
       const b = page.getByRole("button", { name, exact: true })
       await expect(b).toHaveAttribute("aria-disabled", "true")
       await expect(b).toHaveAccessibleDescription(/Read-only mode is on for this Context/)
