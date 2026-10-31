@@ -195,7 +195,7 @@ type Passphrase struct {
 
 // Health is every server's HEALTHZ answer for the active Context.
 type Health struct {
-	Source OverviewSource `json:"source"`
+	Source StatsSource `json:"source"`
 	// Problem says, for the user, what access is missing or why the check failed.
 	Problem string         `json:"problem,omitempty"`
 	Servers []ServerHealth `json:"servers"`

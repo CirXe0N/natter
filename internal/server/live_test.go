@@ -65,7 +65,7 @@ func TestLiveSocket(t *testing.T) {
 	if err := wsjson.Read(t.Context(), c, &f); err != nil {
 		t.Fatal(err)
 	}
-	if f.Topic != api.TopicOverview || f.Overview == nil || f.Overview.Source != api.OverviewSourceNone || !strings.Contains(f.Overview.Problem, "No Context is active") {
+	if f.Topic != api.TopicOverview || f.Overview == nil || f.Overview.Source != api.StatsSourceNone || !strings.Contains(f.Overview.Problem, "No Context is active") {
 		t.Fatalf("frame %+v", f)
 	}
 }

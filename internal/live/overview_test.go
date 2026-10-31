@@ -19,7 +19,7 @@ import (
 // frame is the Overview as the browser decodes it: a missing point is nil.
 type frame struct {
 	Overview struct {
-		Source    api.OverviewSource
+		Source    api.StatsSource
 		Problem   string
 		Points    map[api.Series]*float64
 		History   map[api.Series][]*float64
@@ -100,7 +100,7 @@ func TestStatszProducerEmitsRates(t *testing.T) {
 	o, frames := startOverview(t, "sys", api.Settings{})
 	f := await(t, frames).Overview
 
-	if f.Source != api.OverviewSourceSystem || len(f.Servers) != 1 || f.Problem != "" {
+	if f.Source != api.StatsSourceSystem || len(f.Servers) != 1 || f.Problem != "" {
 		t.Fatalf("source %s, %d servers, problem %q", f.Source, len(f.Servers), f.Problem)
 	}
 	if in := *f.Points[api.SeriesMsgsIn]; in < 50 { // app publishes about 200/s
@@ -132,7 +132,7 @@ func TestStatszProducerEmitsRates(t *testing.T) {
 func TestMonitoringURLIsTheFallback(t *testing.T) {
 	_, frames := startOverview(t, "app", api.Settings{MonitoringURL: "MONITOR"})
 	f := await(t, frames).Overview
-	if f.Source != api.OverviewSourceMonitoring || len(f.Servers) != 1 || *f.Points[api.SeriesMsgsIn] < 50 || f.JetStream == nil {
+	if f.Source != api.StatsSourceMonitoring || len(f.Servers) != 1 || *f.Points[api.SeriesMsgsIn] < 50 || f.JetStream == nil {
 		t.Fatalf("%+v", f)
 	}
 }
@@ -140,7 +140,7 @@ func TestMonitoringURLIsTheFallback(t *testing.T) {
 func TestWithoutAccessTheOverviewSaysWhatIsMissing(t *testing.T) {
 	_, frames := startOverview(t, "nojs", api.Settings{})
 	f := (<-frames).Overview
-	if f.Source != api.OverviewSourceNone || !strings.Contains(f.Problem, "System credentials or a Monitoring URL") || len(f.Servers) != 0 {
+	if f.Source != api.StatsSourceNone || !strings.Contains(f.Problem, "System credentials or a Monitoring URL") || len(f.Servers) != 0 {
 		t.Fatalf("%+v", f)
 	}
 	if len(f.History[api.SeriesConnections]) != Slots {
@@ -181,7 +181,7 @@ func TestRestartLeavesAGapInsteadOfANegativeRate(t *testing.T) {
 func TestALockedVaultSaysToUnlockIt(t *testing.T) {
 	a := &contexts.Conn{Context: api.Context{Ref: api.Ref{Source: api.SourceApp, Name: "vaulted"}}, Status: api.ConnStatusLocked}
 	src, _, err := sampleAll(context.Background(), a)
-	if src != api.OverviewSourceNone || err == nil || !strings.Contains(err.Error(), "Unlock the Vault") {
+	if src != api.StatsSourceNone || err == nil || !strings.Contains(err.Error(), "Unlock the Vault") {
 		t.Fatalf("%v %v", src, err)
 	}
 }

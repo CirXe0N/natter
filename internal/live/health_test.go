@@ -60,7 +60,7 @@ func TestHealthListsAnUnhealthyStream(t *testing.T) {
 		}
 	}
 
-	if h := use("nojs", api.Settings{}); h.Source != api.OverviewSourceNone || !strings.Contains(h.Problem, "System credentials or a Monitoring URL") {
+	if h := use("nojs", api.Settings{}); h.Source != api.StatsSourceNone || !strings.Contains(h.Problem, "System credentials or a Monitoring URL") {
 		t.Errorf("%+v", h)
 	}
 }

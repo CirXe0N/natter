@@ -209,7 +209,7 @@ export interface Passphrase {
  * Health is every server's HEALTHZ answer for the active Context.
  */
 export interface Health {
-  source: OverviewSource;
+  source: StatsSource;
   /**
    * Problem says, for the user, what access is missing or why the check failed.
    */
@@ -272,12 +272,12 @@ export interface ServerFrame {
   overview?: Overview;
 }
 /**
- * OverviewSource says where the Overview's numbers come from.
+ * StatsSource says where the Overview's numbers come from.
  */
-export const OverviewSourceSystem = "system"; // $SYS STATSZ: every server
-export const OverviewSourceMonitoring = "monitoring"; // the Monitoring URL: the one server behind it
-export const OverviewSourceNone = "none"; // neither; Problem says what is missing
-export type OverviewSource = typeof OverviewSourceSystem | typeof OverviewSourceMonitoring | typeof OverviewSourceNone;
+export const StatsSourceSystem = "system"; // $SYS STATSZ: every server
+export const StatsSourceMonitoring = "monitoring"; // the Monitoring URL: the one server behind it
+export const StatsSourceNone = "none"; // neither; Problem says what is missing
+export type StatsSource = typeof StatsSourceSystem | typeof StatsSourceMonitoring | typeof StatsSourceNone;
 /**
  * Series names one Overview KPI series, summed over all servers.
  */
@@ -293,7 +293,7 @@ export type Series = typeof SeriesConnections | typeof SeriesMsgsIn | typeof Ser
  * each second.
  */
 export interface Overview {
-  source: OverviewSource;
+  source: StatsSource;
   /**
    * Problem says, for the user, what access is missing or why sampling failed.
    */

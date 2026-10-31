@@ -36,13 +36,13 @@ type ServerFrame struct {
 	Overview *Overview `json:"overview,omitempty"`
 }
 
-// OverviewSource says where the Overview's numbers come from.
-type OverviewSource string
+// StatsSource says where the Overview's numbers come from.
+type StatsSource string
 
 const (
-	OverviewSourceSystem     OverviewSource = "system"     // $SYS STATSZ: every server
-	OverviewSourceMonitoring OverviewSource = "monitoring" // the Monitoring URL: the one server behind it
-	OverviewSourceNone       OverviewSource = "none"       // neither; Problem says what is missing
+	StatsSourceSystem     StatsSource = "system"     // $SYS STATSZ: every server
+	StatsSourceMonitoring StatsSource = "monitoring" // the Monitoring URL: the one server behind it
+	StatsSourceNone       StatsSource = "none"       // neither; Problem says what is missing
 )
 
 // Series names one Overview KPI series, summed over all servers.
@@ -60,7 +60,7 @@ const (
 // Overview answers "is this system healthy right now?". The backend sends one
 // each second.
 type Overview struct {
-	Source OverviewSource `json:"source"`
+	Source StatsSource `json:"source"`
 	// Problem says, for the user, what access is missing or why sampling failed.
 	Problem string `json:"problem,omitempty"`
 	// Time is the unix second of the newest point.
