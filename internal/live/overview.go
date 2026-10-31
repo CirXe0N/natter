@@ -190,23 +190,30 @@ func (o *Overview) add(sec int64, samples []sample) *api.Overview {
 // sampleAll picks the source the active Context allows and samples it. The
 // error is for the user to read.
 func sampleAll(ctx context.Context, a *contexts.Conn) (api.OverviewSource, []sample, error) {
-	switch {
-	case a == nil:
-		return api.OverviewSourceNone, nil, errors.New("No Context is active. Choose one on the Contexts screen.")
-	case a.Caps.System && a.NC != nil:
-		s, err := statsz(ctx, a.NC)
-		return api.OverviewSourceSystem, s, err
-	case a.Context.MonitoringURL != "":
+	if a != nil && (a.Caps.System && a.NC != nil || a.Context.MonitoringURL != "") {
+		if a.Caps.System && a.NC != nil {
+			s, err := statsz(ctx, a.NC)
+			return api.OverviewSourceSystem, s, err
+		}
 		s, err := monitoring(ctx, a.Context.MonitoringURL)
 		return api.OverviewSourceMonitoring, s, err
+	}
+	return api.OverviewSourceNone, nil, noAccess(a)
+}
+
+// noAccess says, for the user, why a Context cannot be sampled for server data.
+func noAccess(a *contexts.Conn) error {
+	switch {
+	case a == nil:
+		return errors.New("No Context is active. Choose one on the Contexts screen.")
 	case a.Status == api.ConnStatusConnecting:
-		return api.OverviewSourceNone, nil, fmt.Errorf("Connecting to %s…", a.Context.Name)
+		return fmt.Errorf("Connecting to %s…", a.Context.Name)
 	case a.Status == api.ConnStatusLocked:
-		return api.OverviewSourceNone, nil, fmt.Errorf("Unlock the Vault to connect to %s.", a.Context.Name)
+		return fmt.Errorf("Unlock the Vault to connect to %s.", a.Context.Name)
 	case a.Status == api.ConnStatusFailed:
-		return api.OverviewSourceNone, nil, fmt.Errorf("Could not connect to %s: %v", a.Context.Name, a.Err)
+		return fmt.Errorf("Could not connect to %s: %v", a.Context.Name, a.Err)
 	default:
-		return api.OverviewSourceNone, nil, fmt.Errorf("Server stats need System credentials or a Monitoring URL. The Context %s has neither.", a.Context.Name)
+		return fmt.Errorf("Server stats need System credentials or a Monitoring URL. The Context %s has neither.", a.Context.Name)
 	}
 }
 

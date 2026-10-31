@@ -7,6 +7,7 @@ import { ShieldAlert, TriangleAlert } from "lucide-react"
 import { ScreenHeader } from "@/components/screen-header"
 import { TopicOverview, type Overview, type Series, type ServerSummary } from "@/gen/api"
 import { announce, subscribe, usePaused } from "@/live"
+import { unhealthy, useHealth } from "@/screens/health"
 import { Ring } from "@/ring"
 
 const allSeries: Series[] = ["connections", "msgsIn", "msgsOut", "bytesIn", "bytesOut", "slowConsumers"]
@@ -31,6 +32,7 @@ export function OverviewScreen() {
   return (
     <>
       <ScreenHeader title="Overview">
+        <HealthIndicator />
         <Freshness ov={ov} />
       </ScreenHeader>
       <div className="space-y-5 px-8 pb-8">
@@ -48,6 +50,17 @@ export function OverviewScreen() {
         )}
       </div>
     </>
+  )
+}
+
+function HealthIndicator() {
+  const { data: h } = useHealth()
+  if (!h?.servers.length) return null
+  const bad = unhealthy(h).length
+  return (
+    <Link to="/health" className={`text-xs hover:underline ${bad ? "text-destructive" : "text-success"}`}>
+      {bad ? `${bad} of ${h.servers.length} servers unhealthy` : "All servers healthy"}
+    </Link>
   )
 }
 

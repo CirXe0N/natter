@@ -13,7 +13,7 @@ import { refKey, useActivateContext, useContexts } from "@/contexts"
 
 export type PaletteCommand = { id: string; label: string; group: string; hint?: string; cli?: string; run: () => void }
 
-const screens = ["/overview", "/connections", "/streams", "/consumers", "/messages", "/kv", "/publish", "/tail", "/contexts"] as const
+const screens = ["/overview", "/health", "/connections", "/streams", "/consumers", "/messages", "/kv", "/publish", "/tail", "/contexts"] as const
 
 function useCommands(): PaletteCommand[] {
   const navigate = useNavigate()

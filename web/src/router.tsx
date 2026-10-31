@@ -3,6 +3,7 @@ import { createRootRoute, createRoute, createRouter, redirect } from "@tanstack/
 import { Shell } from "@/shell"
 import { ContextsScreen } from "@/screens/contexts"
 import { EmptyScreen } from "@/screens/empty-screen"
+import { HealthScreen } from "@/screens/health"
 import { OverviewScreen } from "@/screens/overview"
 
 // Each screen is one route here. staticData.title names it in the top bar,
@@ -13,6 +14,7 @@ const screen = { getParentRoute: () => root, component: EmptyScreen }
 const routeTree = root.addChildren([
   createRoute({ getParentRoute: () => root, path: "/", beforeLoad: () => { throw redirect({ to: "/overview", replace: true }) } }),
   createRoute({ ...screen, path: "/overview", staticData: { title: "Overview" }, component: OverviewScreen }),
+  createRoute({ ...screen, path: "/health", staticData: { title: "Health" }, component: HealthScreen }),
   createRoute({ ...screen, path: "/connections", staticData: { title: "Connections" } }),
   createRoute({ ...screen, path: "/publish", staticData: { title: "Publish / request" } }),
   createRoute({ ...screen, path: "/tail", staticData: { title: "Live tail" } }),
