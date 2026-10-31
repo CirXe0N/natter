@@ -140,7 +140,26 @@ type NewContext struct {
 	URLs        string     `json:"urls"`
 	User        string     `json:"user"`
 	SecretKind  SecretKind `json:"secretKind,omitempty"`
-	Secret      Secret     `json:"secret,omitempty"`
+	// Secret goes into the Vault. SecretRef is an env://, op:// or nsc://
+	// Secret reference stored as is. Give at most one of them.
+	Secret    Secret `json:"secret,omitempty"`
+	SecretRef string `json:"secretRef,omitempty"`
+	// Source is SourceApp (the default) or SourceCLI, which writes natscli's own
+	// directory. Only a Context with no Vault secret may go there.
+	Source Source `json:"source,omitempty"`
+}
+
+// MoveRequest asks to copy a CLI Context with a Plaintext secret into Natter's
+// directory, with the secret in the Vault. The CLI file is left as it is.
+type MoveRequest struct {
+	// Name of the new Natter Context; empty keeps the CLI Context's name.
+	Name string `json:"name,omitempty"`
+}
+
+// RemoveRequest confirms deleting a CLI Context file. It is separate from
+// moving, and Confirm must be true.
+type RemoveRequest struct {
+	Confirm bool `json:"confirm"`
 }
 
 // VaultState says whether the Vault exists and is unlocked.
