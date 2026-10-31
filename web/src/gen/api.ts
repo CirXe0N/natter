@@ -29,14 +29,17 @@ export type Source = typeof SourceCLI | typeof SourceApp;
 /**
  * SecretStorage says where a Context's secret lives. SecretStoragePlaintext marks a
  * Plaintext secret: a literal or data: value, or a creds, nkey or TLS key file.
+ * SecretStorageUnknownReference marks a creds, nkey or TLS key value with a
+ * scheme:// no resolver reads: a broken Secret reference, which cannot connect.
  */
 export const SecretStorageNone = "none";
 export const SecretStoragePlaintext = "plaintext";
+export const SecretStorageUnknownReference = "unknown-reference";
 export const SecretStorageEnv = "env";
 export const SecretStorageOp = "op";
 export const SecretStorageNsc = "nsc";
 export const SecretStorageVault = "vault";
-export type SecretStorage = typeof SecretStorageNone | typeof SecretStoragePlaintext | typeof SecretStorageEnv | typeof SecretStorageOp | typeof SecretStorageNsc | typeof SecretStorageVault;
+export type SecretStorage = typeof SecretStorageNone | typeof SecretStoragePlaintext | typeof SecretStorageUnknownReference | typeof SecretStorageEnv | typeof SecretStorageOp | typeof SecretStorageNsc | typeof SecretStorageVault;
 /**
  * Ref names one Context. Names are unique within a Source.
  */

@@ -38,21 +38,34 @@ var referenceSchemes = map[string]api.SecretStorage{
 }
 
 // secretStorage reads the raw, unexpanded Context. One Plaintext secret flags
-// the whole Context.
+// the whole Context, and one broken Secret reference outranks that: the
+// Context cannot connect, and moving it into the Vault would fail.
 func secretStorage(c *natscontext.Context) api.SecretStorage {
 	found := api.SecretStorageNone
 	if c.NscURL() != "" { // the deprecated "nsc" field
 		found = api.SecretStorageNsc
 	}
-	for _, v := range []string{c.Password(), c.Token(), c.UserSeed(), c.Creds(), c.NKey(), c.Key()} {
-		if v == "" {
+	plaintext := false
+	for _, f := range []struct {
+		v    string
+		path bool // natscli refuses an unknown scheme here; elsewhere it is the literal
+	}{{c.Password(), false}, {c.Token(), false}, {c.UserSeed(), false}, {c.Creds(), true}, {c.NKey(), true}, {c.Key(), true}} {
+		if f.v == "" {
 			continue
 		}
-		s, ok := referenceSchemes[scheme(v)]
-		if !ok {
-			return api.SecretStoragePlaintext
+		sc := scheme(f.v)
+		s, ok := referenceSchemes[sc]
+		switch {
+		case ok:
+			found = s
+		case f.path && sc != "" && sc != "file" && sc != "data":
+			return api.SecretStorageUnknownReference
+		default:
+			plaintext = true
 		}
-		found = s
+	}
+	if plaintext {
+		return api.SecretStoragePlaintext
 	}
 	return found
 }

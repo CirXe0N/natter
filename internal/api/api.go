@@ -27,15 +27,18 @@ const (
 
 // SecretStorage says where a Context's secret lives. SecretStoragePlaintext marks a
 // Plaintext secret: a literal or data: value, or a creds, nkey or TLS key file.
+// SecretStorageUnknownReference marks a creds, nkey or TLS key value with a
+// scheme:// no resolver reads: a broken Secret reference, which cannot connect.
 type SecretStorage string
 
 const (
-	SecretStorageNone      SecretStorage = "none"
-	SecretStoragePlaintext SecretStorage = "plaintext"
-	SecretStorageEnv       SecretStorage = "env"
-	SecretStorageOp        SecretStorage = "op"
-	SecretStorageNsc       SecretStorage = "nsc"
-	SecretStorageVault     SecretStorage = "vault"
+	SecretStorageNone             SecretStorage = "none"
+	SecretStoragePlaintext        SecretStorage = "plaintext"
+	SecretStorageUnknownReference SecretStorage = "unknown-reference"
+	SecretStorageEnv              SecretStorage = "env"
+	SecretStorageOp               SecretStorage = "op"
+	SecretStorageNsc              SecretStorage = "nsc"
+	SecretStorageVault            SecretStorage = "vault"
 )
 
 // Ref names one Context. Names are unique within a Source.

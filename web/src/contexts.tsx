@@ -76,6 +76,7 @@ function ReadOnlyBadge({ c }: { c: Context }) {
 const secretLabel: Record<SecretStorage, string> = {
   none: "No secret",
   plaintext: "Plaintext secret",
+  "unknown-reference": "Unknown Secret reference",
   env: "Env (env://)",
   op: "1Password (op://)",
   nsc: "nsc (nsc://)",
@@ -88,6 +89,13 @@ export function SecretBadge({ secret }: { secret: SecretStorage }) {
       <Badge tone="warning" title="Anyone who can read this Context's file can use its secret">
         <TriangleAlert size={11} aria-hidden />
         Plaintext secret
+      </Badge>
+    )
+  if (secret === "unknown-reference")
+    return (
+      <Badge tone="destructive" title="A creds, nkey or TLS key value starts with a scheme:// natscli cannot read, so this Context cannot connect">
+        <TriangleAlert size={11} aria-hidden />
+        {secretLabel[secret]}
       </Badge>
     )
   return (
