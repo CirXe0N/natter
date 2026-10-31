@@ -23,6 +23,14 @@ test("connect to CLI Contexts, see their capabilities, and switch from the sideb
   await expect(topBar.getByText("Monitoring URL", { exact: true })).toBeVisible()
   await expect(topBar.getByText("No system access")).toHaveCount(0)
 
+  await card("app").getByRole("button", { name: "Read-only: off" }).click()
+  await expect(card("app").getByRole("button", { name: "Read-only: on" })).toBeVisible()
+  const badge = topBar.getByRole("button", { name: "Read-only" })
+  expect((await badge.boundingBox())!.height).toBeGreaterThanOrEqual(24)
+  await badge.click() // the badge unlocks
+  await expect(card("app").getByRole("button", { name: "Read-only: off" })).toBeVisible()
+  await expect(topBar.getByRole("button", { name: "Read-only" })).toHaveCount(0)
+
   const switcher = page.getByRole("button", { name: /Switch Context/ })
   await switcher.click()
   await page.getByRole("menuitemradio", { name: "sys" }).click()

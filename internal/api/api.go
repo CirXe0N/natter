@@ -58,6 +58,8 @@ const (
 // them in its own directory for every Source.
 type Settings struct {
 	MonitoringURL string `json:"monitoringUrl,omitempty"`
+	// ReadOnly locks the Context in Read-only mode while it is active.
+	ReadOnly bool `json:"readOnly,omitempty"`
 }
 
 // ConnStatus is the state of the connection to the active Context.

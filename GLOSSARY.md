@@ -33,7 +33,7 @@ A client connected to a NATS server, as listed by the server's connection monito
 _Avoid_: Client, session
 
 **Read-only mode**:
-A per-Context lock that blocks every action that changes server state or data while the Context is active. It blocks sending any message, requests included, because the app cannot know what a responding service does with a request.
+A per-Context lock that blocks every action that changes server state or data while the Context is active. It blocks sending any message, requests included, because the app cannot know what a responding service does with a request. Browsing is the one exception: its transient ephemeral consumers are allowed.
 _Avoid_: Safe mode, view-only
 
 **Launch token**:
@@ -41,7 +41,7 @@ A random value the app prints at startup that a browser must present once to get
 _Avoid_: Access token, auth token, NATS token (that is a NATS credential type)
 
 **Browsing**:
-Reading messages or KV entries in a way that leaves no trace on the server: no durable consumers, no acknowledgements, no change to any consumer's position.
+Reading messages or KV entries without changing any stream, KV entry or consumer's state: no durable consumers, no acknowledgements, no change to any consumer's position. It leaves one transient trace: the create and delete advisories of its ephemeral consumers.
 _Avoid_: Consuming, reading (when side effects are implied)
 
 **Example message**:

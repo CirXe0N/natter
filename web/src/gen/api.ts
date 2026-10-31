@@ -60,6 +60,10 @@ export type Mode = typeof ModeStatic | typeof ModeJWT;
  */
 export interface Settings {
   monitoringUrl?: string;
+  /**
+   * ReadOnly locks the Context in Read-only mode while it is active.
+   */
+  readOnly?: boolean;
 }
 /**
  * ConnStatus is the state of the connection to the active Context.
