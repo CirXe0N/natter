@@ -3,6 +3,14 @@
 import type { Active, Context, Health, Info, JetStreamNames, NewContext, PassphraseChange, Ref, Settings, Vault } from "@/gen/api"
 import type { StreamDetail, StreamList, StreamSubjects } from "@/gen/api"
 import type { Connections, ConnectionState, KickRequest } from "@/gen/api"
+import type { FieldError, StreamPurge, StreamPurged, StreamSummary } from "@/gen/api"
+
+// ApiError is a refusal; `field` names the config key a stream refusal is about.
+export class ApiError extends Error {
+  constructor(message: string, readonly field?: string) {
+    super(message)
+  }
+}
 
 async function request<T>(method: string, path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
   const res = await fetch(path, {
@@ -11,7 +19,14 @@ async function request<T>(method: string, path: string, body?: unknown, signal?:
     headers: body === undefined ? undefined : { "Content-Type": "application/json" },
     body: body === undefined ? undefined : JSON.stringify(body),
   })
-  if (!res.ok) throw new Error((await res.text()).trim() || res.statusText)
+  if (!res.ok) {
+    const text = (await res.text()).trim()
+    if (res.headers.get("Content-Type")?.startsWith("application/json")) {
+      const e = JSON.parse(text) as FieldError
+      throw new ApiError(e.error, e.field)
+    }
+    throw new Error(text || res.statusText)
+  }
   return res.json() as Promise<T>
 }
 
@@ -39,4 +54,8 @@ export const api = {
   stream: (name: string, signal?: AbortSignal) => request<StreamDetail>("GET", `/api/streams/${encodeURIComponent(name)}`, undefined, signal),
   streamSubjects: (name: string, filter: string, signal?: AbortSignal) =>
     request<StreamSubjects>("GET", `/api/streams/${encodeURIComponent(name)}/subjects?${new URLSearchParams({ filter })}`, undefined, signal),
+  createStream: (config: object) => request<StreamSummary>("POST", "/api/streams", config),
+  updateStream: (name: string, config: object) => request<StreamSummary>("PUT", `/api/streams/${encodeURIComponent(name)}`, config),
+  purgeStream: (name: string, p: StreamPurge) => request<StreamPurged>("POST", `/api/streams/${encodeURIComponent(name)}/purge`, p),
+  deleteStream: (name: string) => request<object>("DELETE", `/api/streams/${encodeURIComponent(name)}`, { confirm: name }),
 }

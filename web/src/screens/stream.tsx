@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input"
 import type { StreamDetail } from "@/gen/api"
 import { bytes, count } from "@/screens/overview"
 import { Ago, HealthDot, KindBadge, useRefresh } from "@/screens/streams"
+import { StreamActions } from "@/screens/stream-actions"
 import { subjectTree, type SubjectNode } from "@/subject-tree"
 
 const tabs = [
@@ -43,6 +44,7 @@ export function StreamScreen() {
         <Link to="/streams" className="text-xs text-muted-foreground hover:text-foreground hover:underline">
           All streams
         </Link>
+        <StreamActions name={stream} />
       </ScreenHeader>
       <nav aria-label="Stream sections" className="flex gap-5 border-b px-8">
         {tabs.map((t) => (

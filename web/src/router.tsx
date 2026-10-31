@@ -8,6 +8,7 @@ import { HealthScreen } from "@/screens/health"
 import { OverviewScreen } from "@/screens/overview"
 import { StreamConfig, StreamOverview, StreamScreen } from "@/screens/stream"
 import { StreamsScreen } from "@/screens/streams"
+import { EditStream, NewStreamScreen } from "@/screens/stream-form"
 
 // Each screen is one route here. staticData.title names it in the top bar,
 // the browser tab and the left nav. Replace EmptyScreen with the real screen.
@@ -24,6 +25,7 @@ const routeTree = root.addChildren([
   createRoute({ ...screen, path: "/publish", staticData: { title: "Publish / request" } }),
   createRoute({ ...screen, path: "/tail", staticData: { title: "Live tail" } }),
   createRoute({ ...screen, path: "/streams", staticData: { title: "Streams" }, component: StreamsScreen, validateSearch: (s: Record<string, unknown>): { subject?: string } => (typeof s.subject === "string" && s.subject ? { subject: s.subject } : {}) }),
+  createRoute({ ...screen, path: "/streams/new", staticData: { title: "New stream" }, component: NewStreamScreen }),
   createRoute({ ...screen, path: "/consumers", staticData: { title: "Consumers" } }),
   createRoute({ ...screen, path: "/messages", staticData: { title: "Message browser" } }),
   createRoute({ ...screen, path: "/kv", staticData: { title: "Key-Value" } }),
@@ -31,6 +33,7 @@ const routeTree = root.addChildren([
   stream.addChildren([
     createRoute({ getParentRoute: () => stream, path: "/", staticData: { title: "Stream" }, component: StreamOverview }),
     createRoute({ getParentRoute: () => stream, path: "config", staticData: { title: "Stream" }, component: StreamConfig }),
+    createRoute({ getParentRoute: () => stream, path: "edit", staticData: { title: "Stream" }, component: EditStream }),
   ]),
 ])
 
