@@ -196,6 +196,13 @@ type Passphrase struct {
 	Passphrase Secret `json:"passphrase"`
 }
 
+// PassphraseChange is the body that sets the Vault's passphrase. Current is
+// needed only when the Vault already has one.
+type PassphraseChange struct {
+	Current Secret `json:"current,omitempty"`
+	New     Secret `json:"new"`
+}
+
 // Health is every server's HEALTHZ answer for the active Context.
 type Health struct {
 	Source StatsSource `json:"source"`

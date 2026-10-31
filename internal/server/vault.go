@@ -11,6 +11,7 @@ func init() {
 		route{pattern: "GET /api/vault", handle: (*server).vaultStatus},
 		route{pattern: "POST /api/vault", handle: (*server).createVault, allowReadOnly: true},
 		route{pattern: "POST /api/vault/unlock", handle: (*server).unlockVault, allowReadOnly: true},
+		route{pattern: "PUT /api/vault/passphrase", handle: (*server).setPassphrase, allowReadOnly: true},
 		route{pattern: "POST /api/vault/keyring", handle: (*server).keyringOn, allowReadOnly: true},
 		route{pattern: "DELETE /api/vault/keyring", handle: (*server).keyringOff, allowReadOnly: true},
 		// These write only Natter's own files; createContext refuses a CLI Context under Read-only itself. Writing or removing a CLI file is natscli's state.
@@ -51,6 +52,20 @@ func (s *server) unlockVault(w http.ResponseWriter, r *http.Request) {
 			writeError(w, err)
 			return
 		}
+	}
+	writeJSON(w, s.Contexts.Vault().Status())
+}
+
+// setPassphrase changes the passphrase, or adds one to a Vault unlocked by
+// -vault-key or the keyring. Only vault.key.age changes.
+func (s *server) setPassphrase(w http.ResponseWriter, r *http.Request) {
+	var p api.PassphraseChange
+	if !readJSON(w, r, &p) {
+		return
+	}
+	if err := s.Contexts.Vault().SetPassphrase(p.Current, p.New); err != nil {
+		writeError(w, err)
+		return
 	}
 	writeJSON(w, s.Contexts.Vault().Status())
 }

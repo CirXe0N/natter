@@ -117,7 +117,15 @@ func TestPassphraseUnlocksAfterARestartAndChangingItRewritesOnlyTheWrapper(t *te
 		t.Fatal(err)
 	}
 
-	if err := v.SetPassphrase("second passphrase"); err != nil {
+	for _, current := range []api.Secret{"", "not it"} {
+		if err := v.SetPassphrase(current, "second passphrase"); !errors.Is(err, ErrWrongKey) && !errors.Is(err, ErrEmpty) {
+			t.Fatalf("current %q: %v", current, err)
+		}
+	}
+	if err := v.SetPassphrase("first passphrase", ""); !errors.Is(err, ErrEmpty) {
+		t.Fatalf("empty new passphrase: %v", err)
+	}
+	if err := v.SetPassphrase("first passphrase", "second passphrase"); err != nil {
 		t.Fatal(err)
 	}
 	after, err := os.ReadFile(filepath.Join(dir, "vault.age"))
@@ -136,6 +144,28 @@ func TestPassphraseUnlocksAfterARestartAndChangingItRewritesOnlyTheWrapper(t *te
 		t.Fatalf("old passphrase: %v", err)
 	}
 	if err := restarted.UnlockPassphrase("second passphrase"); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := resolve(t, restarted, ref); err != nil || got != "a-token" {
+		t.Fatalf("resolve = %q, %v", got, err)
+	}
+}
+
+func TestAKeyFileVaultGetsAPassphrase(t *testing.T) {
+	dir := t.TempDir()
+	v := Open(dir)
+	if err := v.SetPassphrase("", "added"); !errors.Is(err, ErrLocked) {
+		t.Fatalf("locked: %v", err)
+	}
+	if err := v.UnlockKeyFile(keyFile(t)); err != nil {
+		t.Fatal(err)
+	}
+	ref := put(t, v, "a-token")
+	if err := v.SetPassphrase("", "added"); err != nil {
+		t.Fatal(err)
+	}
+	restarted := Open(dir)
+	if err := restarted.UnlockPassphrase("added"); err != nil {
 		t.Fatal(err)
 	}
 	if got, err := resolve(t, restarted, ref); err != nil || got != "a-token" {

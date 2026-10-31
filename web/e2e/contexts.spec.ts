@@ -119,3 +119,25 @@ test("a secret can be an env:// reference, and a Plaintext secret can move into 
   await sys.getByRole("button", { name: "Keep it" }).click() // the file is shared with other specs, so it stays
   await expect(sys.getByRole("button", { name: "Delete the nats CLI file…" })).toBeVisible()
 })
+
+// Runs after the Vault test: the Vault is unlocked with "correct horse battery".
+test("change the Vault passphrase, then unlock with the new one", async ({ page, request }) => {
+  await page.goto("/contexts")
+  await page.getByRole("button", { name: "Change passphrase" }).click()
+  const form = page.getByRole("form", { name: "Vault passphrase" })
+
+  await form.getByLabel("Current passphrase").fill("not it")
+  await form.getByLabel("New passphrase", { exact: true }).fill("battery staple")
+  await form.getByLabel("Repeat new passphrase").fill("battery staple")
+  await form.getByRole("button", { name: "Save passphrase" }).click()
+  await expect(form.getByRole("alert")).toContainText("wrong passphrase")
+
+  await form.getByLabel("Current passphrase").fill("correct horse battery")
+  await form.getByRole("button", { name: "Save passphrase" }).click()
+  await expect(form).toBeHidden()
+
+  expect((await request.post("/api/vault/unlock", { data: { passphrase: "correct horse battery" } })).status()).toBe(400)
+  const unlocked = await request.post("/api/vault/unlock", { data: { passphrase: "battery staple" } })
+  expect(unlocked.status()).toBe(200)
+  expect(await unlocked.json()).toMatchObject({ state: "unlocked", hasPassphrase: true })
+})

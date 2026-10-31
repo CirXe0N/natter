@@ -21,6 +21,7 @@ export function VaultPanel() {
   const vault = useVault()
   const [passphrase, setPassphrase] = useState("")
   const [confirm, setConfirm] = useState("")
+  const [changing, setChanging] = useState(false)
   const state = vault.data?.state
   const submit = useMutation({
     mutationFn: () => (state === "none" ? api.createVault(passphrase) : api.unlockVault(passphrase)),
@@ -36,13 +37,19 @@ export function VaultPanel() {
 
   if (state === "unlocked")
     return (
-      <div className="mb-4 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-        <Badge tone="success">
-          <LockOpen size={11} aria-hidden />
-          Vault unlocked
-        </Badge>
-        Secrets of Contexts created in Natter are encrypted in ~/.config/natter/vault.age.
-        {vault.data.keyring !== "unavailable" && <KeyringToggle on={vault.data.keyring === "on"} hasPassphrase={vault.data.hasPassphrase} />}
+      <div className="mb-4">
+        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+          <Badge tone="success">
+            <LockOpen size={11} aria-hidden />
+            Vault unlocked
+          </Badge>
+          Secrets of Contexts created in Natter are encrypted in ~/.config/natter/vault.age.
+          {vault.data.keyring !== "unavailable" && <KeyringToggle on={vault.data.keyring === "on"} hasPassphrase={vault.data.hasPassphrase} />}
+          <Button size="sm" variant="outline" aria-expanded={changing} onClick={() => setChanging(!changing)}>
+            {vault.data.hasPassphrase ? "Change passphrase" : "Add a passphrase"}
+          </Button>
+        </div>
+        {changing && <PassphraseForm hasPassphrase={vault.data.hasPassphrase} onDone={() => setChanging(false)} />}
       </div>
     )
 
@@ -114,8 +121,55 @@ function KeyringToggle({ on, hasPassphrase }: { on: boolean; hasPassphrase: bool
         <KeyRound size={12} aria-hidden />
         OS keyring: {on ? "on" : "off"}
       </Button>
-      {on && !hasPassphrase && <span className="text-warning">This Vault has no passphrase: without the keyring, only -vault-key unlocks it.</span>}
+      {on && !hasPassphrase && <span className="text-warning">This Vault has no passphrase. Add one so it still unlocks without the keyring.</span>}
       {set.isError && <span role="alert" className="text-destructive">{set.error.message}</span>}
     </>
+  )
+}
+
+// Sets the passphrase that unlocks the Vault after a restart. Only the wrapped
+// key in vault.key.age changes, never the secrets in vault.age.
+function PassphraseForm({ hasPassphrase, onDone }: { hasPassphrase: boolean; onDone: () => void }) {
+  const qc = useQueryClient()
+  const [current, setCurrent] = useState("")
+  const [next, setNext] = useState("")
+  const [confirm, setConfirm] = useState("")
+  const save = useMutation({
+    mutationFn: () => api.setPassphrase({ ...(hasPassphrase && { current }), new: next }),
+    onSuccess: (v) => {
+      qc.setQueryData(vaultKey, v)
+      onDone()
+    },
+  })
+  const mismatch = confirm !== next
+  return (
+    <form
+      aria-label="Vault passphrase"
+      className="mt-3 flex flex-wrap items-end gap-2"
+      onSubmit={(e) => {
+        e.preventDefault()
+        if (!mismatch) save.mutate()
+      }}
+    >
+      {hasPassphrase && (
+        <label className="grid gap-1 text-xs text-muted-foreground">
+          Current passphrase
+          <Input type="password" autoComplete="current-password" required value={current} onChange={(e) => setCurrent(e.target.value)} className="h-7 w-56 text-xs" />
+        </label>
+      )}
+      <label className="grid gap-1 text-xs text-muted-foreground">
+        New passphrase
+        <Input type="password" autoComplete="new-password" required value={next} onChange={(e) => setNext(e.target.value)} className="h-7 w-56 text-xs" />
+      </label>
+      <label className="grid gap-1 text-xs text-muted-foreground">
+        Repeat new passphrase
+        <Input type="password" autoComplete="new-password" required aria-invalid={mismatch && confirm !== "" ? true : undefined} value={confirm} onChange={(e) => setConfirm(e.target.value)} className="h-7 w-56 text-xs" />
+      </label>
+      <Button type="submit" size="sm" disabled={save.isPending || mismatch}>
+        {save.isPending ? "Saving…" : "Save passphrase"}
+      </Button>
+      {mismatch && confirm !== "" && <p className="basis-full text-xs text-muted-foreground">The passphrases do not match.</p>}
+      {save.isError && <p role="alert" className="basis-full text-xs text-destructive">{save.error.message}</p>}
+    </form>
   )
 }
