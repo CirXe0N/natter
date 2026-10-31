@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/netip"
 	"os"
+	"path/filepath"
 	"runtime/debug"
 	"strconv"
 	"strings"
@@ -18,6 +19,7 @@ import (
 
 	"github.com/CirXe0N/natter/internal/contexts"
 	"github.com/CirXe0N/natter/internal/server"
+	"github.com/CirXe0N/natter/internal/vault"
 	"github.com/CirXe0N/natter/web"
 )
 
@@ -36,17 +38,19 @@ func main() {
 		return nil
 	})
 	dev := flag.Bool("dev", false, "trust the Vite dev server at "+viteOrigin+" and print the Launch token URL through it")
+	// Only ever a flag: an environment variable would be inherited by every child process.
+	vaultKey := flag.String("vault-key", "", "age identity file that unlocks the Vault (create one with `age-keygen -pq -o natter.key`); a new Vault is encrypted to it")
 	flag.Parse()
 	portSet := *dev // the Vite proxy targets the default port, so never fall back
 	flag.Visit(func(f *flag.Flag) { portSet = portSet || f.Name == "port" })
 
-	if err := run(*bind, *port, portSet, allowedHosts, *dev); err != nil {
+	if err := run(*bind, *port, portSet, allowedHosts, *dev, *vaultKey); err != nil {
 		fmt.Fprintln(os.Stderr, "natter:", err)
 		os.Exit(1)
 	}
 }
 
-func run(bind string, port int, portSet bool, allowedHosts []string, dev bool) error {
+func run(bind string, port int, portSet bool, allowedHosts []string, dev bool, vaultKey string) error {
 	ip, ipErr := netip.ParseAddr(strings.Trim(bind, "[]"))
 	loopback := bind == "localhost" || (ipErr == nil && ip.IsLoopback())
 	if !loopback && len(allowedHosts) == 0 {
@@ -78,7 +82,13 @@ func run(bind string, port int, portSet bool, allowedHosts []string, dev bool) e
 	if err != nil {
 		return err
 	}
-	ctxs := contexts.New(root)
+	v := vault.Open(filepath.Join(root, "natter"))
+	if vaultKey != "" {
+		if err := v.UnlockKeyFile(vaultKey); err != nil {
+			return fmt.Errorf("unlocking the Vault: %w", err)
+		}
+	}
+	ctxs := contexts.New(root, v)
 	go func() {
 		if err := ctxs.Restore(context.Background()); err != nil {
 			fmt.Fprintln(os.Stderr, "natter: reconnecting to the last active Context:", err)

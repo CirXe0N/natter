@@ -10,6 +10,7 @@ import (
 	"github.com/CirXe0N/natter/internal/api"
 	"github.com/CirXe0N/natter/internal/contexts"
 	"github.com/CirXe0N/natter/internal/natstest"
+	"github.com/CirXe0N/natter/internal/vault"
 )
 
 // No real mutating route exists yet, so the test registers one the way a feature file would.
@@ -26,7 +27,7 @@ func TestReadOnlyRefusesMutatingRoutes(t *testing.T) {
 	if err := natstest.WriteContext(root, "app", map[string]string{"url": ns.ClientURL(), "user": "app", "password": "app"}); err != nil {
 		t.Fatal(err)
 	}
-	m := contexts.New(root)
+	m := contexts.New(root, vault.Open(t.TempDir()))
 	t.Cleanup(m.Close)
 	h := New(Config{Token: "tok", Port: 1, UI: fstest.MapFS{}, Contexts: m})
 
@@ -63,6 +64,9 @@ func TestReadOnlyRefusesMutatingRoutes(t *testing.T) {
 	if !m.Active().Context.ReadOnly {
 		t.Fatalf("%v lost its lock", ref)
 	}
+	want(call("POST", "/api/vault", `{"passphrase":"pw"}`), 200, "create the Vault under Read-only")
+	want(call("POST", "/api/vault/unlock", `{"passphrase":"pw"}`), 200, "unlock the Vault under Read-only")
+	want(call("POST", "/api/contexts", `{"name":"local","urls":"nats://127.0.0.1:1"}`), 200, "create a Context under Read-only")
 
 	want(call("PUT", "/api/contexts/cli/app/settings", `{}`), 200, "unlock while locked")
 	want(call("POST", "/api/test/mutate", ""), 204, "mutate after unlock")

@@ -16,6 +16,7 @@ import (
 	"github.com/CirXe0N/natter/internal/contexts"
 	"github.com/CirXe0N/natter/internal/natstest"
 	"github.com/CirXe0N/natter/internal/server"
+	"github.com/CirXe0N/natter/internal/vault"
 )
 
 func TestJetStreamNames(t *testing.T) {
@@ -44,7 +45,7 @@ func TestJetStreamNames(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	m := contexts.New(root)
+	m := contexts.New(root, vault.Open(t.TempDir()))
 	t.Cleanup(m.Close)
 	h := server.New(server.Config{Token: token, Port: port, UI: ui, Contexts: m})
 	c := launch(t, h)

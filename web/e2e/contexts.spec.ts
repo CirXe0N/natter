@@ -45,3 +45,32 @@ test("connect to CLI Contexts, see their capabilities, and switch from the sideb
   await page.reload() // the active Context is the backend's, not the tab's
   await expect(switcher).toHaveAccessibleName("Context: wrong-password. Switch Context")
 })
+
+// Runs after the test above, in the same worker: both switch the backend's active Context.
+test("create the Vault and a Context whose password lives in it, then connect", async ({ page, request }) => {
+  const contexts: { name: string; urls: string }[] = await (await request.get("/api/contexts")).json()
+  const natsURL = contexts.find((c) => c.name === "app")!.urls
+  await page.goto("/contexts")
+  const vault = page.getByRole("region", { name: "Vault" })
+
+  await vault.getByLabel("Passphrase", { exact: true }).fill("correct horse battery")
+  await vault.getByLabel("Repeat passphrase").fill("correct horse")
+  await expect(vault.getByRole("button", { name: "Create Vault" })).toBeDisabled()
+  await vault.getByLabel("Repeat passphrase").fill("correct horse battery")
+  await vault.getByRole("button", { name: "Create Vault" }).click()
+  await expect(page.getByText("Vault unlocked")).toBeVisible()
+
+  await page.getByText("New Context").click()
+  await page.getByLabel("Name").fill("vaulted")
+  await page.getByLabel("Server URLs").fill(natsURL)
+  await page.getByLabel("User").fill("app")
+  await page.getByLabel("Secret, stored in the Vault").selectOption("password")
+  await page.getByLabel("Password", { exact: true }).fill("app")
+  await page.getByRole("button", { name: "Create Context" }).click()
+
+  const card = page.getByRole("listitem", { name: "vaulted" })
+  await expect(card.getByText("Vault", { exact: true })).toBeVisible()
+  await expect(card.getByText("Natter context")).toBeVisible()
+  await card.getByRole("button", { name: "Connect" }).click()
+  await expect(page.getByRole("banner").getByText("Connected")).toBeVisible()
+})

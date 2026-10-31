@@ -13,6 +13,7 @@ import (
 	"github.com/nats-io/nats.go"
 
 	"github.com/CirXe0N/natter/internal/api"
+	"github.com/CirXe0N/natter/internal/vault"
 )
 
 // probeTimeout bounds each capability check, so a silent server costs seconds, not minutes.
@@ -32,6 +33,8 @@ var referenceSchemes = map[string]api.SecretStorage{
 	"env": api.SecretStorageEnv,
 	"op":  api.SecretStorageOp,
 	"nsc": api.SecretStorageNsc,
+
+	vault.Scheme: api.SecretStorageVault,
 }
 
 // secretStorage reads the raw, unexpanded Context. One Plaintext secret flags

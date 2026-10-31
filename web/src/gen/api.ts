@@ -16,11 +16,16 @@ export interface Info {
 /**
  * Source says where a Context is stored.
  */
-export type Source = string;
 /**
  * SourceCLI is a natscli Context under ~/.config/nats/context/. Natter never writes it.
  */
-export const SourceCLI: Source = "cli";
+export const SourceCLI = "cli";
+/**
+ * SourceApp is a Context Natter created, under ~/.config/natter/nats/context/.
+ * Its secret may be a Vault reference, which natscli cannot read.
+ */
+export const SourceApp = "app";
+export type Source = typeof SourceCLI | typeof SourceApp;
 /**
  * SecretStorage says where a Context's secret lives. SecretStoragePlaintext marks a
  * Plaintext secret: a literal or data: value, or a creds, nkey or TLS key file.
@@ -30,7 +35,8 @@ export const SecretStoragePlaintext = "plaintext";
 export const SecretStorageEnv = "env";
 export const SecretStorageOp = "op";
 export const SecretStorageNsc = "nsc";
-export type SecretStorage = typeof SecretStorageNone | typeof SecretStoragePlaintext | typeof SecretStorageEnv | typeof SecretStorageOp | typeof SecretStorageNsc;
+export const SecretStorageVault = "vault";
+export type SecretStorage = typeof SecretStorageNone | typeof SecretStoragePlaintext | typeof SecretStorageEnv | typeof SecretStorageOp | typeof SecretStorageNsc | typeof SecretStorageVault;
 /**
  * Ref names one Context. Names are unique within a Source.
  */
@@ -73,7 +79,11 @@ export const ConnStatusConnecting = "connecting";
 export const ConnStatusConnected = "connected";
 export const ConnStatusReconnecting = "reconnecting";
 export const ConnStatusFailed = "failed";
-export type ConnStatus = typeof ConnStatusNone | typeof ConnStatusConnecting | typeof ConnStatusConnected | typeof ConnStatusReconnecting | typeof ConnStatusFailed;
+/**
+ * ConnStatusLocked means the Context's secret is in the Vault and the Vault is locked.
+ */
+export const ConnStatusLocked = "locked";
+export type ConnStatus = typeof ConnStatusNone | typeof ConnStatusConnecting | typeof ConnStatusConnected | typeof ConnStatusReconnecting | typeof ConnStatusFailed | typeof ConnStatusLocked;
 /**
  * Capabilities are detected when Natter connects to the active Context.
  */
@@ -112,4 +122,51 @@ export interface Active {
 export interface JetStreamNames {
   streams: string[];
   buckets: string[];
+}
+/**
+ * Secret is a password, token, creds file or nkey seed the browser sends once.
+ * It formats and encodes as [REDACTED], so fmt, slog and JSON never show it;
+ * only string(s) reveals it.
+ */
+export type Secret = string;
+/**
+ * SecretKind is the Context field a new Context's secret goes into.
+ */
+export const SecretKindPassword = "password";
+export const SecretKindToken = "token";
+export const SecretKindCreds = "creds"; // the whole .creds file
+export const SecretKindNkey = "nkey"; // the nkey seed
+export type SecretKind = typeof SecretKindPassword | typeof SecretKindToken | typeof SecretKindCreds | typeof SecretKindNkey;
+/**
+ * NewContext creates a Context in Natter's own directory. Its secret, if
+ * any, goes into the Vault and the Context file holds only a reference.
+ */
+export interface NewContext {
+  name: string;
+  description: string;
+  urls: string;
+  user: string;
+  secretKind?: SecretKind;
+  secret?: Secret;
+}
+/**
+ * VaultState says whether the Vault exists and is unlocked.
+ */
+export const VaultStateNone = "none"; // no Vault file yet
+export const VaultStateLocked = "locked";
+export const VaultStateUnlocked = "unlocked";
+export type VaultState = typeof VaultStateNone | typeof VaultStateLocked | typeof VaultStateUnlocked;
+/**
+ * Vault is the state of the Vault. HasPassphrase is false for a Vault that
+ * only the key file passed with -vault-key can unlock.
+ */
+export interface Vault {
+  state: VaultState;
+  hasPassphrase: boolean;
+}
+/**
+ * Passphrase is the body that creates or unlocks the Vault.
+ */
+export interface Passphrase {
+  passphrase: Secret;
 }

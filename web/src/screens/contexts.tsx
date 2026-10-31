@@ -7,6 +7,8 @@ import { Lock } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { CapabilityBadges, refKey, SecretBadge, useActivateContext, useActiveContext, useContexts, useSetSettings } from "@/contexts"
 import type { Active, Context } from "@/gen/api"
+import { NewContextForm } from "@/screens/new-context"
+import { VaultPanel } from "@/vault"
 
 export function ContextsScreen() {
   const contexts = useContexts()
@@ -15,13 +17,16 @@ export function ContextsScreen() {
     <>
       <ScreenHeader title="Contexts">
         <Badge>~/.config/nats/context</Badge>
+        <Badge>~/.config/natter/nats/context</Badge>
       </ScreenHeader>
       <div className="px-8 pb-10">
+        <VaultPanel />
+        <NewContextForm />
         {contexts.isPending && <p className="text-muted-foreground">Loading Contexts…</p>}
         {contexts.isError && <p className="text-destructive">{contexts.error.message}</p>}
         {contexts.data?.length === 0 && (
           <p className="text-muted-foreground">
-            No natscli Contexts found in ~/.config/nats/context/. Create one with <code className="font-mono text-foreground">nats context add</code>.
+            No Contexts found in ~/.config/nats/context/. Create one above, or with <code className="font-mono text-foreground">nats context add</code>.
           </p>
         )}
         <ul className="grid grid-cols-1 gap-3 lg:grid-cols-2">
@@ -53,7 +58,7 @@ function ContextCard({ c, active }: { c: Context; active?: Active }) {
         {c.user && <Badge>user {c.user}</Badge>}
         <Badge>{c.mode === "jwt" ? "JWT / operator" : "static config"}</Badge>
         <SecretBadge secret={c.secret} />
-        <Badge>nats CLI context</Badge>
+        <Badge>{c.source === "cli" ? "nats CLI context" : "Natter context"}</Badge>
       </div>
       {c.secret === "plaintext" && (
         <p className="mt-3 rounded-lg border border-warning/25 bg-warning/5 px-3 py-2 text-[11px] text-warning">
@@ -66,6 +71,7 @@ function ContextCard({ c, active }: { c: Context; active?: Active }) {
         </div>
       )}
       {active?.status === "failed" && <p className="mt-3 text-xs text-destructive">Could not connect: {active.error}</p>}
+      {active?.status === "locked" && <p className="mt-3 text-xs text-warning">This Context's secret is in the Vault. Unlock the Vault above to connect.</p>}
       {activate.isError && <p role="alert" className="mt-3 text-xs text-destructive">{activate.error.message}</p>}
       <ReadOnlyToggle c={c} />
       <MonitoringURL c={c} />

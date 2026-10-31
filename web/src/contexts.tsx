@@ -2,7 +2,7 @@
 // Other screens read the active Context with useActiveContext and switch with useActivateContext.
 import type { ReactNode } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { useNavigate } from "@tanstack/react-router"
+import { Link, useNavigate } from "@tanstack/react-router"
 import { ChevronDown, KeyRound, Lock, TriangleAlert } from "lucide-react"
 
 import { api } from "@/api"
@@ -79,6 +79,7 @@ const secretLabel: Record<SecretStorage, string> = {
   env: "Env (env://)",
   op: "1Password (op://)",
   nsc: "nsc (nsc://)",
+  vault: "Vault",
 }
 
 export function SecretBadge({ secret }: { secret: SecretStorage }) {
@@ -129,6 +130,16 @@ export function ConnectionStatus() {
           <span aria-hidden className="size-2 shrink-0 rounded-full bg-destructive" />
           <span className="truncate">Could not connect to {name}: {active.error}</span>
         </span>
+      )
+    case "locked":
+      return (
+        <Status dot="bg-warning">
+          <Lock size={12} aria-hidden className="text-warning" />
+          <Link to="/contexts" className="text-warning underline underline-offset-2">
+            Unlock the Vault
+          </Link>
+          to connect to {name}
+        </Status>
       )
     case "connected":
       return (

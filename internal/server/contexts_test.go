@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/CirXe0N/natter/internal/contexts"
 	"github.com/CirXe0N/natter/internal/natstest"
 	"github.com/CirXe0N/natter/internal/server"
+	"github.com/CirXe0N/natter/internal/vault"
 )
 
 func TestContextsAPI(t *testing.T) {
@@ -23,7 +25,7 @@ func TestContextsAPI(t *testing.T) {
 	if err := natstest.WriteContext(root, "app", map[string]string{"url": ns.ClientURL(), "user": "app", "password": "app"}); err != nil {
 		t.Fatal(err)
 	}
-	m := contexts.New(root)
+	m := contexts.New(root, vault.Open(filepath.Join(root, "natter")))
 	t.Cleanup(m.Close)
 	h := server.New(server.Config{Token: token, Port: port, UI: ui, Contexts: m})
 	c := launch(t, h)

@@ -8,6 +8,7 @@ import (
 
 	"github.com/CirXe0N/natter/internal/api"
 	"github.com/CirXe0N/natter/internal/contexts"
+	"github.com/CirXe0N/natter/internal/vault"
 )
 
 func init() {
@@ -79,8 +80,12 @@ func writeError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, contexts.ErrUnknown):
 		status = http.StatusNotFound
-	case errors.Is(err, contexts.ErrInvalid):
+	case errors.Is(err, contexts.ErrInvalid), errors.Is(err, vault.ErrWrongKey), errors.Is(err, vault.ErrEmpty):
 		status = http.StatusBadRequest
+	case errors.Is(err, vault.ErrLocked):
+		status = http.StatusLocked
+	case errors.Is(err, vault.ErrExists), errors.Is(err, vault.ErrNoPassphrase):
+		status = http.StatusConflict
 	}
 	http.Error(w, err.Error(), status)
 }
