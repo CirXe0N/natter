@@ -30,6 +30,9 @@ export const api = {
   setContextSettings: (ref: Ref, settings: Settings) =>
     request<Context>("PUT", `/api/contexts/${encodeURIComponent(ref.source)}/${encodeURIComponent(ref.name)}/settings`, settings),
   createContext: (c: NewContext) => request<Context>("POST", "/api/contexts", c),
+  moveIntoVault: (ref: Ref, name?: string) =>
+    request<Context>("POST", `/api/contexts/${encodeURIComponent(ref.source)}/${encodeURIComponent(ref.name)}/move-to-vault`, name ? { name } : {}),
+  removeContext: (ref: Ref) => request<object>("POST", `/api/contexts/${encodeURIComponent(ref.source)}/${encodeURIComponent(ref.name)}/remove`, { confirm: true }),
   vault: (signal?: AbortSignal) => request<Vault>("GET", "/api/vault", undefined, signal),
   createVault: (passphrase: string) => request<Vault>("POST", "/api/vault", { passphrase }),
   unlockVault: (passphrase: string) => request<Vault>("POST", "/api/vault/unlock", { passphrase }),

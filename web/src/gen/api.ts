@@ -147,7 +147,34 @@ export interface NewContext {
   urls: string;
   user: string;
   secretKind?: SecretKind;
+  /**
+   * Secret goes into the Vault. SecretRef is an env://, op:// or nsc://
+   * Secret reference stored as is. Give at most one of them.
+   */
   secret?: Secret;
+  secretRef?: string;
+  /**
+   * Source is SourceApp (the default) or SourceCLI, which writes natscli's own
+   * directory. Only a Context with no Vault secret may go there.
+   */
+  source?: Source;
+}
+/**
+ * MoveRequest asks to copy a CLI Context with a Plaintext secret into Natter's
+ * directory, with the secret in the Vault. The CLI file is left as it is.
+ */
+export interface MoveRequest {
+  /**
+   * Name of the new Natter Context; empty keeps the CLI Context's name.
+   */
+  name?: string;
+}
+/**
+ * RemoveRequest confirms deleting a CLI Context file. It is separate from
+ * moving, and Confirm must be true.
+ */
+export interface RemoveRequest {
+  confirm: boolean;
 }
 /**
  * VaultState says whether the Vault exists and is unlocked.

@@ -64,7 +64,7 @@ test("create the Vault and a Context whose password lives in it, then connect", 
   await page.getByLabel("Name").fill("vaulted")
   await page.getByLabel("Server URLs").fill(natsURL)
   await page.getByLabel("User").fill("app")
-  await page.getByLabel("Secret, stored in the Vault").selectOption("password")
+  await page.getByLabel("Secret").selectOption("password")
   await page.getByLabel("Password", { exact: true }).fill("app")
   await page.getByRole("button", { name: "Create Context" }).click()
 
@@ -73,4 +73,36 @@ test("create the Vault and a Context whose password lives in it, then connect", 
   await expect(card.getByText("Natter context")).toBeVisible()
   await card.getByRole("button", { name: "Connect" }).click()
   await expect(page.getByRole("banner").getByText("Connected")).toBeVisible()
+})
+
+// Runs after the Vault test: the Vault exists and is unlocked.
+test("a secret can be an env:// reference, and a Plaintext secret can move into the Vault", async ({ page, request }) => {
+  const contexts: { name: string; urls: string }[] = await (await request.get("/api/contexts")).json()
+  const natsURL = contexts.find((c) => c.name === "app")!.urls
+  await page.goto("/contexts")
+
+  await page.getByText("New Context").click()
+  await page.getByLabel("Name").fill("by-env")
+  await page.getByLabel("Server URLs").fill(natsURL)
+  await page.getByLabel("User").fill("app")
+  await page.getByLabel("Secret").selectOption("password")
+  await expect(page.getByLabel("Stored in").getByRole("option", { name: /nsc/ })).toHaveCount(0) // nsc gives creds
+  await page.getByLabel("Stored in").selectOption({ label: "Environment variable (env://)" })
+  await page.getByLabel("Reference").fill("env://E2E_APP_PASSWORD")
+  await page.getByLabel("Also usable by the nats CLI").check()
+  await page.getByRole("button", { name: "Create Context" }).click()
+  const byEnv = page.getByRole("listitem", { name: "by-env" })
+  await expect(byEnv.getByText("nats CLI context")).toBeVisible()
+  await byEnv.getByRole("button", { name: "Connect" }).click()
+  await expect(page.getByRole("banner").getByText("Connected")).toBeVisible()
+
+  const sys = page.getByRole("listitem", { name: "sys" }).filter({ hasText: "nats CLI context" })
+  await sys.getByRole("button", { name: "Move into Vault" }).click()
+  await expect(sys.getByRole("status")).toContainText("The nats CLI file is unchanged")
+  await expect(sys.getByText("Plaintext secret", { exact: true })).toBeVisible() // still flagged until the user deletes it
+  const moved = page.getByRole("listitem", { name: "sys" }).filter({ hasText: "Natter context" })
+  await expect(moved.getByText("Vault", { exact: true })).toBeVisible()
+  await sys.getByRole("button", { name: "Delete the nats CLI file…" }).click()
+  await sys.getByRole("button", { name: "Keep it" }).click() // the file is shared with other specs, so it stays
+  await expect(sys.getByRole("button", { name: "Delete the nats CLI file…" })).toBeVisible()
 })

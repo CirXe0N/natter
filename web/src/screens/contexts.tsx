@@ -1,11 +1,14 @@
 import { useState } from "react"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
+
+import { api } from "@/api"
 
 import { Badge } from "@/components/badge"
 import { ScreenHeader } from "@/components/screen-header"
 import { Button } from "@/components/ui/button"
 import { Lock } from "lucide-react"
 import { Input } from "@/components/ui/input"
-import { CapabilityBadges, refKey, SecretBadge, useActivateContext, useActiveContext, useContexts, useSetSettings } from "@/contexts"
+import { CapabilityBadges, contextKeys, refKey, SecretBadge, useActivateContext, useActiveContext, useContexts, useSetSettings } from "@/contexts"
 import type { Active, Context } from "@/gen/api"
 import { NewContextForm } from "@/screens/new-context"
 import { VaultPanel } from "@/vault"
@@ -65,6 +68,7 @@ function ContextCard({ c, active }: { c: Context; active?: Active }) {
           This Context's file holds a Plaintext secret: anyone who can read the file can use it.
         </p>
       )}
+      {c.source === "cli" && c.secret === "plaintext" && <MoveIntoVault c={c} />}
       {active?.status === "connected" && (
         <div className="mt-3">
           <CapabilityBadges active={active} />
@@ -126,5 +130,46 @@ function MonitoringURL({ c }: { c: Context }) {
       </form>
       {save.isError && <p role="alert" className="mt-1.5 text-destructive">{save.error.message}</p>}
     </details>
+  )
+}
+
+// Moving copies the Context into Natter's directory with its secret in the Vault.
+// Removing the CLI file is a second step with its own confirmation.
+function MoveIntoVault({ c }: { c: Context }) {
+  const qc = useQueryClient()
+  const refresh = () => qc.invalidateQueries({ queryKey: contextKeys.all })
+  const move = useMutation({ mutationFn: () => api.moveIntoVault(c), onSuccess: refresh })
+  const remove = useMutation({ mutationFn: () => api.removeContext(c), onSuccess: refresh })
+  const [confirming, setConfirming] = useState(false)
+  return (
+    <div className="mt-3 text-xs">
+      {!move.isSuccess ? (
+        <Button size="sm" variant="outline" disabled={move.isPending} onClick={() => move.mutate()}>
+          Move into Vault
+        </Button>
+      ) : (
+        <div role="status" className="grid gap-2">
+          <p>
+            Copied to the Natter context <span className="font-mono">{move.data.name}</span> with its secret in the Vault. The nats CLI file is unchanged and still holds the Plaintext secret.
+          </p>
+          {!confirming ? (
+            <Button size="sm" variant="outline" onClick={() => setConfirming(true)}>
+              Delete the nats CLI file…
+            </Button>
+          ) : (
+            <div className="flex flex-wrap items-center gap-2">
+              <span>Delete ~/.config/nats/context/{c.name}.json? natscli will lose this Context.</span>
+              <Button size="sm" variant="destructive" disabled={remove.isPending} onClick={() => remove.mutate()}>
+                Delete file
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setConfirming(false)}>
+                Keep it
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+      {(move.isError || remove.isError) && <p role="alert" className="mt-1.5 text-destructive">{(move.error ?? remove.error)?.message}</p>}
+    </div>
   )
 }

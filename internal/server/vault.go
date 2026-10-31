@@ -12,6 +12,9 @@ func init() {
 		route{pattern: "POST /api/vault", handle: (*server).createVault, allowReadOnly: true},
 		route{pattern: "POST /api/vault/unlock", handle: (*server).unlockVault, allowReadOnly: true},
 		route{pattern: "POST /api/contexts", handle: (*server).createContext, allowReadOnly: true},
+		// Both write only Natter's own files. Removing a CLI file is natscli's state, so it stays refused in Read-only mode.
+		route{pattern: "POST /api/contexts/{source}/{name}/move-to-vault", handle: (*server).moveIntoVault, allowReadOnly: true},
+		route{pattern: "POST /api/contexts/{source}/{name}/remove", handle: (*server).removeContext},
 	)
 }
 
@@ -61,4 +64,36 @@ func (s *server) createContext(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, c)
+}
+
+func (s *server) moveIntoVault(w http.ResponseWriter, r *http.Request) {
+	var req api.MoveRequest
+	if !readJSON(w, r, &req) {
+		return
+	}
+	ref := api.Ref{Source: api.Source(r.PathValue("source")), Name: r.PathValue("name")}
+	c, err := s.Contexts.MoveIntoVault(r.Context(), ref, req.Name)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, c)
+}
+
+// removeContext deletes a CLI Context file, and only with confirm: true.
+func (s *server) removeContext(w http.ResponseWriter, r *http.Request) {
+	var req api.RemoveRequest
+	if !readJSON(w, r, &req) {
+		return
+	}
+	if !req.Confirm {
+		http.Error(w, "removing a nats CLI Context file needs confirm: true", http.StatusBadRequest)
+		return
+	}
+	ref := api.Ref{Source: api.Source(r.PathValue("source")), Name: r.PathValue("name")}
+	if err := s.Contexts.RemoveCLI(r.Context(), ref); err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, struct{}{})
 }
