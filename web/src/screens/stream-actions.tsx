@@ -172,9 +172,10 @@ function DeleteForm({ name }: { name: string }) {
   const del = useMutation({
     mutationFn: () => api.deleteStream(name),
     onSuccess: async () => {
+      // Leave first: refetching this stream's own queries would retry 404s before navigating.
+      await navigate({ to: "/streams" })
       qc.removeQueries({ queryKey: ["streams", "detail", name] })
       await qc.invalidateQueries({ queryKey: ["streams"] })
-      await navigate({ to: "/streams" })
     },
   })
   return (
