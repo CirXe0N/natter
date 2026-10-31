@@ -93,3 +93,10 @@ type Active struct {
 	Server       string       `json:"server,omitempty"`
 	Capabilities Capabilities `json:"capabilities"`
 }
+
+// JetStreamNames feeds the command palette: the active Context's streams and
+// KV buckets, without the KV_ prefix on buckets.
+type JetStreamNames struct {
+	Streams []string `json:"streams"`
+	Buckets []string `json:"buckets"`
+}

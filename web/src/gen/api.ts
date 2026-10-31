@@ -105,3 +105,11 @@ export interface Active {
   server?: string;
   capabilities: Capabilities;
 }
+/**
+ * JetStreamNames feeds the command palette: the active Context's streams and
+ * KV buckets, without the KV_ prefix on buckets.
+ */
+export interface JetStreamNames {
+  streams: string[];
+  buckets: string[];
+}
