@@ -17,7 +17,7 @@ Optional address of a server's HTTP monitoring port on a Context, used as a read
 _Avoid_: Metrics endpoint, stats URL
 
 **Vault**:
-The app's own encrypted store for Context secrets: the OS keyring where one exists, otherwise an encrypted file unlocked by a key the user supplies.
+The app's own encrypted store for Context secrets: one encrypted file, unlocked by a key file, a passphrase, or the OS keyring holding its key. The keyring never holds the secrets themselves.
 _Avoid_: Keychain, secret store, wallet
 
 **Secret reference**:

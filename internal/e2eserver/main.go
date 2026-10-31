@@ -26,6 +26,7 @@ import (
 	"github.com/CirXe0N/natter/internal/contexts"
 	"github.com/CirXe0N/natter/internal/natstest"
 	"github.com/CirXe0N/natter/internal/server"
+	"github.com/CirXe0N/natter/internal/vault"
 	"github.com/CirXe0N/natter/web"
 )
 
@@ -56,7 +57,7 @@ func main() {
 	if err := seedJetStream(ns.ClientURL()); err != nil {
 		log.Fatal(err)
 	}
-	ctxs := contexts.New(root)
+	ctxs := contexts.New(root, vault.Open(filepath.Join(root, "natter")))
 	defer ctxs.Close()
 
 	ln, err := net.Listen("tcp", "127.0.0.1:0")

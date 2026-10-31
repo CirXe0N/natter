@@ -9,12 +9,15 @@ ignore ./web/node_modules
 tool github.com/gzuidhof/tygo
 
 require (
+	filippo.io/age v1.3.2
 	github.com/nats-io/jsm.go v0.5.1
 	github.com/nats-io/nats-server/v2 v2.15.2
 	github.com/nats-io/nats.go v1.55.0
+	golang.org/x/sys v0.49.0
 )
 
 require (
+	filippo.io/hpke v0.4.0 // indirect
 	github.com/antithesishq/antithesis-sdk-go v0.8.0 // indirect
 	github.com/dustin/go-humanize v1.1.0 // indirect
 	github.com/expr-lang/expr v1.17.8 // indirect
@@ -33,7 +36,6 @@ require (
 	golang.org/x/mod v0.41.0 // indirect
 	golang.org/x/net v0.61.0 // indirect
 	golang.org/x/sync v0.24.0 // indirect
-	golang.org/x/sys v0.49.0 // indirect
 	golang.org/x/text v0.43.0 // indirect
 	golang.org/x/time v0.16.0 // indirect
 	golang.org/x/tools v0.51.0 // indirect

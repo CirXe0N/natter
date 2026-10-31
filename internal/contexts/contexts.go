@@ -27,6 +27,7 @@ import (
 	"github.com/nats-io/nats.go"
 
 	"github.com/CirXe0N/natter/internal/api"
+	"github.com/CirXe0N/natter/internal/vault"
 )
 
 var (
@@ -41,6 +42,7 @@ var (
 type Manager struct {
 	dir     string // Natter's own directory
 	sources map[api.Source]registries
+	vault   *vault.Vault
 
 	switching sync.Mutex // serialises switches and writes to Natter's files
 	active    atomic.Pointer[Conn]
@@ -75,18 +77,81 @@ func DefaultConfigRoot() (string, error) {
 }
 
 // New reads natscli Contexts from root/nats/context/ and keeps Natter's state
-// in root/natter/. Nothing outside root is read, so tests pass a temp dir.
-func New(root string) *Manager {
-	cli := natscontext.NewFileBackendAt(root)
+// in root/natter/, its own Contexts in root/natter/nats/context/. Nothing
+// outside root is read, so tests pass a temp dir. v resolves natter-vault://
+// references; it normally lives in root/natter/ too.
+func New(root string, v *vault.Vault) *Manager {
+	dir := filepath.Join(root, "natter")
+	reg := func(b natscontext.Backend) registries {
+		return registries{
+			raw: natscontext.NewRegistry(b, natscontext.WithoutSelection(), natscontext.WithoutExpansion()),
+			// Passing any resolver drops the defaults, so they are asked for explicitly.
+			live: natscontext.NewRegistry(b, natscontext.WithoutSelection(), natscontext.WithDefaultResolvers(), natscontext.WithCredentialResolver(v)),
+		}
+	}
 	return &Manager{
-		dir: filepath.Join(root, "natter"),
+		dir:   dir,
+		vault: v,
 		sources: map[api.Source]registries{
-			api.SourceCLI: {
-				raw:  natscontext.NewRegistry(cli, natscontext.WithoutSelection(), natscontext.WithoutExpansion()),
-				live: natscontext.NewRegistry(cli, natscontext.WithoutSelection(), natscontext.WithDefaultResolvers()),
-			},
+			api.SourceCLI: reg(natscontext.NewFileBackendAt(root)),
+			api.SourceApp: reg(natscontext.NewFileBackendAt(dir)),
 		},
 	}
+}
+
+// Vault is the Vault that holds the secrets of Natter's own Contexts.
+func (m *Manager) Vault() *vault.Vault { return m.vault }
+
+// secretOption is the natscontext field each kind of secret goes into.
+var secretOption = map[api.SecretKind]func(string) natscontext.Option{
+	api.SecretKindPassword: natscontext.WithPassword,
+	api.SecretKindToken:    natscontext.WithToken,
+	api.SecretKindCreds:    natscontext.WithCreds,
+	api.SecretKindNkey:     natscontext.WithNKey,
+}
+
+// Create saves a new Context in Natter's own directory. Its secret goes into
+// the Vault, and the Context file holds only the natter-vault:// reference.
+func (m *Manager) Create(ctx context.Context, n api.NewContext) (api.Context, error) {
+	invalid := func(msg string) (api.Context, error) { return api.Context{}, fmt.Errorf("%w: %s", ErrInvalid, msg) }
+	reg := m.sources[api.SourceApp].raw
+	if err := natscontext.ValidateName(n.Name); err != nil {
+		return invalid(err.Error())
+	}
+	if reg.Known(ctx, n.Name) {
+		return invalid(fmt.Sprintf("a Context named %q already exists", n.Name))
+	}
+	opt, ok := secretOption[n.SecretKind]
+	switch {
+	case n.SecretKind == "" && n.Secret != "":
+		return invalid("say which field the secret is for")
+	case n.SecretKind == "":
+	case !ok:
+		return invalid(fmt.Sprintf("unknown secret kind %q", n.SecretKind))
+	case n.Secret == "":
+		return invalid("the secret is empty")
+	case n.SecretKind == api.SecretKindPassword && n.User == "":
+		return invalid("a password needs a user")
+	case (n.SecretKind == api.SecretKindCreds || n.SecretKind == api.SecretKindNkey) && n.User != "":
+		return invalid("creds and nkey Contexts have no user")
+	}
+	opts := []natscontext.Option{natscontext.WithServerURL(n.URLs), natscontext.WithDescription(n.Description), natscontext.WithUser(n.User)}
+	if ok {
+		// shortcut: a failed Save leaves an unreferenced Vault entry; sweep orphans if Contexts become deletable.
+		ref, err := m.vault.Put(n.Secret)
+		if err != nil {
+			return api.Context{}, err
+		}
+		opts = append(opts, opt(ref))
+	}
+	c, err := natscontext.New(n.Name, false, opts...)
+	if err != nil {
+		return api.Context{}, err
+	}
+	if err := reg.Save(ctx, c, n.Name); err != nil {
+		return api.Context{}, err
+	}
+	return m.Get(ctx, api.Ref{Source: api.SourceApp, Name: n.Name})
 }
 
 // List returns every Context, by Source then name. A file natscontext cannot
@@ -214,7 +279,12 @@ func (m *Manager) swap(c *Conn) {
 }
 
 func (m *Manager) connect(ctx context.Context, c api.Context) *Conn {
-	failed := func(err error) *Conn { return &Conn{Context: c, Status: api.ConnStatusFailed, Err: err} }
+	failed := func(err error) *Conn {
+		if errors.Is(err, vault.ErrLocked) {
+			return &Conn{Context: c, Status: api.ConnStatusLocked, Err: err}
+		}
+		return &Conn{Context: c, Status: api.ConnStatusFailed, Err: err}
+	}
 	nctx, err := m.sources[c.Source].live.Load(ctx, c.Name)
 	if err != nil {
 		return failed(err)

@@ -2,6 +2,11 @@
 // tygo turns them into web/src/gen/api.ts, so the frontend cannot drift from Go.
 package api
 
+import (
+	"fmt"
+	"io"
+)
+
 //go:generate go tool tygo generate
 
 // Info describes the running natter binary.
@@ -15,6 +20,9 @@ type Source string
 const (
 	// SourceCLI is a natscli Context under ~/.config/nats/context/. Natter never writes it.
 	SourceCLI Source = "cli"
+	// SourceApp is a Context Natter created, under ~/.config/natter/nats/context/.
+	// Its secret may be a Vault reference, which natscli cannot read.
+	SourceApp Source = "app"
 )
 
 // SecretStorage says where a Context's secret lives. SecretStoragePlaintext marks a
@@ -27,6 +35,7 @@ const (
 	SecretStorageEnv       SecretStorage = "env"
 	SecretStorageOp        SecretStorage = "op"
 	SecretStorageNsc       SecretStorage = "nsc"
+	SecretStorageVault     SecretStorage = "vault"
 )
 
 // Ref names one Context. Names are unique within a Source.
@@ -71,6 +80,8 @@ const (
 	ConnStatusConnected    ConnStatus = "connected"
 	ConnStatusReconnecting ConnStatus = "reconnecting"
 	ConnStatusFailed       ConnStatus = "failed"
+	// ConnStatusLocked means the Context's secret is in the Vault and the Vault is locked.
+	ConnStatusLocked ConnStatus = "locked"
 )
 
 // Capabilities are detected when Natter connects to the active Context.
@@ -99,4 +110,56 @@ type Active struct {
 type JetStreamNames struct {
 	Streams []string `json:"streams"`
 	Buckets []string `json:"buckets"`
+}
+
+// Secret is a password, token, creds file or nkey seed the browser sends once.
+// It formats and encodes as [REDACTED], so fmt, slog and JSON never show it;
+// only string(s) reveals it.
+type Secret string
+
+const redacted = "[REDACTED]"
+
+func (Secret) Format(f fmt.State, _ rune)   { io.WriteString(f, redacted) }
+func (Secret) MarshalJSON() ([]byte, error) { return []byte(`"` + redacted + `"`), nil }
+
+// SecretKind is the Context field a new Context's secret goes into.
+type SecretKind string
+
+const (
+	SecretKindPassword SecretKind = "password"
+	SecretKindToken    SecretKind = "token"
+	SecretKindCreds    SecretKind = "creds" // the whole .creds file
+	SecretKindNkey     SecretKind = "nkey"  // the nkey seed
+)
+
+// NewContext creates a Context in Natter's own directory. Its secret, if
+// any, goes into the Vault and the Context file holds only a reference.
+type NewContext struct {
+	Name        string     `json:"name"`
+	Description string     `json:"description"`
+	URLs        string     `json:"urls"`
+	User        string     `json:"user"`
+	SecretKind  SecretKind `json:"secretKind,omitempty"`
+	Secret      Secret     `json:"secret,omitempty"`
+}
+
+// VaultState says whether the Vault exists and is unlocked.
+type VaultState string
+
+const (
+	VaultStateNone     VaultState = "none" // no Vault file yet
+	VaultStateLocked   VaultState = "locked"
+	VaultStateUnlocked VaultState = "unlocked"
+)
+
+// Vault is the state of the Vault. HasPassphrase is false for a Vault that
+// only the key file passed with -vault-key can unlock.
+type Vault struct {
+	State         VaultState `json:"state"`
+	HasPassphrase bool       `json:"hasPassphrase"`
+}
+
+// Passphrase is the body that creates or unlocks the Vault.
+type Passphrase struct {
+	Passphrase Secret `json:"passphrase"`
 }

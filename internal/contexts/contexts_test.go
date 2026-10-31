@@ -16,6 +16,7 @@ import (
 
 	"github.com/CirXe0N/natter/internal/api"
 	"github.com/CirXe0N/natter/internal/natstest"
+	"github.com/CirXe0N/natter/internal/vault"
 )
 
 // setup starts a server and writes one CLI Context per user into a fresh
@@ -39,7 +40,7 @@ func setup(t *testing.T) (*server.Server, string, *Manager) {
 			t.Fatal(err)
 		}
 	}
-	m := New(root)
+	m := New(root, vault.Open(filepath.Join(root, "natter")))
 	t.Cleanup(m.Close)
 	return ns, root, m
 }
@@ -147,7 +148,7 @@ func TestActiveContextSurvivesRestartAndCLIFilesAreUntouched(t *testing.T) {
 	}
 	m.Close()
 
-	again := New(root)
+	again := New(root, vault.Open(filepath.Join(root, "natter")))
 	t.Cleanup(again.Close)
 	if err := again.Restore(t.Context()); err != nil {
 		t.Fatal(err)
@@ -192,6 +193,7 @@ func TestSecretStorage(t *testing.T) {
 		{map[string]string{"password": "OP://vault/item/pw"}, api.SecretStorageOp},
 		{map[string]string{"creds": "nsc://operator/account/user"}, api.SecretStorageNsc},
 		{map[string]string{"nsc": "nsc://operator/account/user"}, api.SecretStorageNsc},
+		{map[string]string{"nkey": "natter-vault://abc"}, api.SecretStorageVault},
 		{map[string]string{"creds": "/home/me/user.creds"}, api.SecretStoragePlaintext},
 		{map[string]string{"creds": "file:///home/me/user.creds"}, api.SecretStoragePlaintext},
 		{map[string]string{"creds": `C:\creds\user.creds`}, api.SecretStoragePlaintext},
@@ -206,7 +208,7 @@ func TestSecretStorage(t *testing.T) {
 		if err := natstest.WriteContext(root, "c", tc.fields); err != nil {
 			t.Fatal(err)
 		}
-		c, err := New(root).Get(t.Context(), api.Ref{Source: api.SourceCLI, Name: "c"})
+		c, err := New(root, vault.Open(t.TempDir())).Get(t.Context(), api.Ref{Source: api.SourceCLI, Name: "c"})
 		if err != nil {
 			t.Fatal(err)
 		}
