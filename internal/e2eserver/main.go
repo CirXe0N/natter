@@ -8,6 +8,7 @@
 package main
 
 import (
+	"context"
 	"crypto/rand"
 	"fmt"
 	"log"
@@ -18,6 +19,9 @@ import (
 	"path/filepath"
 	"syscall"
 	"time"
+
+	"github.com/nats-io/nats.go"
+	"github.com/nats-io/nats.go/jetstream"
 
 	"github.com/CirXe0N/natter/internal/contexts"
 	"github.com/CirXe0N/natter/internal/natstest"
@@ -49,6 +53,9 @@ func main() {
 			log.Fatal(err)
 		}
 	}
+	if err := seedJetStream(ns.ClientURL()); err != nil {
+		log.Fatal(err)
+	}
 	ctxs := contexts.New(root)
 	defer ctxs.Close()
 
@@ -67,4 +74,23 @@ func main() {
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 	<-stop
+}
+
+// seedJetStream gives the app Context one stream and one KV bucket to find.
+func seedJetStream(url string) error {
+	nc, err := nats.Connect(url, nats.UserInfo("app", "app"))
+	if err != nil {
+		return err
+	}
+	defer nc.Close()
+	js, err := jetstream.New(nc)
+	if err != nil {
+		return err
+	}
+	ctx := context.Background()
+	if _, err := js.CreateStream(ctx, jetstream.StreamConfig{Name: "ORDERS", Subjects: []string{"orders.>"}}); err != nil {
+		return err
+	}
+	_, err = js.CreateKeyValue(ctx, jetstream.KeyValueConfig{Bucket: "config"})
+	return err
 }

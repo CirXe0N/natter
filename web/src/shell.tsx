@@ -5,6 +5,7 @@ import { Activity, Boxes, Cable, Database, KeyRound, Layers, Radio, Send } from 
 
 import { api } from "@/api"
 import { ConnectionStatus, ContextSwitcher } from "@/contexts"
+import { CommandPalette } from "@/command-palette"
 import { DensityToggle } from "@/density"
 
 type NavItem = { to: NonNullable<LinkProps["to"]>; Icon: ComponentType<{ size?: number }> }
@@ -36,6 +37,7 @@ export function Shell() {
               <li aria-current="page" className="truncate">{title}</li>
             </ol>
           </nav>
+          <CommandPalette />
           <ConnectionStatus />
           <DensityToggle />
         </header>
