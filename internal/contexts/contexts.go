@@ -122,7 +122,6 @@ var secretOption = map[api.SecretKind]func(string) natscontext.Option{
 // A Secret goes into the Vault and the file holds only the natter-vault://
 // reference; a SecretRef is stored as is. Natter never writes a Plaintext secret.
 func (m *Manager) Create(ctx context.Context, n api.NewContext) (api.Context, error) {
-	invalid := func(msg string) (api.Context, error) { return api.Context{}, fmt.Errorf("%w: %s", ErrInvalid, msg) }
 	target := n.Source
 	switch {
 	case target == "":
@@ -183,6 +182,11 @@ func (m *Manager) Create(ctx context.Context, n api.NewContext) (api.Context, er
 	return m.Get(ctx, api.Ref{Source: target, Name: n.Name})
 }
 
+// invalid is the error for a value the user supplied.
+func invalid(msg string) (api.Context, error) {
+	return api.Context{}, fmt.Errorf("%w: %s", ErrInvalid, msg)
+}
+
 // checkRef accepts the references natscli reads. nsc:// yields a creds file, so
 // only the creds field may use it.
 func checkRef(kind api.SecretKind, ref string) error {
@@ -201,7 +205,6 @@ func checkRef(kind api.SecretKind, ref string) error {
 // directory under newName (empty keeps the name), with its password, token,
 // creds and nkey in the Vault. It never touches the CLI file; RemoveCLI does that.
 func (m *Manager) MoveIntoVault(ctx context.Context, ref api.Ref, newName string) (api.Context, error) {
-	invalid := func(msg string) (api.Context, error) { return api.Context{}, fmt.Errorf("%w: %s", ErrInvalid, msg) }
 	if ref.Source != api.SourceCLI {
 		return invalid("only a nats CLI Context can be moved into the Vault")
 	}
@@ -229,7 +232,7 @@ func (m *Manager) MoveIntoVault(ctx context.Context, ref api.Ref, newName string
 	if app.Known(ctx, newName) {
 		return invalid(fmt.Sprintf("a Natter Context named %q already exists", newName))
 	}
-	// shortcut: these two have no Vault kind, so they stay in the CLI Context; extend SecretKind if they matter.
+	// shortcut: user_seed and TLS key have no Vault kind, so a Plaintext one refuses the whole move; extend SecretKind if they matter.
 	for field, v := range map[string]string{"user_seed": c.UserSeed(), "TLS key": c.Key()} {
 		if v != "" && referenceSchemes[scheme(v)] == "" {
 			return invalid(fmt.Sprintf("the %s is a Plaintext secret the Vault cannot hold yet", field))
