@@ -184,12 +184,20 @@ export const VaultStateLocked = "locked";
 export const VaultStateUnlocked = "unlocked";
 export type VaultState = typeof VaultStateNone | typeof VaultStateLocked | typeof VaultStateUnlocked;
 /**
+ * KeyringState says whether the OS keyring holds the Vault key.
+ */
+export type KeyringState = string;
+export const KeyringUnavailable: KeyringState = "unavailable"; // no OS keyring answered at startup
+export const KeyringOff: KeyringState = "off";
+export const KeyringOn: KeyringState = "on"; // the Vault unlocks from the keyring at startup
+/**
  * Vault is the state of the Vault. HasPassphrase is false for a Vault that
  * only the key file passed with -vault-key can unlock.
  */
 export interface Vault {
   state: VaultState;
   hasPassphrase: boolean;
+  keyring: KeyringState;
 }
 /**
  * Passphrase is the body that creates or unlocks the Vault.

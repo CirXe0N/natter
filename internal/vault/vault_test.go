@@ -55,7 +55,7 @@ func TestKeyFileCreatesTheVaultAndUnlocksItAfterARestart(t *testing.T) {
 		t.Fatal(err)
 	}
 	ref := put(t, v, "s3cret-password")
-	if got := v.Status(); got != (api.Vault{State: api.VaultStateUnlocked}) {
+	if got := v.Status(); got != (api.Vault{State: api.VaultStateUnlocked, Keyring: api.KeyringUnavailable}) {
 		t.Fatalf("after unlock: %+v", got)
 	}
 
@@ -129,7 +129,7 @@ func TestPassphraseUnlocksAfterARestartAndChangingItRewritesOnlyTheWrapper(t *te
 	}
 
 	restarted := Open(dir)
-	if got := restarted.Status(); got != (api.Vault{State: api.VaultStateLocked, HasPassphrase: true}) {
+	if got := restarted.Status(); got != (api.Vault{State: api.VaultStateLocked, HasPassphrase: true, Keyring: api.KeyringUnavailable}) {
 		t.Fatalf("after restart: %+v", got)
 	}
 	if err := restarted.UnlockPassphrase("first passphrase"); !errors.Is(err, ErrWrongKey) {

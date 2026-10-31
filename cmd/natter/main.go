@@ -88,6 +88,17 @@ func run(bind string, port int, portSet bool, allowedHosts []string, dev bool, v
 			return fmt.Errorf("unlocking the Vault: %w", err)
 		}
 	}
+	// One budget for the probe and the canary: a keyring that never answers
+	// delays startup by at most this, then the Vault falls back to the passphrase.
+	kctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	k, err := vault.OSKeyring(kctx)
+	if err == nil {
+		err = v.AttachKeyring(kctx, k)
+	}
+	cancel()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "natter: not using the OS keyring for the Vault key:", err)
+	}
 	ctxs := contexts.New(root, v)
 	go func() {
 		if err := ctxs.Restore(context.Background()); err != nil {

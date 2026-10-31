@@ -1,7 +1,7 @@
 // The Vault: Natter's encrypted store for the secrets of Contexts created in Natter.
 import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Lock, LockOpen } from "lucide-react"
+import { KeyRound, Lock, LockOpen } from "lucide-react"
 
 import { api } from "@/api"
 import { Badge } from "@/components/badge"
@@ -36,13 +36,14 @@ export function VaultPanel() {
 
   if (state === "unlocked")
     return (
-      <p className="mb-4 flex items-center gap-2 text-xs text-muted-foreground">
+      <div className="mb-4 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
         <Badge tone="success">
           <LockOpen size={11} aria-hidden />
           Vault unlocked
         </Badge>
         Secrets of Contexts created in Natter are encrypted in ~/.config/natter/vault.age.
-      </p>
+        {vault.data.keyring !== "unavailable" && <KeyringToggle on={vault.data.keyring === "on"} hasPassphrase={vault.data.hasPassphrase} />}
+      </div>
     )
 
   if (state === "locked" && !vault.data.hasPassphrase)
@@ -62,7 +63,7 @@ export function VaultPanel() {
       </h2>
       <p className="mt-1 text-xs text-muted-foreground">
         {creating
-          ? "The Vault keeps the secrets of Contexts you create in Natter, encrypted in ~/.config/natter/. Choose a passphrase to unlock it after a restart, or start natter with -vault-key <key file> instead."
+          ? `The Vault keeps the secrets of Contexts you create in Natter, encrypted in ~/.config/natter/. Choose a passphrase to unlock it after a restart, or start natter with -vault-key <key file> instead.${vault.data.keyring === "unavailable" ? "" : " The OS keyring also gets the Vault key, so the Vault unlocks at startup."}`
           : "Enter the passphrase to unlock it. Contexts whose secret is in the Vault cannot connect until then."}
       </p>
       <form
@@ -89,5 +90,32 @@ export function VaultPanel() {
       {mismatch && confirm !== "" && <p className="mt-1.5 text-xs text-muted-foreground">The passphrases do not match.</p>}
       {submit.isError && <p role="alert" className="mt-1.5 text-xs text-destructive">{submit.error.message}</p>}
     </section>
+  )
+}
+
+// Moves only the Vault key into or out of the OS keyring; the secrets stay in vault.age.
+function KeyringToggle({ on, hasPassphrase }: { on: boolean; hasPassphrase: boolean }) {
+  const qc = useQueryClient()
+  const set = useMutation({ mutationFn: () => api.setKeyring(!on), onSuccess: (v) => qc.setQueryData(vaultKey, v) })
+  return (
+    <>
+      <Button
+        size="sm"
+        variant="outline"
+        aria-pressed={on}
+        disabled={set.isPending}
+        title={
+          on
+            ? "The OS keyring holds the Vault key, so the Vault unlocks at startup. Turned off, the Vault waits for the passphrase or -vault-key."
+            : "Keep the Vault key in the OS keyring, so the Vault unlocks at startup. The passphrase still works."
+        }
+        onClick={() => set.mutate()}
+      >
+        <KeyRound size={12} aria-hidden />
+        OS keyring: {on ? "on" : "off"}
+      </Button>
+      {on && !hasPassphrase && <span className="text-warning">This Vault has no passphrase: without the keyring, only -vault-key unlocks it.</span>}
+      {set.isError && <span role="alert" className="text-destructive">{set.error.message}</span>}
+    </>
   )
 }

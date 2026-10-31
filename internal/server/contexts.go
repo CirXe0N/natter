@@ -84,7 +84,7 @@ func writeError(w http.ResponseWriter, err error) {
 		status = http.StatusBadRequest
 	case errors.Is(err, vault.ErrLocked):
 		status = http.StatusLocked
-	case errors.Is(err, vault.ErrExists), errors.Is(err, vault.ErrNoPassphrase):
+	case errors.Is(err, vault.ErrExists), errors.Is(err, vault.ErrNoPassphrase), errors.Is(err, vault.ErrNoKeyring):
 		status = http.StatusConflict
 	}
 	http.Error(w, err.Error(), status)
