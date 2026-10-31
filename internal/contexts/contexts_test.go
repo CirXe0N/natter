@@ -189,6 +189,12 @@ func TestSecretStorage(t *testing.T) {
 		{map[string]string{"user": "a", "password": "literal"}, api.SecretStoragePlaintext},
 		{map[string]string{"token": "s3cr3t"}, api.SecretStoragePlaintext},
 		{map[string]string{"token": "unknown://x"}, api.SecretStoragePlaintext}, // natscontext passes unknown schemes through as the literal
+		{map[string]string{"user": "a", "password": "keyring://x"}, api.SecretStoragePlaintext},
+		{map[string]string{"user_jwt": "eyJ...", "user_seed": "keyring://x"}, api.SecretStoragePlaintext},
+		{map[string]string{"creds": "keyring://x"}, api.SecretStorageUnknownReference}, // natscontext refuses it: a broken Secret reference
+		{map[string]string{"nkey": "keyring://x"}, api.SecretStorageUnknownReference},
+		{map[string]string{"cert": "/tls/cert.pem", "key": "keyring://x"}, api.SecretStorageUnknownReference},
+		{map[string]string{"token": "s3cr3t", "creds": "keyring://x"}, api.SecretStorageUnknownReference}, // broken outranks Plaintext
 		{map[string]string{"password": "env://PW"}, api.SecretStorageEnv},
 		{map[string]string{"password": "OP://vault/item/pw"}, api.SecretStorageOp},
 		{map[string]string{"creds": "nsc://operator/account/user"}, api.SecretStorageNsc},
