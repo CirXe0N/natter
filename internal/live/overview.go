@@ -9,6 +9,7 @@ import (
 	"math"
 	"net/http"
 	"net/url"
+	"strings"
 	"sync"
 	"time"
 
@@ -187,18 +188,47 @@ func (o *Overview) add(sec int64, samples []sample) *api.Overview {
 	return f
 }
 
+// pick is the one source switch for server data: System credentials, else the
+// Monitoring URL, else noAccess. Overview and Health both use it.
+func pick[T any](a *contexts.Conn, system func(*nats.Conn) (T, error), monitoring func(url string) (T, error)) (api.StatsSource, T, error) {
+	var zero T
+	switch {
+	case a != nil && a.Caps.System && a.NC != nil:
+		v, err := system(a.NC)
+		return api.StatsSourceSystem, v, err
+	case a != nil && a.Context.MonitoringURL != "":
+		v, err := monitoring(a.Context.MonitoringURL)
+		return api.StatsSourceMonitoring, v, err
+	}
+	return api.StatsSourceNone, zero, noAccess(a)
+}
+
 // sampleAll picks the source the active Context allows and samples it. The
 // error is for the user to read.
-func sampleAll(ctx context.Context, a *contexts.Conn) (api.OverviewSource, []sample, error) {
-	if a != nil && (a.Caps.System && a.NC != nil || a.Context.MonitoringURL != "") {
-		if a.Caps.System && a.NC != nil {
-			s, err := statsz(ctx, a.NC)
-			return api.OverviewSourceSystem, s, err
-		}
-		s, err := monitoring(ctx, a.Context.MonitoringURL)
-		return api.OverviewSourceMonitoring, s, err
+func sampleAll(ctx context.Context, a *contexts.Conn) (api.StatsSource, []sample, error) {
+	return pick(a, func(nc *nats.Conn) ([]sample, error) { return statsz(ctx, nc) }, func(u string) ([]sample, error) { return monitoring(ctx, u) })
+}
+
+// gather publishes req to a $SYS ping subject and hands each reply to each
+// until it returns false or wait runs out. Replies go to a private inbox.
+func gather(ctx context.Context, nc *nats.Conn, subject string, req []byte, wait time.Duration, each func(data []byte) (more bool)) error {
+	inbox := nc.NewInbox()
+	sub, err := nc.SubscribeSync(inbox)
+	if err != nil {
+		return err
 	}
-	return api.OverviewSourceNone, nil, noAccess(a)
+	defer sub.Unsubscribe()
+	if err := nc.PublishRequest(subject, inbox, req); err != nil {
+		return err
+	}
+	ctx, cancel := context.WithTimeout(ctx, wait)
+	defer cancel()
+	for {
+		msg, err := sub.NextMsgWithContext(ctx)
+		if err != nil || !each(msg.Data) {
+			return nil
+		}
+	}
 }
 
 // noAccess says, for the user, why a Context cannot be sampled for server data.
@@ -221,30 +251,19 @@ func noAccess(a *contexts.Conn) error {
 // 1 s points, so this polls; replies go to a private inbox, which the
 // server's STATSZ rate limit does not cover.
 func statsz(ctx context.Context, nc *nats.Conn) ([]sample, error) {
-	inbox := nc.NewInbox()
-	sub, err := nc.SubscribeSync(inbox)
-	if err != nil {
-		return nil, err
-	}
-	defer sub.Unsubscribe()
-	if err := nc.PublishRequest("$SYS.REQ.SERVER.PING.STATSZ", inbox, nil); err != nil {
-		return nil, err
-	}
-	ctx, cancel := context.WithTimeout(ctx, statszWait)
-	defer cancel()
 	var out []sample
 	want := 1
-	for len(out) < want { // stop early once every active server answered
-		msg, err := sub.NextMsgWithContext(ctx)
-		if err != nil {
-			break
-		}
+	err := gather(ctx, nc, "$SYS.REQ.SERVER.PING.STATSZ", nil, statszWait, func(data []byte) bool {
 		var m server.ServerStatsMsg
-		if err := json.Unmarshal(msg.Data, &m); err != nil {
-			continue
+		if json.Unmarshal(data, &m) != nil {
+			return true
 		}
 		want = max(want, m.Stats.ActiveServers)
 		out = append(out, fromStatsz(m))
+		return len(out) < want // stop early once every active server answered
+	})
+	if err != nil {
+		return nil, err
 	}
 	if len(out) == 0 {
 		return nil, errors.New("No server answered $SYS.REQ.SERVER.PING.STATSZ.")
@@ -290,10 +309,16 @@ func monitoring(ctx context.Context, base string) ([]sample, error) {
 	return []sample{s}, nil
 }
 
+// getJSON decodes a Monitoring URL endpoint; path may carry a query. /healthz
+// answers 503 with the same JSON body when unhealthy, so 503 is decoded too.
 func getJSON(ctx context.Context, base, path string, v any) error {
-	u, err := url.JoinPath(base, path)
+	p, q, _ := strings.Cut(path, "?")
+	u, err := url.JoinPath(base, p)
 	if err != nil {
 		return err
+	}
+	if q != "" {
+		u += "?" + q
 	}
 	ctx, cancel := context.WithTimeout(ctx, monitoringTimeout)
 	defer cancel()
@@ -306,8 +331,15 @@ func getJSON(ctx context.Context, base, path string, v any) error {
 		return fmt.Errorf("The Monitoring URL did not answer: %w", err)
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("The Monitoring URL answered %s for /%s.", resp.Status, path)
+	statusErr := fmt.Errorf("The Monitoring URL answered %s for /%s.", resp.Status, p)
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusServiceUnavailable {
+		return statusErr
 	}
-	return json.NewDecoder(resp.Body).Decode(v)
+	if err := json.NewDecoder(resp.Body).Decode(v); err != nil {
+		if resp.StatusCode != http.StatusOK {
+			return statusErr
+		}
+		return err
+	}
+	return nil
 }
