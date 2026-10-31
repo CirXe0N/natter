@@ -126,3 +126,59 @@ type FieldError struct {
 	Error string `json:"error"`
 	Field string `json:"field,omitempty"`
 }
+
+// ConsumerSummary is one row of a stream's Consumers table.
+type ConsumerSummary struct {
+	Name string `json:"name"`
+	// Natter is set for Natter's own browsing consumers (prefix natter_).
+	Natter bool `json:"natter"`
+	// Durable is false for an ephemeral consumer, which the server removes
+	// after its inactive threshold.
+	Durable bool `json:"durable"`
+	// Push is set when the server pushes to a deliver subject.
+	Push      bool     `json:"push"`
+	Filter    []string `json:"filter"`
+	AckPolicy string   `json:"ackPolicy"`
+	// Pending is the lag: messages in the stream the consumer has not delivered yet.
+	Pending     uint64 `json:"pending"`
+	AckPending  int    `json:"ackPending"`
+	Redelivered int    `json:"redelivered"`
+	Waiting     int    `json:"waiting"`
+	Paused      bool   `json:"paused"`
+	// PauseUntil is when a paused consumer resumes by itself.
+	PauseUntil *time.Time `json:"pauseUntil,omitempty" tstype:"string"`
+	// LastActive is the later of the last delivery and the last ack.
+	LastActive *time.Time `json:"lastActive,omitempty" tstype:"string"`
+}
+
+// ConsumerSequence is a position of a consumer in its own and the stream's numbering.
+type ConsumerSequence struct {
+	Consumer uint64 `json:"consumer"`
+	Stream   uint64 `json:"stream"`
+}
+
+// ConsumerDetail adds the full config and the delivery state to a summary.
+type ConsumerDetail struct {
+	ConsumerSummary `tstype:",extends"`
+	Stream          string           `json:"stream"`
+	Created         time.Time        `json:"created" tstype:"string"`
+	Delivered       ConsumerSequence `json:"delivered"`
+	AckFloor        ConsumerSequence `json:"ackFloor"`
+	PushBound       bool             `json:"pushBound"`
+	// Config is the consumer config exactly as the server sent it.
+	Config  json.RawMessage `json:"config" tstype:"{ [key: string]: unknown }"`
+	Cluster string          `json:"cluster,omitempty"`
+	Leader  string          `json:"leader,omitempty"`
+}
+
+// ConsumerPause asks to pause a consumer for Seconds from now.
+type ConsumerPause struct {
+	Seconds int `json:"seconds"`
+}
+
+// ConsumerList is a stream's consumers. Offline maps a consumer the server
+// listed but could not describe to the reason.
+type ConsumerList struct {
+	Consumers []ConsumerSummary `json:"consumers"`
+	Offline   map[string]string `json:"offline"`
+}

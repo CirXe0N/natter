@@ -6,6 +6,7 @@ import { ContextsScreen } from "@/screens/contexts"
 import { EmptyScreen } from "@/screens/empty-screen"
 import { HealthScreen } from "@/screens/health"
 import { OverviewScreen } from "@/screens/overview"
+import { ConsumerDetail, StreamConsumers } from "@/screens/consumers"
 import { StreamConfig, StreamOverview, StreamScreen } from "@/screens/stream"
 import { StreamsScreen } from "@/screens/streams"
 import { EditStream, NewStreamScreen } from "@/screens/stream-form"
@@ -34,6 +35,8 @@ const routeTree = root.addChildren([
     createRoute({ getParentRoute: () => stream, path: "/", staticData: { title: "Stream" }, component: StreamOverview }),
     createRoute({ getParentRoute: () => stream, path: "config", staticData: { title: "Stream" }, component: StreamConfig }),
     createRoute({ getParentRoute: () => stream, path: "edit", staticData: { title: "Stream" }, component: EditStream }),
+    createRoute({ getParentRoute: () => stream, path: "consumers", staticData: { title: "Stream" }, component: StreamConsumers }),
+    createRoute({ getParentRoute: () => stream, path: "consumers/$consumer", staticData: { title: "Stream" }, component: ConsumerDetail }),
   ]),
 ])
 
