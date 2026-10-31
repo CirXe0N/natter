@@ -60,6 +60,8 @@ func TestReadOnlyRefusesMutatingRoutes(t *testing.T) {
 	want(call("PUT", "/api/contexts/cli/app/settings", `{"readOnly":true}`), 200, "lock")
 	want(call("POST", "/api/test/mutate", ""), 403, "mutate under Read-only")
 	want(call("GET", "/api/contexts", ""), 200, "browse under Read-only")
+	want(call("GET", "/api/connections", ""), 200, "list Connections under Read-only")
+	want(call("POST", "/api/connections/kick", "{}"), 403, "kick under Read-only")
 	want(call("PUT", "/api/contexts/active", `{"source":"cli","name":"app"}`), 200, "switch under Read-only")
 	if !m.Active().Context.ReadOnly {
 		t.Fatalf("%v lost its lock", ref)
@@ -74,6 +76,7 @@ func TestReadOnlyRefusesMutatingRoutes(t *testing.T) {
 
 	want(call("PUT", "/api/contexts/cli/app/settings", `{}`), 200, "unlock while locked")
 	want(call("POST", "/api/test/mutate", ""), 204, "mutate after unlock")
+	want(call("POST", "/api/connections/kick", "{}"), 400, "kick reaches its handler once Read-only is off")
 	want(call("POST", "/api/contexts/cli/app/remove", `{}`), 400, "remove without confirm")
 	want(call("POST", "/api/contexts", `{"name":"cli-local","urls":"nats://127.0.0.1:1","source":"cli"}`), 200, "write a CLI file after unlock")
 }

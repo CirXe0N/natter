@@ -5,6 +5,7 @@ package api
 import (
 	"fmt"
 	"io"
+	"time"
 )
 
 //go:generate go tool tygo generate
@@ -228,4 +229,54 @@ type HealthError struct {
 	Stream   string `json:"stream,omitempty"`
 	Consumer string `json:"consumer,omitempty"`
 	Error    string `json:"error"`
+}
+
+// ConnectionState picks open or recently closed Connections.
+type ConnectionState string
+
+const (
+	ConnectionStateOpen   ConnectionState = "open"
+	ConnectionStateClosed ConnectionState = "closed"
+)
+
+// Connections lists the Connections of every server of the active Context.
+type Connections struct {
+	Source StatsSource `json:"source"`
+	// Problem says, for the user, what access is missing or why listing failed.
+	Problem     string       `json:"problem,omitempty"`
+	Connections []Connection `json:"connections"`
+	// Truncated is true when the servers hold more Connections than Natter lists.
+	Truncated bool `json:"truncated,omitempty"`
+}
+
+// Connection is one client connected to a server, from connz. A closed one has
+// Stop and Reason.
+type Connection struct {
+	Server       string    `json:"server"` // server ID, what Kick addresses
+	ServerName   string    `json:"serverName"`
+	Cid          uint64    `json:"cid"`
+	Name         string    `json:"name,omitempty"`
+	Account      string    `json:"account,omitempty"`
+	User         string    `json:"user,omitempty"`
+	IP           string    `json:"ip"`
+	Lang         string    `json:"lang,omitempty"`
+	Version      string    `json:"version,omitempty"`
+	Start        time.Time `json:"start" tstype:"string"`
+	LastActivity time.Time `json:"lastActivity" tstype:"string"`
+	Stop         time.Time `json:"stop,omitzero" tstype:"string"`
+	Reason       string    `json:"reason,omitempty"`
+	// RTTMs is the round-trip time in milliseconds; 0 when the server has none.
+	RTTMs        float64  `json:"rttMs"`
+	PendingBytes int      `json:"pendingBytes"`
+	InMsgs       int64    `json:"inMsgs"`
+	OutMsgs      int64    `json:"outMsgs"`
+	InBytes      int64    `json:"inBytes"`
+	OutBytes     int64    `json:"outBytes"`
+	Subs         []string `json:"subs"`
+}
+
+// KickRequest names one Connection by its server and client ID.
+type KickRequest struct {
+	Server string `json:"server"`
+	Cid    uint64 `json:"cid"`
 }

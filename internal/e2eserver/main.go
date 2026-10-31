@@ -57,6 +57,15 @@ func main() {
 	if err := seedJetStream(ns.ClientURL()); err != nil {
 		log.Fatal(err)
 	}
+	// A client the Connections spec can find and kick. nats.go reconnects it, so a rerun finds it again.
+	victim, err := nats.Connect(ns.ClientURL(), nats.UserInfo("app", "app"), nats.Name("orders-service"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer victim.Close()
+	if _, err := victim.SubscribeSync("orders.>"); err != nil {
+		log.Fatal(err)
+	}
 	ctxs := contexts.New(root, vault.Open(filepath.Join(root, "natter")))
 	defer ctxs.Close()
 
