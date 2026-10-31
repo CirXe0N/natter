@@ -2,10 +2,10 @@
 // and consumers listed for the unhealthy ones.
 import { useEffect } from "react"
 import { useQuery } from "@tanstack/react-query"
-import { Link } from "@tanstack/react-router"
-import { CircleCheck, CircleAlert, ShieldAlert } from "lucide-react"
+import { CircleCheck, CircleAlert } from "lucide-react"
 
 import { api } from "@/api"
+import { NotAvailable, sourceLabel } from "@/components/not-available"
 import { ScreenHeader } from "@/components/screen-header"
 import type { Health, ServerHealth } from "@/gen/api"
 import { announce, usePaused } from "@/live"
@@ -37,20 +37,11 @@ export function HealthScreen() {
         ) : !h ? (
           <p className="text-muted-foreground">Checking…</p>
         ) : h.servers.length === 0 ? (
-          <div className="grid min-h-60 place-items-center rounded-xl border bg-card p-8 text-center">
-            <div className="max-w-md">
-              <ShieldAlert className="mx-auto mb-3 text-warning" size={20} aria-hidden />
-              <h2 className="text-sm font-medium">Server health is not available</h2>
-              <p className="mt-1.5 text-xs text-muted-foreground">{h.problem}</p>
-              <Link to="/contexts" className="mt-3 inline-block text-xs text-primary hover:underline">
-                Manage Contexts
-              </Link>
-            </div>
-          </div>
+          <NotAvailable title="Server health is not available" problem={h.problem} />
         ) : (
           <>
             <p className="text-xs text-muted-foreground">
-              {h.source === "system" ? "All servers, via System credentials" : "One server, via the Monitoring URL"}
+              {sourceLabel[h.source]}
             </p>
             <ul className="space-y-3">
               {h.servers.map((s) => (

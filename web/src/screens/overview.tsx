@@ -2,8 +2,9 @@
 // sparklines and a servers table, fed by the overview topic on the live socket.
 import { useEffect, useRef, useState, type ReactNode } from "react"
 import { Link } from "@tanstack/react-router"
-import { ShieldAlert, TriangleAlert } from "lucide-react"
+import { TriangleAlert } from "lucide-react"
 
+import { NotAvailable, sourceLabel } from "@/components/not-available"
 import { ScreenHeader } from "@/components/screen-header"
 import { TopicOverview, type Overview, type Series, type ServerSummary } from "@/gen/api"
 import { announce, subscribe, usePaused } from "@/live"
@@ -39,7 +40,7 @@ export function OverviewScreen() {
         {!ov ? (
           <p className="text-muted-foreground">Waiting for the first sample…</p>
         ) : ov.source === "none" ? (
-          <Missing problem={ov.problem} />
+          <NotAvailable title="Server stats are not available" problem={ov.problem} />
         ) : (
           <>
             {ov.problem && <Warning>{ov.problem}</Warning>}
@@ -67,27 +68,12 @@ function HealthIndicator() {
 function Freshness({ ov }: { ov?: Overview }) {
   const paused = usePaused()
   if (!ov) return null
-  const from = { system: "All servers, via System credentials", monitoring: "One server, via the Monitoring URL", none: "" }[ov.source]
+  const from = sourceLabel[ov.source]
   return (
     <p className="text-xs text-muted-foreground">
       {paused ? <span className="text-warning">Paused</span> : "Live"}
       {from && ` · ${from}`} · as of <time dateTime={new Date(ov.time * 1000).toISOString()}>{new Date(ov.time * 1000).toLocaleTimeString()}</time>
     </p>
-  )
-}
-
-function Missing({ problem }: { problem?: string }) {
-  return (
-    <div className="grid min-h-60 place-items-center rounded-xl border bg-card p-8">
-      <div className="max-w-md text-center">
-        <ShieldAlert className="mx-auto mb-3 text-warning" size={20} aria-hidden />
-        <h2 className="text-sm font-medium">Server stats are not available</h2>
-        <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">{problem}</p>
-        <Link to="/contexts" className="mt-3 inline-block text-xs text-primary hover:underline">
-          Manage Contexts
-        </Link>
-      </div>
-    </div>
   )
 }
 
