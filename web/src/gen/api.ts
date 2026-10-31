@@ -13,3 +13,91 @@ tygo turns them into web/src/gen/api.ts, so the frontend cannot drift from Go.
 export interface Info {
   version: string;
 }
+/**
+ * Source says where a Context is stored.
+ */
+export type Source = string;
+/**
+ * SourceCLI is a natscli Context under ~/.config/nats/context/. Natter never writes it.
+ */
+export const SourceCLI: Source = "cli";
+/**
+ * SecretStorage says where a Context's secret lives. SecretStoragePlaintext marks a
+ * Plaintext secret: a literal or data: value, or a creds, nkey or TLS key file.
+ */
+export const SecretStorageNone = "none";
+export const SecretStoragePlaintext = "plaintext";
+export const SecretStorageEnv = "env";
+export const SecretStorageOp = "op";
+export const SecretStorageNsc = "nsc";
+export type SecretStorage = typeof SecretStorageNone | typeof SecretStoragePlaintext | typeof SecretStorageEnv | typeof SecretStorageOp | typeof SecretStorageNsc;
+/**
+ * Ref names one Context. Names are unique within a Source.
+ */
+export interface Ref {
+  source: Source;
+  name: string;
+}
+/**
+ * Context is one entry on the Contexts screen. It never carries a secret.
+ */
+export interface Context extends Ref, Settings {
+  description: string;
+  urls: string;
+  user: string;
+  secret: SecretStorage;
+  mode: Mode;
+}
+/**
+ * Mode is how a Context's user is defined on the server.
+ */
+export const ModeStatic = "static"; // a user in the server config
+export const ModeJWT = "jwt"; // creds, nsc or user_jwt: operator mode
+export type Mode = typeof ModeStatic | typeof ModeJWT;
+/**
+ * Settings are the Context fields natscontext files cannot hold. Natter keeps
+ * them in its own directory for every Source.
+ */
+export interface Settings {
+  monitoringUrl?: string;
+}
+/**
+ * ConnStatus is the state of the connection to the active Context.
+ */
+export const ConnStatusNone = "none"; // no Context chosen yet
+export const ConnStatusConnecting = "connecting";
+export const ConnStatusConnected = "connected";
+export const ConnStatusReconnecting = "reconnecting";
+export const ConnStatusFailed = "failed";
+export type ConnStatus = typeof ConnStatusNone | typeof ConnStatusConnecting | typeof ConnStatusConnected | typeof ConnStatusReconnecting | typeof ConnStatusFailed;
+/**
+ * Capabilities are detected when Natter connects to the active Context.
+ */
+export interface Capabilities {
+  /**
+   * Account is the account the Context's user is bound to, from $SYS.REQ.USER.INFO.
+   */
+  account: string;
+  /**
+   * System is true when the user is in the system account.
+   */
+  system: boolean;
+  jetStream: boolean;
+  /**
+   * Monitoring is true when the Context's Monitoring URL answered.
+   */
+  monitoring: boolean;
+}
+/**
+ * Active is the active Context and the state of its connection.
+ */
+export interface Active {
+  context?: Context;
+  status: ConnStatus;
+  /**
+   * Error is the connect error, the server's own text where it sent one.
+   */
+  error?: string;
+  server?: string;
+  capabilities: Capabilities;
+}

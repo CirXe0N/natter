@@ -2,6 +2,7 @@
 package main
 
 import (
+	"context"
 	"crypto/rand"
 	"errors"
 	"flag"
@@ -15,6 +16,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/CirXe0N/natter/internal/contexts"
 	"github.com/CirXe0N/natter/internal/server"
 	"github.com/CirXe0N/natter/web"
 )
@@ -72,12 +74,23 @@ func run(bind string, port int, portSet bool, allowedHosts []string, dev bool) e
 	}
 	fmt.Printf("Natter is running. Open this URL in your browser:\n\n  %s/launch?token=%s\n\n", origin, token)
 
+	root, err := contexts.DefaultConfigRoot()
+	if err != nil {
+		return err
+	}
+	ctxs := contexts.New(root)
+	go func() {
+		if err := ctxs.Restore(context.Background()); err != nil {
+			fmt.Fprintln(os.Stderr, "natter: reconnecting to the last active Context:", err)
+		}
+	}()
+
 	version := "(unknown)"
 	if bi, ok := debug.ReadBuildInfo(); ok {
 		version = bi.Main.Version
 	}
 	srv := &http.Server{
-		Handler:           server.New(server.Config{Token: token, Port: port, AllowedHosts: allowedHosts, UI: web.Dist, TrustedOrigins: trusted, Version: version}),
+		Handler:           server.New(server.Config{Token: token, Port: port, AllowedHosts: allowedHosts, UI: web.Dist, TrustedOrigins: trusted, Version: version, Contexts: ctxs}),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 	return srv.Serve(ln)
