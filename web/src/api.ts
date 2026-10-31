@@ -2,14 +2,6 @@
 // Add one function per endpoint to `api`; screens call them from TanStack Query.
 import type { Active, Context, Health, Info, JetStreamNames, NewContext, Ref, Settings, Vault } from "@/gen/api"
 
-export class ApiError extends Error {
-  status: number
-  constructor(status: number, message: string) {
-    super(message)
-    this.status = status
-  }
-}
-
 async function request<T>(method: string, path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
   const res = await fetch(path, {
     method,
@@ -17,7 +9,7 @@ async function request<T>(method: string, path: string, body?: unknown, signal?:
     headers: body === undefined ? undefined : { "Content-Type": "application/json" },
     body: body === undefined ? undefined : JSON.stringify(body),
   })
-  if (!res.ok) throw new ApiError(res.status, (await res.text()).trim() || res.statusText)
+  if (!res.ok) throw new Error((await res.text()).trim() || res.statusText)
   return res.json() as Promise<T>
 }
 

@@ -33,7 +33,7 @@ function useCommands(): PaletteCommand[] {
       group: "Switch Context",
       label: `Use ${c.name}`,
       hint: c.description,
-      cli: `nats context select ${c.name}`,
+      cli: c.source === "cli" ? `nats context select ${c.name}` : undefined, // natscli cannot see Natter's own Contexts
       run: () => activate.mutate(c),
     })),
     { id: "a-stream", group: "Actions", label: "Create stream…", cli: "nats stream add", run: go("/streams") },
@@ -87,7 +87,10 @@ export function CommandPalette() {
                       c.run()
                     }}
                   >
-                    <span className="flex-1">{c.label}</span>
+                    <span className="flex-1 truncate">
+                      {c.label}
+                      {c.hint && <span className="ml-2 text-xs text-muted-foreground">{c.hint}</span>}
+                    </span>
                     {c.cli && <span className="truncate font-mono text-[11px] text-muted-foreground">{c.cli}</span>}
                   </CommandItem>
                 ))}

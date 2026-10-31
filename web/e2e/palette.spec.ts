@@ -30,4 +30,15 @@ test("the command palette switches Context, opens a stream, and returns focus", 
   await expect(palette.getByRole("option", { name: /Open bucket config/ })).toContainText("nats kv status config")
   await page.keyboard.press("Escape")
   await expect(palette).toHaveCount(0)
+
+  // Natter's own Contexts are invisible to natscli, so they get no CLI hint; the description shows instead.
+  const made = await page.request.post("/api/contexts", { data: { name: "palette-own", description: "made in Natter", urls: "nats://127.0.0.1:1" } })
+  expect(made.ok(), await made.text()).toBe(true)
+  await page.reload()
+  await expect(switcher).toBeVisible() // the palette listens once the app has mounted
+  await page.keyboard.press("Control+k")
+  await page.keyboard.type("use palette-own")
+  const own = palette.getByRole("option", { name: /Use palette-own/ })
+  await expect(own).toContainText("made in Natter")
+  await expect(own).not.toContainText("nats context select")
 })
