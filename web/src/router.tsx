@@ -10,6 +10,7 @@ import { ConsumerDetail, StreamConsumers } from "@/screens/consumers"
 import { StreamConfig, StreamOverview, StreamScreen } from "@/screens/stream"
 import { StreamsScreen } from "@/screens/streams"
 import { EditStream, NewStreamScreen } from "@/screens/stream-form"
+import { StreamMessages } from "@/screens/messages"
 
 // Each screen is one route here. staticData.title names it in the top bar,
 // the browser tab and the left nav. Replace EmptyScreen with the real screen.
@@ -37,6 +38,7 @@ const routeTree = root.addChildren([
     createRoute({ getParentRoute: () => stream, path: "edit", staticData: { title: "Stream" }, component: EditStream }),
     createRoute({ getParentRoute: () => stream, path: "consumers", staticData: { title: "Stream" }, component: StreamConsumers }),
     createRoute({ getParentRoute: () => stream, path: "consumers/$consumer", staticData: { title: "Stream" }, component: ConsumerDetail }),
+    createRoute({ getParentRoute: () => stream, path: "messages", staticData: { title: "Stream" }, component: StreamMessages }),
   ]),
 ])
 

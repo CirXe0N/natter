@@ -115,6 +115,37 @@ func seedJetStream(url string) error {
 			return err
 		}
 	}
-	_, err = js.CreateKeyValue(ctx, jetstream.KeyValueConfig{Bucket: "config"})
-	return err
+	if _, err = js.CreateKeyValue(ctx, jetstream.KeyValueConfig{Bucket: "config"}); err != nil {
+		return err
+	}
+	return seedEvents(ctx, js)
+}
+
+// seedEvents makes EVENTS: 200,000 messages, more rows than the message
+// table's track holds unscaled, with gaps where 5 and 101-150 were deleted.
+// 3 is binary and 7 is too large for a preview.
+func seedEvents(ctx context.Context, js jetstream.JetStream) error {
+	st, err := js.CreateStream(ctx, jetstream.StreamConfig{Name: "EVENTS", Subjects: []string{"events.>"}, Storage: jetstream.MemoryStorage})
+	if err != nil {
+		return err
+	}
+	for i := 1; i <= 200_000; i++ {
+		data := fmt.Appendf(nil, `{"n":%d}`, i)
+		switch i {
+		case 3:
+			data = []byte{0, 1, 2}
+		case 7:
+			data = make([]byte, 64*1024)
+		}
+		if _, err := js.PublishAsync([]string{"events.a", "events.b"}[i%2], data); err != nil {
+			return err
+		}
+	}
+	<-js.PublishAsyncComplete()
+	for seq := uint64(101); seq <= 150; seq++ {
+		if err := st.DeleteMsg(ctx, seq); err != nil {
+			return err
+		}
+	}
+	return st.DeleteMsg(ctx, 5)
 }
