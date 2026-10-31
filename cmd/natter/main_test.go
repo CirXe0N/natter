@@ -30,7 +30,7 @@ func TestListenFallsBackOnlyForTheDefaultPort(t *testing.T) {
 
 func TestNonLoopbackBindNeedsAllowedHost(t *testing.T) {
 	for _, bind := range []string{"0.0.0.0", "", "::", "192.168.1.5"} {
-		if err := run(bind, 0, true, nil); err == nil {
+		if err := run(bind, 0, true, nil, false); err == nil {
 			t.Errorf("bind %q without -allowed-host: got no error", bind)
 		}
 	}

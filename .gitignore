@@ -1,3 +1,10 @@
 node_modules/
 .scratch/
 /natter
+# Built frontend. Only web/dist/.gitkeep is committed, so //go:embed compiles
+# on a fresh clone. Release commits add the real build (ticket 24).
+/web/dist/*
+!/web/dist/.gitkeep
+/web/playwright/.auth/
+/web/test-results/
+/web/playwright-report/
