@@ -1,5 +1,7 @@
 // Package web holds the frontend. Its build output in web/dist is embedded in
-// the binary. A committed placeholder index.html keeps a fresh clone compiling.
+// the binary. Build it first with `npm --prefix web ci && npm --prefix web run build`.
+// Without a build, the committed web/dist/.gitkeep keeps the embed compiling and
+// natter answers every page with how to build the UI.
 package web
 
 import (

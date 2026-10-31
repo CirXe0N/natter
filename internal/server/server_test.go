@@ -195,3 +195,44 @@ func TestEmbeddedUI(t *testing.T) {
 		t.Errorf("missing asset: %d %q, want a plain 404", missing.Code, missing.Body.String())
 	}
 }
+
+func TestTrustedOriginPassesTheCrossOriginCheck(t *testing.T) {
+	h := server.New(server.Config{Token: token, Port: port, UI: ui, TrustedOrigins: []string{"http://localhost:5173"}})
+	c := launch(t, h)
+	vite := func(r *http.Request) { r.AddCookie(c); r.Header.Set("Origin", "http://localhost:5173") }
+	if w := do(h, "POST", "/", vite); w.Code != http.StatusMethodNotAllowed {
+		t.Errorf("POST from the trusted origin: got %d, want 405 from routing", w.Code)
+	}
+	other := func(r *http.Request) { r.AddCookie(c); r.Header.Set("Origin", "http://localhost:5174") }
+	if w := do(h, "POST", "/", other); w.Code != http.StatusForbidden {
+		t.Errorf("POST from an untrusted origin: got %d, want 403", w.Code)
+	}
+}
+
+func TestInfo(t *testing.T) {
+	h := server.New(server.Config{Token: token, Port: port, UI: ui, Version: "v1.2.3"})
+	c := launch(t, h)
+	w := do(h, "GET", "/api/info", withCookie(c))
+	if w.Code != http.StatusOK || w.Header().Get("Content-Type") != "application/json" || strings.TrimSpace(w.Body.String()) != `{"version":"v1.2.3"}` {
+		t.Errorf("/api/info: %d %q %q", w.Code, w.Header().Get("Content-Type"), w.Body.String())
+	}
+	if w := do(h, "GET", "/api/info", nil); w.Code != http.StatusUnauthorized {
+		t.Errorf("/api/info without a session: got %d, want 401", w.Code)
+	}
+}
+
+func TestUnknownAPIPathIsNotTheSPA(t *testing.T) {
+	h := newHandler()
+	c := launch(t, h)
+	if w := do(h, "GET", "/api/nope", withCookie(c)); w.Code != http.StatusNotFound || strings.Contains(w.Body.String(), "<title>") {
+		t.Errorf("/api/nope: %d %q, want a plain 404", w.Code, w.Body.String())
+	}
+}
+
+func TestBinaryWithoutUISaysHowToBuildIt(t *testing.T) {
+	h := server.New(server.Config{Token: token, Port: port, UI: fstest.MapFS{".gitkeep": {}}})
+	c := launch(t, h)
+	if w := do(h, "GET", "/", withCookie(c)); w.Code != http.StatusNotFound || !strings.Contains(w.Body.String(), "npm --prefix web run build") {
+		t.Errorf("/ with no index.html: %d %q", w.Code, w.Body.String())
+	}
+}

@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/netip"
 	"os"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"time"
@@ -20,6 +21,10 @@ import (
 
 const defaultPort = 4280
 
+// viteOrigin is where `npm --prefix web run dev` serves the UI. Its config
+// proxies /launch, /api and /ws to defaultPort.
+const viteOrigin = "http://localhost:5173"
+
 func main() {
 	bind := flag.String("bind", "127.0.0.1", "address to listen on")
 	port := flag.Int("port", defaultPort, "port to listen on; if the default port is taken, a free one is used")
@@ -28,17 +33,18 @@ func main() {
 		allowedHosts = append(allowedHosts, h)
 		return nil
 	})
+	dev := flag.Bool("dev", false, "trust the Vite dev server at "+viteOrigin+" and print the Launch token URL through it")
 	flag.Parse()
-	portSet := false
+	portSet := *dev // the Vite proxy targets the default port, so never fall back
 	flag.Visit(func(f *flag.Flag) { portSet = portSet || f.Name == "port" })
 
-	if err := run(*bind, *port, portSet, allowedHosts); err != nil {
+	if err := run(*bind, *port, portSet, allowedHosts, *dev); err != nil {
 		fmt.Fprintln(os.Stderr, "natter:", err)
 		os.Exit(1)
 	}
 }
 
-func run(bind string, port int, portSet bool, allowedHosts []string) error {
+func run(bind string, port int, portSet bool, allowedHosts []string, dev bool) error {
 	ip, ipErr := netip.ParseAddr(strings.Trim(bind, "[]"))
 	loopback := bind == "localhost" || (ipErr == nil && ip.IsLoopback())
 	if !loopback && len(allowedHosts) == 0 {
@@ -59,10 +65,19 @@ func run(bind string, port int, portSet bool, allowedHosts []string) error {
 		urlHost = "127.0.0.1"
 	}
 	token := rand.Text()
-	fmt.Printf("Natter is running. Open this URL in your browser:\n\n  http://%s/launch?token=%s\n\n", net.JoinHostPort(strings.Trim(urlHost, "[]"), strconv.Itoa(port)), token)
+	origin := "http://" + net.JoinHostPort(strings.Trim(urlHost, "[]"), strconv.Itoa(port))
+	var trusted []string
+	if dev {
+		origin, trusted = viteOrigin, []string{viteOrigin}
+	}
+	fmt.Printf("Natter is running. Open this URL in your browser:\n\n  %s/launch?token=%s\n\n", origin, token)
 
+	version := "(unknown)"
+	if bi, ok := debug.ReadBuildInfo(); ok {
+		version = bi.Main.Version
+	}
 	srv := &http.Server{
-		Handler:           server.New(server.Config{Token: token, Port: port, AllowedHosts: allowedHosts, UI: web.Dist}),
+		Handler:           server.New(server.Config{Token: token, Port: port, AllowedHosts: allowedHosts, UI: web.Dist, TrustedOrigins: trusted, Version: version}),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 	return srv.Serve(ln)

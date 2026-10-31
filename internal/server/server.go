@@ -5,6 +5,7 @@ package server
 import (
 	"crypto/rand"
 	"crypto/subtle"
+	"encoding/json"
 	"io/fs"
 	"net"
 	"net/http"
@@ -13,6 +14,8 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/CirXe0N/natter/internal/api"
 )
 
 type Config struct {
@@ -26,6 +29,11 @@ type Config struct {
 	AllowedHosts []string
 	// UI is the built frontend, with index.html at its root.
 	UI fs.FS
+	// TrustedOrigins pass the cross-origin check besides the server's own
+	// origin. -dev adds the Vite dev server so it can proxy /api and /ws.
+	TrustedOrigins []string
+	// Version is reported by GET /api/info.
+	Version string
 }
 
 type server struct {
@@ -49,8 +57,12 @@ func New(c Config) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /launch", s.launch)
 	mux.Handle("GET /", s.ui())
+	mux.HandleFunc("GET /api/", http.NotFound) // unknown API paths must not get index.html
+	mux.HandleFunc("GET /api/info", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, api.Info{Version: s.Version})
+	})
 
-	return s.checkHost(s.checkSession(checkOrigin(mux)))
+	return s.checkHost(s.checkSession(s.checkOrigin(mux)))
 }
 
 func (s *server) checkHost(next http.Handler) http.Handler {
@@ -85,8 +97,13 @@ func (s *server) checkSession(next http.Handler) http.Handler {
 	})
 }
 
-func checkOrigin(next http.Handler) http.Handler {
+func (s *server) checkOrigin(next http.Handler) http.Handler {
 	cop := http.NewCrossOriginProtection()
+	for _, o := range s.TrustedOrigins {
+		if err := cop.AddTrustedOrigin(o); err != nil {
+			panic(err) // a malformed constant in the caller, not user input
+		}
+	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		safe := r.Method == "GET" || r.Method == "HEAD" || r.Method == "OPTIONS"
 		if !safe && (r.Header.Get("Origin") == "null" || cop.Check(r) != nil) {
@@ -130,7 +147,18 @@ func (s *server) ui() http.Handler {
 			http.NotFound(w, r)
 			return
 		}
+		if _, err := fs.Stat(s.UI, "index.html"); err != nil {
+			http.Error(w, "This natter binary was built without its UI. Run `npm --prefix web ci && npm --prefix web run build`, then build natter again.", http.StatusNotFound)
+			return
+		}
 		w.Header().Set("Cache-Control", "no-cache")
 		http.ServeFileFS(w, r, s.UI, "index.html")
 	})
+}
+
+func writeJSON(w http.ResponseWriter, v any) {
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(v); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }
