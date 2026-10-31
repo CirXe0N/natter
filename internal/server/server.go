@@ -17,6 +17,7 @@ import (
 
 	"github.com/CirXe0N/natter/internal/api"
 	"github.com/CirXe0N/natter/internal/contexts"
+	"github.com/CirXe0N/natter/internal/live"
 )
 
 type Config struct {
@@ -58,6 +59,7 @@ type server struct {
 	cookie   string
 	allowed  map[string]bool
 	sessions sync.Map // session id -> struct{}
+	hub      *live.Hub
 }
 
 // New returns the whole HTTP handler. Requests pass, in order, a Host
@@ -67,6 +69,7 @@ type server struct {
 // methods. /launch is the one exception, and it needs the Launch token.
 func New(c Config) http.Handler {
 	s := &server{Config: c, cookie: "natter_session_" + strconv.Itoa(c.Port), allowed: map[string]bool{}}
+	s.hub = s.newHub()
 	for _, h := range c.AllowedHosts {
 		s.allowed[strings.ToLower(h)] = true
 	}

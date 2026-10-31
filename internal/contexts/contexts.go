@@ -57,7 +57,7 @@ type registries struct{ raw, live *natscontext.Registry }
 // connected, and stays set while nats.go reconnects.
 type Conn struct {
 	Context api.Context
-	Status  api.ConnStatus // connecting, connected or failed
+	Status  api.ConnStatus // connecting, connected, locked or failed
 	Err     error
 	NC      *nats.Conn
 	Caps    api.Capabilities

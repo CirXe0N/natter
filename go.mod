@@ -10,6 +10,7 @@ tool github.com/gzuidhof/tygo
 
 require (
 	filippo.io/age v1.3.2
+	github.com/coder/websocket v1.8.15
 	github.com/nats-io/jsm.go v0.5.1
 	github.com/nats-io/nats-server/v2 v2.15.2
 	github.com/nats-io/nats.go v1.55.0

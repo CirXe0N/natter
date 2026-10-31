@@ -4,6 +4,7 @@ import { defineConfig, devices } from "@playwright/test"
 export default defineConfig({
   testDir: "e2e",
   forbidOnly: !!process.env.CI,
+  workers: 1, // every spec shares one backend and its active Context
   webServer: {
     command: "go run ./internal/e2eserver",
     cwd: "..",
