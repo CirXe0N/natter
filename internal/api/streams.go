@@ -99,3 +99,30 @@ type StreamSubjects struct {
 	Subjects  map[string]uint64 `json:"subjects"`
 	Truncated bool              `json:"truncated"`
 }
+
+// StreamPurge is the body of POST /api/streams/{name}/purge. With no Subject,
+// Keep or Sequence it purges everything. Confirm must equal the stream name.
+// Keep and Sequence are exclusive; the server refuses both.
+type StreamPurge struct {
+	Subject  string `json:"subject,omitempty"`
+	Keep     uint64 `json:"keep,omitempty"`
+	Sequence uint64 `json:"sequence,omitempty"` // purge up to but not including it
+	Confirm  string `json:"confirm"`
+}
+
+// StreamPurged says how many messages a purge removed.
+type StreamPurged struct {
+	Purged uint64 `json:"purged"`
+}
+
+// StreamDelete is the body of DELETE /api/streams/{name}. Confirm must equal the stream name.
+type StreamDelete struct {
+	Confirm string `json:"confirm"`
+}
+
+// FieldError is the 400 body for a refused stream config. Field is the config
+// key the message belongs to, or empty when it fits none.
+type FieldError struct {
+	Error string `json:"error"`
+	Field string `json:"field,omitempty"`
+}

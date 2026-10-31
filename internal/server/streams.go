@@ -20,6 +20,10 @@ func init() {
 		route{pattern: "GET /api/streams", handle: (*server).listStreams},
 		route{pattern: "GET /api/streams/{name}", handle: (*server).streamDetail},
 		route{pattern: "GET /api/streams/{name}/subjects", handle: (*server).streamSubjects},
+		route{pattern: "POST /api/streams", handle: (*server).createStream},
+		route{pattern: "PUT /api/streams/{name}", handle: (*server).updateStream},
+		route{pattern: "POST /api/streams/{name}/purge", handle: (*server).purgeStream},
+		route{pattern: "DELETE /api/streams/{name}", handle: (*server).deleteStream},
 	)
 }
 

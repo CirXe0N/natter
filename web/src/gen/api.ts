@@ -518,3 +518,34 @@ export interface StreamSubjects {
   subjects: { [key: string]: number /* uint64 */};
   truncated: boolean;
 }
+/**
+ * StreamPurge is the body of POST /api/streams/{name}/purge. With no Subject,
+ * Keep or Sequence it purges everything. Confirm must equal the stream name.
+ * Keep and Sequence are exclusive; the server refuses both.
+ */
+export interface StreamPurge {
+  subject?: string;
+  keep?: number /* uint64 */;
+  sequence?: number /* uint64 */; // purge up to but not including it
+  confirm: string;
+}
+/**
+ * StreamPurged says how many messages a purge removed.
+ */
+export interface StreamPurged {
+  purged: number /* uint64 */;
+}
+/**
+ * StreamDelete is the body of DELETE /api/streams/{name}. Confirm must equal the stream name.
+ */
+export interface StreamDelete {
+  confirm: string;
+}
+/**
+ * FieldError is the 400 body for a refused stream config. Field is the config
+ * key the message belongs to, or empty when it fits none.
+ */
+export interface FieldError {
+  error: string;
+  field?: string;
+}

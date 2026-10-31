@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input"
 import type { StreamHealth, StreamKind, StreamSummary } from "@/gen/api"
 import { usePaused } from "@/live"
 import { bytes, count, uptime } from "@/screens/overview"
+import { NewStreamButton } from "@/screens/stream-actions"
 
 // Stream stats move, so lists and details refresh every 5 s unless paused.
 export function useRefresh() {
@@ -33,6 +34,7 @@ export function StreamsScreen() {
     <>
       <ScreenHeader title="Streams">
         <CopyCli cmd={`nats stream ls -a${subject ? ` --subject '${subject}'` : ""}`} />
+        <NewStreamButton />
       </ScreenHeader>
       <div className="space-y-4 px-8 pb-8">
         <SubjectFilter key={subject} value={subject} />
