@@ -50,10 +50,10 @@ export function useSetSettings() {
 }
 
 // Why an action that changes the server is disabled, or undefined when it is allowed.
-// Disable the control (never hide it) and pass this as its title.
+// Pass it as the `reason` of a BlockedButton: the control stays visible, disabled, with the reason shown.
 export function useBlockedReason() {
   const { data: active } = useActiveContext()
-  return active?.context?.readOnly ? "Read-only mode is on for this Context" : undefined
+  return active?.context?.readOnly ? "Read-only mode is on for this Context. Turn it off on the Contexts screen first." : undefined
 }
 
 // The Read-only badge in the top bar. It is the unlock button, 28 px tall.

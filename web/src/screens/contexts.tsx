@@ -5,10 +5,11 @@ import { api } from "@/api"
 
 import { Badge } from "@/components/badge"
 import { ScreenHeader } from "@/components/screen-header"
+import { BlockedButton } from "@/components/blocked-button"
 import { Button } from "@/components/ui/button"
 import { Lock } from "lucide-react"
 import { Input } from "@/components/ui/input"
-import { CapabilityBadges, contextKeys, refKey, SecretBadge, useActivateContext, useActiveContext, useContexts, useSetSettings } from "@/contexts"
+import { CapabilityBadges, contextKeys, refKey, SecretBadge, useActivateContext, useActiveContext, useBlockedReason, useContexts, useSetSettings } from "@/contexts"
 import type { Active, Context } from "@/gen/api"
 import { NewContextForm } from "@/screens/new-context"
 import { VaultPanel } from "@/vault"
@@ -141,6 +142,7 @@ function MoveIntoVault({ c }: { c: Context }) {
   const move = useMutation({ mutationFn: () => api.moveIntoVault(c), onSuccess: refresh })
   const remove = useMutation({ mutationFn: () => api.removeContext(c), onSuccess: refresh })
   const [confirming, setConfirming] = useState(false)
+  const blocked = useBlockedReason()
   return (
     <div className="mt-3 text-xs">
       {!move.isSuccess ? (
@@ -153,15 +155,17 @@ function MoveIntoVault({ c }: { c: Context }) {
             Copied to the Natter Context <span className="font-mono">{move.data.name}</span> with its secret in the Vault. The nats CLI file is unchanged and still holds the Plaintext secret.
           </p>
           {!confirming ? (
-            <Button size="sm" variant="outline" onClick={() => setConfirming(true)}>
-              Delete the nats CLI file…
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              <BlockedButton reason={blocked} size="sm" variant="outline" onClick={() => setConfirming(true)}>
+                Delete the nats CLI file…
+              </BlockedButton>
+            </div>
           ) : (
             <div className="flex flex-wrap items-center gap-2">
               <span>Delete ~/.config/nats/context/{c.name}.json? natscli will lose this Context.</span>
-              <Button size="sm" variant="destructive" disabled={remove.isPending} onClick={() => remove.mutate()}>
+              <BlockedButton reason={blocked} size="sm" variant="destructive" disabled={remove.isPending} onClick={() => remove.mutate()}>
                 Delete file
-              </Button>
+              </BlockedButton>
               <Button size="sm" variant="outline" onClick={() => setConfirming(false)}>
                 Keep it
               </Button>
