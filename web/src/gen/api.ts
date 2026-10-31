@@ -209,6 +209,14 @@ export interface Passphrase {
   passphrase: Secret;
 }
 /**
+ * PassphraseChange is the body that sets the Vault's passphrase. Current is
+ * needed only when the Vault already has one.
+ */
+export interface PassphraseChange {
+  current?: Secret;
+  new: Secret;
+}
+/**
  * Health is every server's HEALTHZ answer for the active Context.
  */
 export interface Health {

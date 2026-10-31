@@ -66,6 +66,7 @@ func TestReadOnlyRefusesMutatingRoutes(t *testing.T) {
 	}
 	want(call("POST", "/api/vault", `{"passphrase":"pw"}`), 200, "create the Vault under Read-only")
 	want(call("POST", "/api/vault/unlock", `{"passphrase":"pw"}`), 200, "unlock the Vault under Read-only")
+	want(call("PUT", "/api/vault/passphrase", `{"current":"pw","new":"pw"}`), 200, "change the passphrase under Read-only")
 	want(call("POST", "/api/contexts", `{"name":"local","urls":"nats://127.0.0.1:1"}`), 200, "create a Context under Read-only")
 	want(call("POST", "/api/contexts", `{"name":"cli-local","urls":"nats://127.0.0.1:1","source":"cli"}`), 403, "write a CLI file under Read-only")
 	want(call("POST", "/api/contexts/cli/app/move-to-vault", `{}`), 200, "move into the Vault under Read-only")

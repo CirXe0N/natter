@@ -1,12 +1,15 @@
 package server_test
 
 import (
+	"bytes"
 	"io"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"filippo.io/age"
 	"github.com/zalando/go-keyring"
 
 	"github.com/CirXe0N/natter/internal/contexts"
@@ -162,4 +165,86 @@ func TestKeyringAPI(t *testing.T) {
 	if len(kr) != 0 {
 		t.Fatalf("keyring items left: %v", kr)
 	}
+}
+
+// A Vault unlocked by -vault-key gets a passphrase, which then changes only
+// with the current one. vault.age never changes.
+func TestPassphraseAPI(t *testing.T) {
+	ns, err := natstest.Start(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(ns.Shutdown)
+	root := t.TempDir()
+	dir := filepath.Join(root, "natter")
+	id, err := age.GenerateHybridIdentity()
+	if err != nil {
+		t.Fatal(err)
+	}
+	keyFile := filepath.Join(t.TempDir(), "vault.key")
+	if err := os.WriteFile(keyFile, []byte(id.String()+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	start := func() (*vault.Vault, func(method, target, body string) (int, string)) {
+		v := vault.Open(dir)
+		m := contexts.New(root, v)
+		t.Cleanup(m.Close)
+		h := server.New(server.Config{Token: token, Port: port, UI: ui, Contexts: m})
+		c := launch(t, h)
+		return v, func(method, target, body string) (int, string) {
+			w := do(h, method, target, func(r *http.Request) {
+				r.AddCookie(c)
+				r.Body = io.NopCloser(strings.NewReader(body))
+			})
+			return w.Code, w.Body.String()
+		}
+	}
+	type step struct {
+		method, target, body string
+		want                 int
+		in                   string
+	}
+	steps := func(name string, call func(method, target, body string) (int, string), steps []step) {
+		t.Helper()
+		for _, tc := range steps {
+			if code, body := call(tc.method, tc.target, tc.body); code != tc.want || !strings.Contains(body, tc.in) {
+				t.Fatalf("%s, %s %s %s: %d %s", name, tc.method, tc.target, tc.body, code, body)
+			}
+		}
+	}
+
+	v, call := start()
+	steps("no Vault", call, []step{
+		{"PUT", "/api/vault/passphrase", `{"new":"first"}`, http.StatusLocked, "locked"},
+	})
+	if err := v.UnlockKeyFile(keyFile); err != nil {
+		t.Fatal(err)
+	}
+	steps("key file", call, []step{
+		{"GET", "/api/vault", "", 200, `"hasPassphrase":false`},
+		{"POST", "/api/contexts", `{"name":"vaulted","urls":"` + ns.ClientURL() + `","user":"app","secretKind":"password","secret":"app"}`, 200, `"secret":"vault"`},
+	})
+	payload, err := os.ReadFile(filepath.Join(dir, "vault.age"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	steps("key file", call, []step{
+		{"PUT", "/api/vault/passphrase", `{`, 400, "invalid JSON"},
+		{"PUT", "/api/vault/passphrase", `{"new":""}`, 400, "empty"},
+		{"PUT", "/api/vault/passphrase", `{"new":"first"}`, 200, `"state":"unlocked","hasPassphrase":true`},
+		{"PUT", "/api/vault/passphrase", `{"new":"second"}`, 400, "empty"},
+		{"PUT", "/api/vault/passphrase", `{"current":"wrong","new":"second"}`, 400, "wrong passphrase"},
+		{"PUT", "/api/vault/passphrase", `{"current":"first","new":"second"}`, 200, `"hasPassphrase":true`},
+	})
+	if after, _ := os.ReadFile(filepath.Join(dir, "vault.age")); !bytes.Equal(payload, after) {
+		t.Fatal("setting the passphrase rewrote vault.age")
+	}
+
+	_, call = start() // a restart with no key file: only the passphrase unlocks
+	steps("restarted", call, []step{
+		{"PUT", "/api/vault/passphrase", `{"current":"second","new":"third"}`, http.StatusLocked, "locked"},
+		{"POST", "/api/vault/unlock", `{"passphrase":"first"}`, 400, "wrong passphrase"},
+		{"POST", "/api/vault/unlock", `{"passphrase":"second"}`, 200, `"state":"unlocked"`},
+		{"PUT", "/api/contexts/active", `{"source":"app","name":"vaulted"}`, 200, `"status":"connected"`},
+	})
 }

@@ -117,29 +117,38 @@ func (v *Vault) UnlockPassphrase(passphrase api.Secret) error {
 	if err != nil {
 		return err
 	}
+	id, err := unwrap(wrapped, passphrase)
+	if err != nil {
+		return err
+	}
+	return v.unlock(id)
+}
+
+// unwrap opens vault.key.age, the identity wrapped by passphrase.
+func unwrap(wrapped []byte, passphrase api.Secret) (*age.HybridIdentity, error) {
 	if passphrase == "" {
-		return ErrEmpty
+		return nil, ErrEmpty
 	}
 	sid, err := age.NewScryptIdentity(string(passphrase))
 	if err != nil {
-		return err
+		return nil, err
 	}
 	r, err := age.Decrypt(bytes.NewReader(wrapped), sid)
 	if errors.As(err, new(*age.NoIdentityMatchError)) {
-		return ErrWrongKey
+		return nil, ErrWrongKey
 	}
 	if err != nil {
-		return err
+		return nil, err
 	}
 	b, err := io.ReadAll(r)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	id, err := age.ParseHybridIdentity(strings.TrimSpace(string(b)))
 	if err != nil {
-		return fmt.Errorf("vault.key.age: %w", err)
+		return nil, fmt.Errorf("vault.key.age: %w", err)
 	}
-	return v.unlock(id)
+	return id, nil
 }
 
 // Create makes a new Vault with a fresh identity wrapped by passphrase, and
@@ -174,14 +183,15 @@ func (v *Vault) Create(passphrase api.Secret) error {
 	return nil
 }
 
-// SetPassphrase wraps the unlocked identity with a new passphrase. vault.age
-// is left as it is.
-func (v *Vault) SetPassphrase(passphrase api.Secret) error {
+// SetPassphrase wraps the unlocked identity with next, which also gives a
+// passphrase to a Vault that had only a key file or the keyring. If the Vault
+// already has a passphrase, current must open it. vault.age is left as it is.
+func (v *Vault) SetPassphrase(current, next api.Secret) error {
 	id := v.identity()
 	if id == nil {
 		return ErrLocked
 	}
-	wrapped, err := wrap(id, passphrase)
+	wrapped, err := wrap(id, next)
 	if err != nil {
 		return err
 	}
@@ -190,6 +200,16 @@ func (v *Vault) SetPassphrase(passphrase api.Secret) error {
 		return err
 	}
 	defer unlockFile()
+	old, err := os.ReadFile(v.path("vault.key.age"))
+	switch {
+	case errors.Is(err, os.ErrNotExist):
+	case err != nil:
+		return err
+	default:
+		if _, err := unwrap(old, current); err != nil {
+			return fmt.Errorf("the current passphrase: %w", err)
+		}
+	}
 	return atomicfile.Write(v.path("vault.key.age"), wrapped)
 }
 
