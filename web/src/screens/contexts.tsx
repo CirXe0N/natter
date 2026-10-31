@@ -1,12 +1,11 @@
 import { useState } from "react"
-import { useMutation, useQueryClient } from "@tanstack/react-query"
 
-import { api } from "@/api"
 import { Badge } from "@/components/badge"
 import { ScreenHeader } from "@/components/screen-header"
 import { Button } from "@/components/ui/button"
+import { Lock } from "lucide-react"
 import { Input } from "@/components/ui/input"
-import { CapabilityBadges, contextKeys, refKey, SecretBadge, useActivateContext, useActiveContext, useContexts } from "@/contexts"
+import { CapabilityBadges, refKey, SecretBadge, useActivateContext, useActiveContext, useContexts, useSetSettings } from "@/contexts"
 import type { Active, Context } from "@/gen/api"
 
 export function ContextsScreen() {
@@ -68,19 +67,36 @@ function ContextCard({ c, active }: { c: Context; active?: Active }) {
       )}
       {active?.status === "failed" && <p className="mt-3 text-xs text-destructive">Could not connect: {active.error}</p>}
       {activate.isError && <p role="alert" className="mt-3 text-xs text-destructive">{activate.error.message}</p>}
+      <ReadOnlyToggle c={c} />
       <MonitoringURL c={c} />
     </li>
   )
 }
 
+function ReadOnlyToggle({ c }: { c: Context }) {
+  const set = useSetSettings()
+  return (
+    <div className="mt-3 flex items-center gap-2 text-xs">
+      <Button
+        size="sm"
+        variant="outline"
+        aria-pressed={!!c.readOnly}
+        disabled={set.isPending}
+        title="While a Context is in Read-only mode, Natter refuses every change to the server and every send, requests included. Browsing still works."
+        onClick={() => set.mutate({ c, settings: { monitoringUrl: c.monitoringUrl, readOnly: !c.readOnly } })}
+      >
+        <Lock size={12} aria-hidden />
+        Read-only: {c.readOnly ? "on" : "off"}
+      </Button>
+      {set.isError && <span role="alert" className="text-destructive">{set.error.message}</span>}
+    </div>
+  )
+}
+
 // Natter keeps the Monitoring URL in its own directory: natscli Context files have no field for it.
 function MonitoringURL({ c }: { c: Context }) {
-  const qc = useQueryClient()
   const [value, setValue] = useState(c.monitoringUrl ?? "")
-  const save = useMutation({
-    mutationFn: () => api.setContextSettings(c, { monitoringUrl: value.trim() || undefined }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: contextKeys.all }),
-  })
+  const save = useSetSettings()
   const id = `monitoring-${refKey(c)}`
   return (
     <details className="mt-3 text-xs">
@@ -91,7 +107,7 @@ function MonitoringURL({ c }: { c: Context }) {
         className="mt-2 flex items-center gap-2"
         onSubmit={(e) => {
           e.preventDefault()
-          save.mutate()
+          save.mutate({ c, settings: { monitoringUrl: value.trim() || undefined, readOnly: c.readOnly } })
         }}
       >
         <label htmlFor={id} className="sr-only">

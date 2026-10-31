@@ -3,12 +3,12 @@
 import type { ReactNode } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
-import { ChevronDown, KeyRound, TriangleAlert } from "lucide-react"
+import { ChevronDown, KeyRound, Lock, TriangleAlert } from "lucide-react"
 
 import { api } from "@/api"
 import { Badge } from "@/components/badge"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import type { Active, Context, Ref, SecretStorage } from "@/gen/api"
+import type { Active, Context, Ref, SecretStorage, Settings } from "@/gen/api"
 
 export const contextKeys = { all: ["contexts"] as const, active: ["contexts", "active"] as const }
 
@@ -38,6 +38,39 @@ export function useActivateContext() {
     onSettled: () => qc.invalidateQueries({ predicate: (q) => q.queryKey[0] !== "contexts" || q.queryKey[1] !== "active" }),
     onError: () => qc.invalidateQueries({ queryKey: contextKeys.active }),
   })
+}
+
+// Natter's own per-Context settings. The backend replaces the whole object, so always send every field.
+export function useSetSettings() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ c, settings }: { c: Context; settings: Settings }) => api.setContextSettings(c, settings),
+    onSuccess: () => qc.invalidateQueries({ queryKey: contextKeys.all }),
+  })
+}
+
+// Why an action that changes the server is disabled, or undefined when it is allowed.
+// Disable the control (never hide it) and pass this as its title.
+export function useBlockedReason() {
+  const { data: active } = useActiveContext()
+  return active?.context?.readOnly ? "Read-only mode is on for this Context" : undefined
+}
+
+// The Read-only badge in the top bar. It is the unlock button, 28 px tall.
+function ReadOnlyBadge({ c }: { c: Context }) {
+  const set = useSetSettings()
+  return (
+    <button
+      type="button"
+      disabled={set.isPending}
+      title="Read-only mode: changes and sends are blocked. Click to turn it off."
+      onClick={() => set.mutate({ c, settings: { monitoringUrl: c.monitoringUrl, readOnly: false } })}
+      className="inline-flex h-7 items-center gap-1 whitespace-nowrap rounded-md border border-warning/25 bg-warning/10 px-2 text-[11px] font-medium text-warning"
+    >
+      <Lock size={11} aria-hidden />
+      Read-only
+    </button>
+  )
 }
 
 const secretLabel: Record<SecretStorage, string> = {
@@ -104,6 +137,7 @@ export function ConnectionStatus() {
             Connected <span className="font-mono text-fg-faint">{active.server?.replace(/^\w+:\/\//, "")}</span>
           </Status>
           <CapabilityBadges active={active} />
+          {active.context?.readOnly && <ReadOnlyBadge c={active.context} />}
         </span>
       )
   }

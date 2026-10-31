@@ -14,8 +14,8 @@ func init() {
 	routes = append(routes,
 		route{pattern: "GET /api/contexts", handle: (*server).listContexts},
 		route{pattern: "GET /api/contexts/active", handle: (*server).activeContext},
-		route{pattern: "PUT /api/contexts/active", handle: (*server).activateContext},
-		route{pattern: "PUT /api/contexts/{source}/{name}/settings", handle: (*server).setContextSettings},
+		route{pattern: "PUT /api/contexts/active", handle: (*server).activateContext, allowReadOnly: true},
+		route{pattern: "PUT /api/contexts/{source}/{name}/settings", handle: (*server).setContextSettings, allowReadOnly: true},
 	)
 }
 
