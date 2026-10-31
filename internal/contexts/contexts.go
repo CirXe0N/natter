@@ -26,6 +26,7 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/nats-io/jsm.go"
 	"github.com/nats-io/jsm.go/natscontext"
 	"github.com/nats-io/nats.go"
 
@@ -65,6 +66,9 @@ type Conn struct {
 	Err     error
 	NC      *nats.Conn
 	Caps    api.Capabilities
+	// JSM is set when Caps.JetStream is. It uses the Context's JetStream
+	// domain and API prefix.
+	JSM *jsm.Manager
 }
 
 // DefaultConfigRoot is where natscli keeps its Contexts: $XDG_CONFIG_HOME,
@@ -491,7 +495,12 @@ func (m *Manager) connect(ctx context.Context, c api.Context) *Conn {
 	if err != nil {
 		return failed(err)
 	}
-	return &Conn{Context: c, Status: api.ConnStatusConnected, NC: nc, Caps: detect(ctx, nc, nctx, c.MonitoringURL)}
+	conn := &Conn{Context: c, Status: api.ConnStatusConnected, NC: nc, Caps: detect(ctx, nc, nctx, c.MonitoringURL)}
+	if conn.Caps.JetStream {
+		jopts, _ := nctx.JSMOptions() // never fails; detect already built a Manager from the same options
+		conn.JSM, _ = jsm.New(nc, jopts...)
+	}
+	return conn
 }
 
 // SetSettings stores Natter's own fields for ref. If ref is active and its

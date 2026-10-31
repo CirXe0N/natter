@@ -26,7 +26,7 @@ function useCommands(): PaletteCommand[] {
   const title = (to: (typeof screens)[number]) => routesByPath[to].options.staticData?.title ?? to
   return [
     ...screens.map((to) => ({ id: `go-${to}`, group: "Go to", label: title(to), run: go(to) })),
-    ...(names.data?.streams ?? []).map((n) => ({ id: `stream-${n}`, group: "Streams", label: `Open stream ${n}`, cli: `nats stream info ${n}`, run: go("/streams") })),
+    ...(names.data?.streams ?? []).map((n) => ({ id: `stream-${n}`, group: "Streams", label: `Open stream ${n}`, cli: `nats stream info ${n}`, run: () => void navigate({ to: "/streams/$stream", params: { stream: n } }) })),
     ...(names.data?.buckets ?? []).map((n) => ({ id: `kv-${n}`, group: "Key-Value", label: `Open bucket ${n}`, cli: `nats kv status ${n}`, run: go("/kv") })),
     ...(contexts.data ?? []).map((c) => ({
       id: `ctx-${refKey(c)}`,
