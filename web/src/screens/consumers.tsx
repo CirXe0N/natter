@@ -227,7 +227,7 @@ export function ConsumerDetail() {
         )}
         <span className="flex-1" />
         <BlockedButton reason={blocked} variant="destructive" onClick={() => setConfirming(true)}>
-          Delete…
+          Delete consumer…
         </BlockedButton>
         {failure && <p className="w-full text-xs text-destructive">{failure.message}</p>}
       </section>
