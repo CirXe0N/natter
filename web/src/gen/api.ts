@@ -248,6 +248,63 @@ export interface HealthError {
   consumer?: string;
   error: string;
 }
+/**
+ * ConnectionState picks open or recently closed Connections.
+ */
+export const ConnectionStateOpen = "open";
+export const ConnectionStateClosed = "closed";
+export type ConnectionState = typeof ConnectionStateOpen | typeof ConnectionStateClosed;
+/**
+ * Connections lists the Connections of every server of the active Context.
+ */
+export interface Connections {
+  source: StatsSource;
+  /**
+   * Problem says, for the user, what access is missing or why listing failed.
+   */
+  problem?: string;
+  connections: Connection[];
+  /**
+   * Truncated is true when the servers hold more Connections than Natter lists.
+   */
+  truncated?: boolean;
+}
+/**
+ * Connection is one client connected to a server, from connz. A closed one has
+ * Stop and Reason.
+ */
+export interface Connection {
+  server: string; // server ID, what Kick addresses
+  serverName: string;
+  cid: number /* uint64 */;
+  name?: string;
+  account?: string;
+  user?: string;
+  ip: string;
+  lang?: string;
+  version?: string;
+  start: string;
+  lastActivity: string;
+  stop?: string;
+  reason?: string;
+  /**
+   * RTTMs is the round-trip time in milliseconds; 0 when the server has none.
+   */
+  rttMs: number /* float64 */;
+  pendingBytes: number /* int */;
+  inMsgs: number /* int64 */;
+  outMsgs: number /* int64 */;
+  inBytes: number /* int64 */;
+  outBytes: number /* int64 */;
+  subs: string[];
+}
+/**
+ * KickRequest names one Connection by its server and client ID.
+ */
+export interface KickRequest {
+  server: string;
+  cid: number /* uint64 */;
+}
 
 //////////
 // source: live.go

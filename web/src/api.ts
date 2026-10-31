@@ -2,6 +2,7 @@
 // Add one function per endpoint to `api`; screens call them from TanStack Query.
 import type { Active, Context, Health, Info, JetStreamNames, NewContext, PassphraseChange, Ref, Settings, Vault } from "@/gen/api"
 import type { StreamDetail, StreamList, StreamSubjects } from "@/gen/api"
+import type { Connections, ConnectionState, KickRequest } from "@/gen/api"
 
 async function request<T>(method: string, path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
   const res = await fetch(path, {
@@ -31,6 +32,8 @@ export const api = {
   createVault: (passphrase: string) => request<Vault>("POST", "/api/vault", { passphrase }),
   unlockVault: (passphrase: string) => request<Vault>("POST", "/api/vault/unlock", { passphrase }),
   setPassphrase: (change: PassphraseChange) => request<Vault>("PUT", "/api/vault/passphrase", change),
+  connections: (state: ConnectionState, signal?: AbortSignal) => request<Connections>("GET", `/api/connections?state=${state}`, undefined, signal),
+  kick: (k: KickRequest) => request<object>("POST", "/api/connections/kick", k),
   setKeyring: (on: boolean) => request<Vault>(on ? "POST" : "DELETE", "/api/vault/keyring"),
   streams: (subject: string, signal?: AbortSignal) => request<StreamList>("GET", `/api/streams?${new URLSearchParams({ subject })}`, undefined, signal),
   stream: (name: string, signal?: AbortSignal) => request<StreamDetail>("GET", `/api/streams/${encodeURIComponent(name)}`, undefined, signal),
