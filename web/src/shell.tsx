@@ -7,6 +7,7 @@ import { api } from "@/api"
 import { ConnectionStatus, ContextSwitcher } from "@/contexts"
 import { CommandPalette } from "@/command-palette"
 import { DensityToggle } from "@/density"
+import { LiveRegion, PauseLive } from "@/live"
 
 type NavItem = { to: NonNullable<LinkProps["to"]>; Icon: ComponentType<{ size?: number }> }
 const nav: { group: string; items: NavItem[] }[] = [
@@ -30,6 +31,7 @@ export function Shell() {
         <SideNav />
         <Version />
       </aside>
+      <LiveRegion />
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex h-12 shrink-0 items-center gap-4 border-b bg-card/40 px-6">
           <nav aria-label="Breadcrumb" className="min-w-0 flex-1 text-xs">
@@ -39,6 +41,7 @@ export function Shell() {
           </nav>
           <CommandPalette />
           <ConnectionStatus />
+          <PauseLive />
           <DensityToggle />
         </header>
         <main className="min-h-0 flex-1 overflow-auto">

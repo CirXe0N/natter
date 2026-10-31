@@ -170,3 +170,104 @@ export interface Vault {
 export interface Passphrase {
   passphrase: Secret;
 }
+
+//////////
+// source: live.go
+
+/**
+ * Topic names one live feed on the WebSocket at /ws.
+ */
+export type Topic = string;
+export const TopicOverview: Topic = "overview";
+/**
+ * ClientOp is what the browser asks of the WebSocket.
+ */
+export const ClientOpSub = "sub";
+export const ClientOpUnsub = "unsub";
+export type ClientOp = typeof ClientOpSub | typeof ClientOpUnsub;
+/**
+ * ClientFrame is one message from the browser on /ws.
+ */
+export interface ClientFrame {
+  op: ClientOp;
+  topic: Topic;
+}
+/**
+ * ServerFrame is one message to the browser on /ws. Error or the payload
+ * field for Topic is set.
+ */
+export interface ServerFrame {
+  topic: Topic;
+  /**
+   * Error says why a subscribe was refused.
+   */
+  error?: string;
+  overview?: Overview;
+}
+/**
+ * OverviewSource says where the Overview's numbers come from.
+ */
+export const OverviewSourceSystem = "system"; // $SYS STATSZ: every server
+export const OverviewSourceMonitoring = "monitoring"; // the Monitoring URL: the one server behind it
+export const OverviewSourceNone = "none"; // neither; Problem says what is missing
+export type OverviewSource = typeof OverviewSourceSystem | typeof OverviewSourceMonitoring | typeof OverviewSourceNone;
+/**
+ * Series names one Overview KPI series, summed over all servers.
+ */
+export const SeriesConnections = "connections";
+export const SeriesMsgsIn = "msgsIn"; // messages per second received from clients
+export const SeriesMsgsOut = "msgsOut"; // messages per second sent to clients
+export const SeriesBytesIn = "bytesIn"; // bytes per second received from clients
+export const SeriesBytesOut = "bytesOut"; // bytes per second sent to clients
+export const SeriesSlowConsumers = "slowConsumers";
+export type Series = typeof SeriesConnections | typeof SeriesMsgsIn | typeof SeriesMsgsOut | typeof SeriesBytesIn | typeof SeriesBytesOut | typeof SeriesSlowConsumers;
+/**
+ * Overview answers "is this system healthy right now?". The backend sends one
+ * each second.
+ */
+export interface Overview {
+  source: OverviewSource;
+  /**
+   * Problem says, for the user, what access is missing or why sampling failed.
+   */
+  problem?: string;
+  /**
+   * Time is the unix second of the newest point.
+   */
+  time: number /* int64 */;
+  points: { [S in Series]: number | null };
+  /**
+   * History is the last 3,600 points of each series, oldest first, ending at
+   * Time. Only the first frame after a subscribe carries it.
+   */
+  history?: { [S in Series]: (number | null)[] };
+  servers: ServerSummary[];
+  jetStream?: JetStreamUsage;
+}
+/**
+ * ServerSummary is one row of the Overview's servers table.
+ */
+export interface ServerSummary {
+  id: string;
+  name: string;
+  version: string;
+  cluster?: string;
+  start: string;
+  connections: number /* int */;
+  cpu: number /* float64 */;
+  mem: number /* int64 */;
+}
+/**
+ * JetStreamUsage is JetStream storage used against its limits, in bytes,
+ * summed over the servers that run JetStream.
+ */
+export interface JetStreamUsage {
+  store: number /* uint64 */;
+  maxStore: number /* int64 */;
+  memory: number /* uint64 */;
+  maxMemory: number /* int64 */;
+}
+/**
+ * Num is one point of a series. NaN marks a missing point and is null in JSON.
+ */
+export type Num = number /* float32 */;
