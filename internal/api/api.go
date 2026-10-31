@@ -192,3 +192,30 @@ type Vault struct {
 type Passphrase struct {
 	Passphrase Secret `json:"passphrase"`
 }
+
+// Health is every server's HEALTHZ answer for the active Context.
+type Health struct {
+	Source OverviewSource `json:"source"`
+	// Problem says, for the user, what access is missing or why the check failed.
+	Problem string         `json:"problem,omitempty"`
+	Servers []ServerHealth `json:"servers"`
+}
+
+// ServerHealth is one server's HEALTHZ answer. Errors lists the failing
+// accounts, streams and consumers when it is not healthy.
+type ServerHealth struct {
+	ID      string        `json:"id"`
+	Name    string        `json:"name"`
+	Healthy bool          `json:"healthy"`
+	Errors  []HealthError `json:"errors"`
+}
+
+// HealthError is one failing asset. Type is the server's name for the kind of
+// failure (CONNECTION, JETSTREAM, ACCOUNT, STREAM, CONSUMER, ...).
+type HealthError struct {
+	Type     string `json:"type"`
+	Account  string `json:"account,omitempty"`
+	Stream   string `json:"stream,omitempty"`
+	Consumer string `json:"consumer,omitempty"`
+	Error    string `json:"error"`
+}

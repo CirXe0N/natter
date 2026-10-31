@@ -205,6 +205,38 @@ export interface Vault {
 export interface Passphrase {
   passphrase: Secret;
 }
+/**
+ * Health is every server's HEALTHZ answer for the active Context.
+ */
+export interface Health {
+  source: OverviewSource;
+  /**
+   * Problem says, for the user, what access is missing or why the check failed.
+   */
+  problem?: string;
+  servers: ServerHealth[];
+}
+/**
+ * ServerHealth is one server's HEALTHZ answer. Errors lists the failing
+ * accounts, streams and consumers when it is not healthy.
+ */
+export interface ServerHealth {
+  id: string;
+  name: string;
+  healthy: boolean;
+  errors: HealthError[];
+}
+/**
+ * HealthError is one failing asset. Type is the server's name for the kind of
+ * failure (CONNECTION, JETSTREAM, ACCOUNT, STREAM, CONSUMER, ...).
+ */
+export interface HealthError {
+  type: string;
+  account?: string;
+  stream?: string;
+  consumer?: string;
+  error: string;
+}
 
 //////////
 // source: live.go

@@ -1,7 +1,7 @@
 import { useEffect, type ComponentType } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { Link, Outlet, useMatches, useRouter, type LinkProps } from "@tanstack/react-router"
-import { Activity, Boxes, Cable, Database, KeyRound, Layers, Radio, Send } from "lucide-react"
+import { Activity, Boxes, Cable, Database, HeartPulse, KeyRound, Layers, Radio, Send } from "lucide-react"
 
 import { api } from "@/api"
 import { ConnectionStatus, ContextSwitcher } from "@/contexts"
@@ -11,7 +11,7 @@ import { LiveRegion, PauseLive } from "@/live"
 
 type NavItem = { to: NonNullable<LinkProps["to"]>; Icon: ComponentType<{ size?: number }> }
 const nav: { group: string; items: NavItem[] }[] = [
-  { group: "", items: [{ to: "/overview", Icon: Activity }] },
+  { group: "", items: [{ to: "/overview", Icon: Activity }, { to: "/health", Icon: HeartPulse }] },
   { group: "Core", items: [{ to: "/connections", Icon: Cable }, { to: "/publish", Icon: Send }, { to: "/tail", Icon: Radio }] },
   { group: "JetStream", items: [{ to: "/streams", Icon: Layers }, { to: "/consumers", Icon: Boxes }, { to: "/messages", Icon: Database }, { to: "/kv", Icon: KeyRound }] },
 ]
