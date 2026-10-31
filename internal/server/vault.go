@@ -13,8 +13,8 @@ func init() {
 		route{pattern: "POST /api/vault/unlock", handle: (*server).unlockVault, allowReadOnly: true},
 		route{pattern: "POST /api/vault/keyring", handle: (*server).keyringOn, allowReadOnly: true},
 		route{pattern: "DELETE /api/vault/keyring", handle: (*server).keyringOff, allowReadOnly: true},
+		// These write only Natter's own files; createContext refuses a CLI Context under Read-only itself. Writing or removing a CLI file is natscli's state.
 		route{pattern: "POST /api/contexts", handle: (*server).createContext, allowReadOnly: true},
-		// Both write only Natter's own files. Removing a CLI file is natscli's state, so it stays refused in Read-only mode.
 		route{pattern: "POST /api/contexts/{source}/{name}/move-to-vault", handle: (*server).moveIntoVault, allowReadOnly: true},
 		route{pattern: "POST /api/contexts/{source}/{name}/remove", handle: (*server).removeContext},
 	)
@@ -71,6 +71,10 @@ func (s *server) setKeyring(w http.ResponseWriter, r *http.Request, on bool) {
 func (s *server) createContext(w http.ResponseWriter, r *http.Request) {
 	var n api.NewContext
 	if !readJSON(w, r, &n) {
+		return
+	}
+	if n.Source == api.SourceCLI && s.readOnly() {
+		refuseReadOnly(w)
 		return
 	}
 	c, err := s.Contexts.Create(r.Context(), n)

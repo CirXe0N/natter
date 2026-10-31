@@ -47,8 +47,9 @@ type route struct {
 	handle  func(*server, http.ResponseWriter, *http.Request)
 	// allowReadOnly lets a non-GET route run under Read-only mode. Leave it
 	// false for anything that changes server state or sends a message: the
-	// default is refusal, so a new route cannot forget the check. Only Natter's
-	// own local settings and the Context switch set it.
+	// default is refusal, so a new route cannot forget the check. Only routes
+	// that write Natter's own files and the Context switch set it; one that can
+	// also write natscli's files refuses that case itself with refuseReadOnly.
 	allowReadOnly bool
 }
 
@@ -84,7 +85,7 @@ func New(c Config) http.Handler {
 	for _, rt := range routes {
 		mux.HandleFunc(rt.pattern, func(w http.ResponseWriter, r *http.Request) {
 			if r.Method != http.MethodGet && r.Method != http.MethodHead && !rt.allowReadOnly && s.readOnly() {
-				http.Error(w, "Read-only mode is on for this Context. Turn it off on the Contexts screen to make changes.", http.StatusForbidden)
+				refuseReadOnly(w)
 				return
 			}
 			rt.handle(s, w, r)
@@ -92,6 +93,10 @@ func New(c Config) http.Handler {
 	}
 
 	return s.checkHost(s.checkSession(s.checkOrigin(mux)))
+}
+
+func refuseReadOnly(w http.ResponseWriter) {
+	http.Error(w, "Read-only mode is on for this Context. Turn it off on the Contexts screen to make changes.", http.StatusForbidden)
 }
 
 // readOnly reports whether the active Context is locked in Read-only mode.
