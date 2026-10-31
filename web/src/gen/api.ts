@@ -408,6 +408,52 @@ export interface JetStreamUsage {
 export type Num = number /* float32 */;
 
 //////////
+// source: messages.go
+
+/**
+ * MsgKind is what a previewed payload holds.
+ */
+export const MsgKindJSON = "json";
+export const MsgKindText = "text";
+export const MsgKindBinary = "binary";
+export type MsgKind = typeof MsgKindJSON | typeof MsgKindText | typeof MsgKindBinary;
+/**
+ * MsgMeta is one row of the message browser. Size is the payload size from
+ * Nats-Msg-Size, and Headers counts the message's own headers. Only a small
+ * payload is fetched for a Preview, so Kind is empty for a large one.
+ */
+export interface MsgMeta {
+  seq: number /* uint64 */;
+  subject: string;
+  time: string;
+  size: number /* int */;
+  headers: number /* int */;
+  preview?: string;
+  kind?: MsgKind;
+}
+/**
+ * MessagePageRequest asks a view's consumer for the next page. A request that
+ * does not continue where the last page ended (another Seq, a Time, another
+ * Filter) starts a new consumer there. Seq 0 and no Time start at the first
+ * message.
+ */
+export interface MessagePageRequest {
+  view: string;
+  filter?: string;
+  seq?: number /* uint64 */;
+  time?: string;
+}
+/**
+ * MessagePage is up to 100 rows in sequence order. Pending is how many
+ * matching messages come after the last row, or after the start when there
+ * are no rows.
+ */
+export interface MessagePage {
+  messages: MsgMeta[];
+  pending: number /* uint64 */;
+}
+
+//////////
 // source: streams.go
 
 /**

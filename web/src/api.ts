@@ -12,6 +12,7 @@ export class ApiError extends Error {
   }
 }
 import type { ConsumerDetail, ConsumerList, ConsumerSummary } from "@/gen/api"
+import type { MessagePage, MessagePageRequest } from "@/gen/api"
 
 async function request<T>(method: string, path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
   const res = await fetch(path, {
@@ -67,4 +68,8 @@ export const api = {
   resumeConsumer: (stream: string, name: string) =>
     request<ConsumerSummary>("DELETE", `/api/streams/${encodeURIComponent(stream)}/consumers/${encodeURIComponent(name)}/pause`),
   deleteConsumer: (stream: string, name: string) => request<object>("DELETE", `/api/streams/${encodeURIComponent(stream)}/consumers/${encodeURIComponent(name)}`),
+  browse: (stream: string, req: MessagePageRequest, signal?: AbortSignal) =>
+    request<MessagePage>("POST", `/api/streams/${encodeURIComponent(stream)}/messages`, req, signal),
+  // keepalive so it still goes out while the page unloads
+  closeBrowsing: (view: string) => void fetch(`/api/browsing/${encodeURIComponent(view)}`, { method: "DELETE", keepalive: true }),
 }

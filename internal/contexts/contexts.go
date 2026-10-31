@@ -29,6 +29,7 @@ import (
 	"github.com/nats-io/jsm.go"
 	"github.com/nats-io/jsm.go/natscontext"
 	"github.com/nats-io/nats.go"
+	"github.com/nats-io/nats.go/jetstream"
 
 	"github.com/CirXe0N/natter/internal/api"
 	"github.com/CirXe0N/natter/internal/atomicfile"
@@ -69,6 +70,9 @@ type Conn struct {
 	// JSM is set when Caps.JetStream is. It uses the Context's JetStream
 	// domain and API prefix.
 	JSM *jsm.Manager
+	// JS is nats.go's JetStream client on the same domain or API prefix, set
+	// with JSM. Browsing uses it for ordered consumers.
+	JS jetstream.JetStream
 }
 
 // DefaultConfigRoot is where natscli keeps its Contexts: $XDG_CONFIG_HOME,
@@ -499,6 +503,14 @@ func (m *Manager) connect(ctx context.Context, c api.Context) *Conn {
 	if conn.Caps.JetStream {
 		jopts, _ := nctx.JSMOptions() // never fails; detect already built a Manager from the same options
 		conn.JSM, _ = jsm.New(nc, jopts...)
+		switch {
+		case nctx.JSDomain() != "":
+			conn.JS, _ = jetstream.NewWithDomain(nc, nctx.JSDomain())
+		case nctx.JSAPIPrefix() != "":
+			conn.JS, _ = jetstream.NewWithAPIPrefix(nc, nctx.JSAPIPrefix())
+		default:
+			conn.JS, _ = jetstream.New(nc)
+		}
 	}
 	return conn
 }

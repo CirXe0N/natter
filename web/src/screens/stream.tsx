@@ -20,6 +20,7 @@ const tabs = [
   { to: "/streams/$stream", label: "Overview", exact: true },
   { to: "/streams/$stream/config", label: "Config", exact: false },
   { to: "/streams/$stream/consumers", label: "Consumers", exact: false },
+  { to: "/streams/$stream/messages", label: "Messages", exact: false },
 ] as const
 
 // useStream is the detail every tab shares, fetched once per stream.

@@ -61,6 +61,7 @@ type server struct {
 	allowed  map[string]bool
 	sessions sync.Map // session id -> struct{}
 	hub      *live.Hub
+	views    sync.Map // Browsing view id -> *view
 }
 
 // New returns the whole HTTP handler. Requests pass, in order, a Host
