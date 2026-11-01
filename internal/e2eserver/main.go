@@ -63,6 +63,9 @@ func main() {
 	if err := seedBlobs(ns.ClientURL()); err != nil {
 		log.Fatal(err)
 	}
+	if err := seedJobs(ns.ClientURL()); err != nil {
+		log.Fatal(err)
+	}
 	// A client the Connections spec can find and kick. nats.go reconnects it, so a rerun finds it again.
 	victim, err := nats.Connect(ns.ClientURL(), nats.UserInfo("app", "app"), nats.Name("orders-service"))
 	if err != nil {
@@ -263,4 +266,29 @@ func seedBlobs(url string) error {
 		}
 	}
 	return nil
+}
+
+// seedJobs makes JOBS, a WorkQueue stream the message table lists with Direct
+// Get: 250 messages with 120 deleted.
+func seedJobs(url string) error {
+	nc, err := nats.Connect(url, nats.UserInfo("app", "app"))
+	if err != nil {
+		return err
+	}
+	defer nc.Close()
+	js, err := jetstream.New(nc)
+	if err != nil {
+		return err
+	}
+	ctx := context.Background()
+	st, err := js.CreateStream(ctx, jetstream.StreamConfig{Name: "JOBS", Subjects: []string{"jobs.>"}, Retention: jetstream.WorkQueuePolicy, AllowDirect: true})
+	if err != nil {
+		return err
+	}
+	for i := 1; i <= 250; i++ {
+		if _, err := js.Publish(ctx, "jobs.new", fmt.Appendf(nil, `{"job":%d}`, i)); err != nil {
+			return err
+		}
+	}
+	return st.DeleteMsg(ctx, 120)
 }

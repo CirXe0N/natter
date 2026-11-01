@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/nats-io/jsm.go"
+	jsmapi "github.com/nats-io/jsm.go/api"
 	natsserver "github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
@@ -22,8 +23,9 @@ import (
 )
 
 // Browsing (ADR-0003): each open message table is a view that holds one
-// ordered, headers_only consumer. Both routes run under Read-only mode, the
-// exception the glossary names for Browsing.
+// ordered, headers_only consumer, except on WorkQueue and Interest streams,
+// which are read with Direct Get (directPage). Both routes run under Read-only
+// mode, the exception the glossary names for Browsing.
 func init() {
 	routes = append(routes,
 		route{pattern: "POST /api/streams/{name}/messages", handle: (*server).browseMessages, allowReadOnly: true},
@@ -109,6 +111,8 @@ func (s *server) browseMessages(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusNotFound)
 		case errors.As(err, &apiErr) && apiErr.Code == http.StatusBadRequest:
 			http.Error(w, apiErr.Description, http.StatusBadRequest)
+		case errors.Is(err, errNoDirect):
+			http.Error(w, err.Error(), http.StatusBadRequest)
 		default:
 			writeError(w, err)
 		}
@@ -136,7 +140,17 @@ func (s *server) closeBrowsing(w http.ResponseWriter, r *http.Request) {
 func (v *view) page(ctx context.Context, a *contexts.Conn, name string, req api.MessagePageRequest) (api.MessagePage, error) {
 	if v.cons == nil || v.js != a.JS || v.stream.CachedInfo().Config.Name != name || v.filter != req.Filter || req.Time != nil || req.Seq != v.next {
 		v.shut()
-		if err := v.open(ctx, a.JS, name, req); err != nil {
+		st, err := a.JS.Stream(ctx, name)
+		if err != nil {
+			return api.MessagePage{}, err
+		}
+		// A WorkQueue stream refuses an AckNone consumer, and on an Interest
+		// stream one holds messages until it reads them, then removes them
+		// (TestBrowsingConsumerOnInterest). Both are listed with Direct Get.
+		if st.CachedInfo().Config.Retention != jetstream.LimitsPolicy {
+			return directPage(ctx, a, name, req)
+		}
+		if err := v.open(ctx, a.JS, st, req); err != nil {
 			return api.MessagePage{}, err
 		}
 	}
@@ -167,11 +181,7 @@ func (v *view) page(ctx context.Context, a *contexts.Conn, name string, req api.
 	return page, nil
 }
 
-func (v *view) open(ctx context.Context, js jetstream.JetStream, name string, req api.MessagePageRequest) error {
-	st, err := js.Stream(ctx, name)
-	if err != nil {
-		return err
-	}
+func (v *view) open(ctx context.Context, js jetstream.JetStream, st jetstream.Stream, req api.MessagePageRequest) error {
 	threshold := browseIdle
 	if limit := st.CachedInfo().Config.ConsumerLimits.InactiveThreshold; limit > 0 {
 		threshold = min(threshold, limit)
@@ -206,6 +216,66 @@ func (v *view) open(ctx context.Context, js jetstream.JetStream, name string, re
 	v.js, v.stream, v.filter, v.cons, v.msgs = js, st, req.Filter, cons, msgs
 	v.next, v.pending = req.Seq, cons.CachedInfo().NumPending
 	return nil
+}
+
+// directMaxBytes caps the payload bytes of a Direct Get page. The server
+// still sends one message of any size.
+const directMaxBytes = 256 << 10
+
+var errNoDirect = errors.New("Browsing a WorkQueue or Interest stream needs a direct get, which leaves its messages in place")
+
+// directPage lists up to 100 rows with one batched Direct Get, which reads
+// the stream without a consumer but transfers each payload.
+func directPage(ctx context.Context, a *contexts.Conn, name string, req api.MessagePageRequest) (api.MessagePage, error) {
+	// shortcut: jsm.go v0.5.1's DirectGet sends to $JS.API.DIRECT.GET.<stream> whatever the Manager's domain or prefix; send the request ourselves if such Contexts need it.
+	if o := a.JS.Options(); o.APIPrefix != "" || o.Domain != "" {
+		return api.MessagePage{}, fmt.Errorf("%w. Natter cannot send one over a JetStream domain or API prefix yet.", errNoDirect)
+	}
+	st, err := a.JSM.LoadStream(name)
+	if err != nil {
+		return api.MessagePage{}, err
+	}
+	if !st.DirectAllowed() {
+		return api.MessagePage{}, fmt.Errorf("%w. Turn on Allow direct get in %s's config to browse it.", errNoDirect, name)
+	}
+	get := jsmapi.JSApiMsgGetRequest{Seq: max(req.Seq, 1), NextFor: req.Filter, Batch: pageSize, MaxBytes: directMaxBytes}
+	if req.Time != nil {
+		get.Seq, get.StartTime = 0, req.Time
+	}
+	rows := []api.MsgMeta{}
+	pending, _, _, err := st.DirectGet(ctx, get, func(m *nats.Msg) {
+		h := popAdded(m.Header, jetstream.StreamHeader, jetstream.SubjectHeader, jetstream.SequenceHeader, jetstream.TimeStampHeaer, "Nats-Num-Pending", "Nats-Last-Sequence")
+		seq, _ := strconv.ParseUint(h[2], 10, 64)
+		t, _ := time.Parse(time.RFC3339Nano, h[3])
+		row := api.MsgMeta{Seq: seq, Subject: h[1], Time: t, Size: len(m.Data), Headers: len(m.Header)}
+		if row.Size <= previewMax {
+			row.Kind, row.Preview = classify(m.Data)
+		}
+		rows = append(rows, row)
+	})
+	if err != nil && err.Error() != "no messages found matching request" { // jsm.go's error for the 404 of an empty batch
+		return api.MessagePage{}, err
+	}
+	return api.MessagePage{Messages: rows, Pending: pending, Direct: true}, nil
+}
+
+// popAdded removes the value a Direct Get appended to each key, which the
+// message's own headers may hold too, and returns those values in order.
+func popAdded(h nats.Header, keys ...string) []string {
+	vals := make([]string, len(keys))
+	for i, k := range keys {
+		v := h[k]
+		if len(v) == 0 {
+			continue
+		}
+		vals[i] = v[len(v)-1]
+		if len(v) > 1 {
+			h[k] = v[:len(v)-1]
+		} else {
+			delete(h, k)
+		}
+	}
+	return vals
 }
 
 // shut stops the iterator and deletes the consumer, because Stop leaves it on

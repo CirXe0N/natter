@@ -44,14 +44,7 @@ func fetchMsg(ctx context.Context, a *contexts.Conn, name string, seq uint64) (*
 	direct := st.CachedInfo().Config.AllowDirect
 	m, err := st.GetMsg(ctx, seq)
 	if err == nil && direct {
-		// A Direct Get appends these to the message's own headers, which may hold the same keys.
-		for _, k := range []string{jetstream.StreamHeader, jetstream.SubjectHeader, jetstream.SequenceHeader, jetstream.TimeStampHeaer} {
-			if v := m.Header[k]; len(v) > 1 {
-				m.Header[k] = v[:len(v)-1]
-			} else {
-				delete(m.Header, k)
-			}
-		}
+		popAdded(m.Header, jetstream.StreamHeader, jetstream.SubjectHeader, jetstream.SequenceHeader, jetstream.TimeStampHeaer)
 	}
 	if !errors.Is(err, jetstream.ErrMsgNotFound) || !direct {
 		return m, err
