@@ -92,7 +92,7 @@ func (s *server) consumerDetail(w http.ResponseWriter, r *http.Request) {
 // pauseConsumer pauses until now + seconds; resume is the matching DELETE.
 func (s *server) pauseConsumer(w http.ResponseWriter, r *http.Request) {
 	var req api.ConsumerPause
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Seconds <= 0 {
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxBody)).Decode(&req); err != nil || req.Seconds <= 0 {
 		http.Error(w, "Send {\"seconds\": n} with n above 0.", http.StatusBadRequest)
 		return
 	}

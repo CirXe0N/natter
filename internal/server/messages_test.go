@@ -305,4 +305,32 @@ func TestBrowsing(t *testing.T) {
 			t.Errorf("%s %s: %d %s, want %d", tc.stream, tc.body, code, body, tc.want)
 		}
 	}
+
+	// Messages counted as pending but gone before they are read end the browse, not fail it.
+	nextWait = 300 * time.Millisecond
+	t.Cleanup(func() { nextWait = 10 * time.Second })
+	purged, err := js.CreateStream(ctx, jetstream.StreamConfig{Name: "GONE", Subjects: []string{"gone.>"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for range 1000 {
+		if _, err := js.Publish(ctx, "gone.x", []byte("x")); err != nil {
+			t.Fatal(err)
+		}
+	}
+	p := page("GONE", api.MessagePageRequest{View: "view-gone"})
+	if err := purged.Purge(ctx); err != nil {
+		t.Fatal(err)
+	}
+	read := len(p.Messages)
+	for p.Pending > 0 {
+		p = page("GONE", api.MessagePageRequest{View: "view-gone", Seq: p.Messages[len(p.Messages)-1].Seq + 1})
+		read += len(p.Messages)
+		if len(p.Messages) == 0 {
+			break
+		}
+	}
+	if p.Pending != 0 || read >= 1000 {
+		t.Fatalf("after a purge: read %d rows, pending %d, want the browse to end early", read, p.Pending)
+	}
 }

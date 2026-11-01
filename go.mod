@@ -15,6 +15,7 @@ require (
 	github.com/nats-io/jsm.go v0.5.1
 	github.com/nats-io/nats-server/v2 v2.15.2
 	github.com/nats-io/nats.go v1.55.0
+	github.com/nats-io/nkeys v0.4.16
 	github.com/zalando/go-keyring v0.2.8
 	golang.org/x/sys v0.49.0
 )
@@ -32,7 +33,6 @@ require (
 	github.com/klauspost/compress v1.20.3 // indirect
 	github.com/minio/highwayhash v1.0.4 // indirect
 	github.com/nats-io/jwt/v2 v2.8.2 // indirect
-	github.com/nats-io/nkeys v0.4.16 // indirect
 	github.com/nats-io/nuid v1.0.1 // indirect
 	github.com/spf13/cobra v1.3.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect

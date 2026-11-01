@@ -44,6 +44,9 @@ const (
 // shorten it.
 var browseIdle = 30 * time.Second
 
+// nextWait is how long a page waits for a message NumPending promised.
+var nextWait = 10 * time.Second
+
 var validView = regexp.MustCompile(`^[A-Za-z0-9-]{1,64}$`)
 
 type view struct {
@@ -68,7 +71,7 @@ func (s *server) browseMessages(w http.ResponseWriter, r *http.Request) {
 	}
 	name := r.PathValue("name")
 	var req api.MessagePageRequest
-	switch err := json.NewDecoder(r.Body).Decode(&req); {
+	switch err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxBody)).Decode(&req); {
 	case !jsm.IsValidName(name):
 		writeStreamError(w, fmt.Errorf("%w: %q", errNoStream, name))
 		return
@@ -141,9 +144,13 @@ func (v *view) page(ctx context.Context, a *contexts.Conn, name string, req api.
 	}
 	page := api.MessagePage{Messages: []api.MsgMeta{}}
 	for v.pending > 0 && len(page.Messages) < pageSize {
-		next, cancel := context.WithTimeout(ctx, 10*time.Second)
+		next, cancel := context.WithTimeout(ctx, nextWait)
 		msg, err := v.msgs.Next(jetstream.NextContext(next))
 		cancel()
+		if errors.Is(err, context.DeadlineExceeded) && ctx.Err() == nil {
+			v.pending = 0 // counted messages went away (purge, max age, workqueue ack) before we read them
+			break
+		}
 		if err != nil {
 			return page, err
 		}
@@ -175,7 +182,7 @@ func (v *view) open(ctx context.Context, js jetstream.JetStream, name string, re
 	cfg := jetstream.OrderedConsumerConfig{
 		HeadersOnly:       true,
 		InactiveThreshold: threshold,
-		NamePrefix:        fmt.Sprintf("natter_%s_%d", v.id, v.gen),
+		NamePrefix:        fmt.Sprintf("%s%s_%d", natterConsumerPrefix, v.id, v.gen),
 		Metadata:          map[string]string{"natter": "browsing"},
 		MaxResetAttempts:  1, // the default retries forever, holding the view's lock
 		DeliverPolicy:     jetstream.DeliverAllPolicy,
