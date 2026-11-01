@@ -8,11 +8,12 @@ import { Badge } from "@/components/badge"
 import { BlockedButton } from "@/components/blocked-button"
 import { CodeEditor } from "@/components/code-editor"
 import { CopyCli } from "@/components/copy-cli"
+import { ExamplesPanel } from "@/components/examples-panel"
 import { ScreenHeader } from "@/components/screen-header"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useActiveContext, useBlockedReason } from "@/contexts"
-import type { SendMode, SendPreview, SendRequest, SendResult, SendStatus } from "@/gen/api"
+import type { Example, SendMode, SendPreview, SendRequest, SendResult, SendStatus } from "@/gen/api"
 import { messageSize, sendCli } from "@/send"
 
 type Entry = { id: number; at: Date; request: SendRequest; result?: SendResult; refused?: string }
@@ -93,6 +94,13 @@ export function PublishScreen() {
   const jsonError = format === "json" && payload.trim() ? jsonProblem(payload) : undefined
   const invalid = !request.subject || over || !connected || badHeader
   const cliContext = active?.context?.source === "cli" ? active.context.name : undefined
+  const loadExample = (e: Example) => {
+    setMode(e.mode)
+    setSubject(e.subject)
+    setHeaders(e.headers)
+    setPayload(e.payload)
+    setTimeoutMs(String(e.timeoutMs || 2000))
+  }
   const sel = entries.find((e) => e.id === shown) ?? entries[0]
 
   return (
@@ -179,6 +187,12 @@ export function PublishScreen() {
         </form>
 
         <aside className="flex min-w-0 flex-col gap-4" aria-label="Results">
+          <ExamplesPanel
+            context={active?.context?.name ?? ""}
+            draft={{ mode, subject, headers, payload, timeoutMs: mode === "req" ? Number(timeoutMs) || 0 : 0 }}
+            onLoad={loadExample}
+            onSend={(r) => send.mutate(r)}
+          />
           {sel ? <ResultView e={sel} /> : <p className="text-sm text-muted-foreground">Sends and their results show up here.</p>}
           {entries.length > 0 && (
             <section aria-label="History">

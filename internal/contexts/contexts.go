@@ -119,6 +119,9 @@ func New(root string, v *vault.Vault, extra ...natscontext.CredentialResolver) *
 // Vault is the Vault that holds the secrets of Natter's own Contexts.
 func (m *Manager) Vault() *vault.Vault { return m.vault }
 
+// Dir is Natter's own directory, where it keeps its files.
+func (m *Manager) Dir() string { return m.dir }
+
 // secretOption is the natscontext field each kind of secret goes into.
 var secretOption = map[api.SecretKind]func(string) natscontext.Option{
 	api.SecretKindPassword: natscontext.WithPassword,

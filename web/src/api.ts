@@ -15,6 +15,7 @@ import type { ConsumerDetail, ConsumerList, ConsumerSummary } from "@/gen/api"
 import type { MessagePage, MessagePageRequest } from "@/gen/api"
 import type { SendPreview, SendRequest, SendResult } from "@/gen/api"
 import type { KVBucket, KVEntry } from "@/gen/api"
+import type { Example, ExampleCopy } from "@/gen/api"
 
 async function request<T>(method: string, path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
   const res = await fetch(path, {
@@ -74,6 +75,11 @@ export const api = {
     request<MessagePage>("POST", `/api/streams/${encodeURIComponent(stream)}/messages`, req, signal),
   send: (r: SendRequest) => request<SendResult>("POST", "/api/send", r),
   sendPreview: (r: SendRequest, signal?: AbortSignal) => request<SendPreview>("POST", "/api/send/preview", r, signal),
+  examples: (signal?: AbortSignal) => request<Example[]>("GET", "/api/examples", undefined, signal),
+  createExample: (e: Omit<Example, "id">) => request<Example>("POST", "/api/examples", e),
+  updateExample: (e: Example) => request<Example>("PUT", `/api/examples/${encodeURIComponent(e.id)}`, e),
+  deleteExample: (id: string) => request<object>("DELETE", `/api/examples/${encodeURIComponent(id)}`),
+  copyExamples: (c: ExampleCopy) => request<Example[]>("POST", "/api/examples/copy", c),
   // keepalive so it still goes out while the page unloads
   closeBrowsing: (view: string) => void fetch(`/api/browsing/${encodeURIComponent(view)}`, { method: "DELETE", keepalive: true }),
   kvBuckets: (signal?: AbortSignal) => request<KVBucket[]>("GET", "/api/kv", undefined, signal),

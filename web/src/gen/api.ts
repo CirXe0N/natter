@@ -312,6 +312,44 @@ export interface KickRequest {
 }
 
 //////////
+// source: examples.go
+
+/**
+ * Example is a saved message on one Context. Placeholders in Subject, Headers
+ * and Payload are stored as typed, unrendered. Folder is "" for the top level.
+ * Name is unique within a Context and Folder.
+ */
+export interface Example {
+  id: string;
+  context: string;
+  name: string;
+  folder: string;
+  mode: SendMode;
+  subject: string;
+  headers: Headers;
+  payload: string;
+  timeoutMs?: number /* int */;
+}
+/**
+ * ConflictChoice says what a copy does with an Example that already has the
+ * same Folder and Name on the target Context. Keep stores both, naming the new
+ * one "<name> (copy)"; replace overwrites the existing one; skip drops the copy.
+ */
+export type ConflictChoice = string;
+export const ConflictKeep: ConflictChoice = "keep";
+export const ConflictReplace: ConflictChoice = "replace";
+export const ConflictSkip: ConflictChoice = "skip";
+/**
+ * ExampleCopy copies Examples (by ID) to another Context as independent
+ * copies. Choices needs an entry for every ID that conflicts.
+ */
+export interface ExampleCopy {
+  ids: string[];
+  context: string;
+  choices: { [key: string]: ConflictChoice};
+}
+
+//////////
 // source: kv.go
 
 /**
