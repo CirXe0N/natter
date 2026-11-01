@@ -1,7 +1,7 @@
 // The Vault: Natter's encrypted store for the secrets of Contexts created in Natter.
 import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { KeyRound, Lock, LockOpen } from "lucide-react"
+import { KeyRound, Lock, LockOpen, TriangleAlert } from "lucide-react"
 
 import { api } from "@/api"
 import { Badge } from "@/components/badge"
@@ -22,6 +22,7 @@ export function VaultPanel() {
   const [passphrase, setPassphrase] = useState("")
   const [confirm, setConfirm] = useState("")
   const [changing, setChanging] = useState(false)
+  const [withPassphrase, setWithPassphrase] = useState(false)
   const state = vault.data?.state
   const submit = useMutation({
     mutationFn: () => (state === "none" ? api.createVault(passphrase) : api.unlockVault(passphrase)),
@@ -35,6 +36,8 @@ export function VaultPanel() {
   if (vault.isError) return <p className="mb-4 text-xs text-destructive">{vault.error.message}</p>
   if (!vault.data) return null
 
+  // Only the keyring holds the key of a Vault Natter created on first use, until the user adds a passphrase.
+  const keyringOnly = state === "unlocked" && !vault.data.hasPassphrase && vault.data.keyring === "on"
   if (state === "unlocked")
     return (
       <div className="mb-4">
@@ -44,19 +47,42 @@ export function VaultPanel() {
             Vault unlocked
           </Badge>
           Secrets of Contexts created in Natter are encrypted in ~/.config/natter/vault.age.
-          {vault.data.keyring !== "unavailable" && <KeyringToggle on={vault.data.keyring === "on"} hasPassphrase={vault.data.hasPassphrase} />}
-          <Button size="sm" variant="outline" aria-expanded={changing} onClick={() => setChanging(!changing)}>
-            {vault.data.hasPassphrase ? "Change passphrase" : "Add a passphrase"}
-          </Button>
+          {vault.data.keyring !== "unavailable" && <KeyringToggle on={vault.data.keyring === "on"} />}
+          {!keyringOnly && (
+            <Button size="sm" variant="outline" aria-expanded={changing} onClick={() => setChanging(!changing)}>
+              {vault.data.hasPassphrase ? "Change passphrase" : "Add a passphrase"}
+            </Button>
+          )}
         </div>
+        {keyringOnly && (
+          <div className="mt-3 flex flex-wrap items-center gap-3 rounded-lg border border-warning/25 bg-warning/5 px-3 py-2 text-xs text-warning">
+            <TriangleAlert size={14} aria-hidden className="shrink-0" />
+            <span className="min-w-0 flex-1">The Vault key is only in your OS keyring. If the keyring loses it, the secrets in the Vault cannot be recovered.</span>
+            <Button size="sm" variant="outline" aria-expanded={changing} onClick={() => setChanging(!changing)}>
+              Add a backup passphrase
+            </Button>
+          </div>
+        )}
         {changing && <PassphraseForm hasPassphrase={vault.data.hasPassphrase} onDone={() => setChanging(false)} />}
       </div>
+    )
+
+  // With a keyring, the first secret stored creates the Vault (see ensureVault in the backend).
+  if (state === "none" && vault.data.keyring !== "unavailable" && !withPassphrase)
+    return (
+      <section aria-label="Vault" className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border bg-card px-4 py-3 text-xs text-muted-foreground">
+        <KeyRound size={14} aria-hidden className="shrink-0" />
+        <span className="min-w-0 flex-1">No Vault yet. Natter creates one the first time you store a secret in it, and keeps its key in your OS keyring.</span>
+        <Button size="sm" variant="outline" onClick={() => setWithPassphrase(true)}>
+          Create it now with a passphrase
+        </Button>
+      </section>
     )
 
   if (state === "locked" && !vault.data.hasPassphrase)
     return (
       <section aria-label="Vault" className="mb-4 rounded-xl border border-warning/25 bg-warning/5 p-4 text-xs text-warning">
-        The Vault is locked and has no passphrase. Restart natter with <code className="font-mono">-vault-key &lt;key file&gt;</code> to unlock it.
+        The Vault is locked and has no passphrase. Its key is in the OS keyring, which did not answer when natter started or no longer holds it, or in a key file: restart natter with <code className="font-mono">-vault-key &lt;key file&gt;</code>.
       </section>
     )
 
@@ -101,7 +127,7 @@ export function VaultPanel() {
 }
 
 // Moves only the Vault key into or out of the OS keyring; the secrets stay in vault.age.
-function KeyringToggle({ on, hasPassphrase }: { on: boolean; hasPassphrase: boolean }) {
+function KeyringToggle({ on }: { on: boolean }) {
   const qc = useQueryClient()
   const set = useMutation({ mutationFn: () => api.setKeyring(!on), onSuccess: (v) => qc.setQueryData(vaultKey, v) })
   return (
@@ -121,7 +147,6 @@ function KeyringToggle({ on, hasPassphrase }: { on: boolean; hasPassphrase: bool
         <KeyRound size={12} aria-hidden />
         OS keyring: {on ? "on" : "off"}
       </Button>
-      {on && !hasPassphrase && <span className="text-warning">This Vault has no passphrase. Add one so it still unlocks without the keyring.</span>}
       {set.isError && <span role="alert" className="text-destructive">{set.error.message}</span>}
     </>
   )

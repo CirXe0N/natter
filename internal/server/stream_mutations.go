@@ -159,12 +159,18 @@ var fieldHints = []struct{ word, field string }{
 // to. Errors that are not about the request (timeouts, no connection) fall
 // through to writeError. field overrides the guess.
 func writeFieldError(w http.ResponseWriter, err error, field ...string) {
+	writeHintedError(w, err, fieldHints, field...)
+}
+
+// writeHintedError is writeFieldError with the hints for one kind of config.
+func writeHintedError(w http.ResponseWriter, err error, hints []struct{ word, field string }, field ...string) {
 	var apiErr jsmapi.ApiError
 	if jsm.IsNatsError(err, 10059) { // JSStreamNotFoundErr
 		writeStreamError(w, err)
 		return
 	}
-	invalid := len(field) > 0 || errors.As(err, &apiErr) || strings.HasPrefix(err.Error(), "configuration validation failed") || strings.Contains(err.Error(), "not a valid stream name") || strings.HasPrefix(err.Error(), "The stream config")
+	msg := err.Error()
+	invalid := len(field) > 0 || errors.As(err, &apiErr) || strings.HasPrefix(msg, "configuration validation failed") || strings.Contains(msg, "is not a valid") || strings.HasPrefix(msg, "The stream config") || strings.HasPrefix(msg, "The consumer config") || strings.Contains(msg, "requires a name")
 	if !invalid {
 		writeStreamError(w, err)
 		return
@@ -174,7 +180,7 @@ func writeFieldError(w http.ResponseWriter, err error, field ...string) {
 		body.Field = field[0]
 	} else {
 		msg := strings.ToLower(err.Error())
-		for _, h := range fieldHints {
+		for _, h := range hints {
 			if strings.Contains(msg, h.word) {
 				body.Field = h.field
 				break

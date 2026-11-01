@@ -74,3 +74,31 @@ test("the Messages tab browses under Read-only mode", async ({ page }) => {
     await page.request.put(settings, { data: {} })
   }
 })
+
+test("the Message browser screen picks a stream, browses it, and opens a message; Key-Value is not in the sidebar", async ({ page }) => {
+  await page.request.put("/api/contexts/active", { data: { source: "cli", name: "app" } })
+  await page.goto("/overview")
+  const nav = page.getByRole("navigation", { name: "Screens" })
+  await expect(nav.getByRole("link", { name: "Key-Value" })).toHaveCount(0)
+  await nav.getByRole("link", { name: "Message browser" }).click()
+  await expect(page).toHaveURL(/\/messages$/)
+  await expect(page.getByText("Nothing to show here yet")).toHaveCount(0)
+
+  await page.getByLabel("Stream", { exact: true }).selectOption("EVENTS")
+  await expect(page).toHaveURL(/\/messages\?stream=EVENTS$/)
+  const body = page.getByRole("rowgroup", { name: "Message rows" })
+  await expect(body.getByRole("row").first()).toContainText("#1")
+  await expect(page.getByRole("table", { name: "Messages" }).getByRole("status")).toContainText(`of ${stored}`)
+  await expect(page.getByText("Browsing · no side effects")).toBeVisible()
+
+  await page.getByLabel("Sequence", { exact: true }).fill("151")
+  await page.getByRole("button", { name: "Jump to sequence" }).click()
+  await expect(body.getByRole("row").first()).toContainText("#151")
+  await body.getByRole("row").first().click()
+  const drawer = page.getByRole("dialog", { name: "Message #151" })
+  await expect(drawer).toContainText("EVENTS · seq 151")
+  await page.keyboard.press("ArrowDown")
+  await expect(page.getByRole("dialog", { name: "Message #152" })).toBeVisible()
+  await page.keyboard.press("Escape")
+  await expect(page.getByRole("dialog")).toHaveCount(0)
+})

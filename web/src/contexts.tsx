@@ -3,7 +3,7 @@
 import type { ReactNode } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Link, useNavigate } from "@tanstack/react-router"
-import { ChevronDown, KeyRound, Lock, TriangleAlert } from "lucide-react"
+import { ChevronDown, KeyRound, Lock, LockOpen, TriangleAlert } from "lucide-react"
 
 import { api } from "@/api"
 import { Badge } from "@/components/badge"
@@ -56,19 +56,23 @@ export function useBlockedReason() {
   return active?.context?.readOnly ? "Read-only mode is on for this Context. Turn it off on the Contexts screen first." : undefined
 }
 
-// The Read-only badge in the top bar. It is the unlock button, 28 px tall.
-function ReadOnlyBadge({ c }: { c: Context }) {
+// The Read-only toggle in the top bar: "Read-only" unlocks, "Writable" locks. 28 px tall.
+export function ReadOnlyBadge() {
+  const { data: active } = useActiveContext()
   const set = useSetSettings()
+  const c = active?.context
+  if (!c) return null
+  const ro = c.readOnly
   return (
     <button
       type="button"
       disabled={set.isPending}
-      title="Read-only mode: changes and sends are blocked. Click to turn it off."
-      onClick={() => set.mutate({ c, settings: { monitoringUrl: c.monitoringUrl, readOnly: false } })}
-      className="inline-flex h-7 items-center gap-1 whitespace-nowrap rounded-md border border-warning/25 bg-warning/10 px-2 text-[11px] font-medium text-warning"
+      title={ro ? "Read-only mode: changes and sends are blocked. Click to turn it off." : "Click to switch on Read-only mode"}
+      onClick={() => set.mutate({ c, settings: { monitoringUrl: c.monitoringUrl, readOnly: !ro } })}
+      className={`inline-flex h-7 items-center gap-1 whitespace-nowrap rounded-md border px-2 text-[11px] font-medium ${ro ? "border-warning/25 bg-warning/10 text-warning" : "border-border bg-accent text-muted-foreground hover:text-foreground"}`}
     >
-      <Lock size={11} aria-hidden />
-      Read-only
+      {ro ? <Lock size={11} aria-hidden /> : <LockOpen size={11} aria-hidden />}
+      {ro ? "Read-only" : "Writable"}
     </button>
   )
 }
@@ -121,7 +125,7 @@ export function CapabilityBadges({ active }: { active: Active }) {
   )
 }
 
-// The connection to the active Context and its capabilities, for the top bar.
+// The connection to the active Context, for the top bar.
 export function ConnectionStatus() {
   const { data: active, error } = useActiveContext()
   if (error) return <span className="text-destructive">{error.message}</span>
@@ -151,21 +155,20 @@ export function ConnectionStatus() {
       )
     case "connected":
       return (
-        <span className="flex min-w-0 items-center gap-3">
-          <Status dot="bg-success">
-            Connected <span className="font-mono text-fg-faint">{active.server?.replace(/^\w+:\/\//, "")}</span>
-          </Status>
-          <CapabilityBadges active={active} />
-          {active.context?.readOnly && <ReadOnlyBadge c={active.context} />}
-        </span>
+        <Status dot="bg-success" ping>
+          connected <span className="font-mono text-fg-faint">{active.server?.replace(/^\w+:\/\//, "")}</span>
+        </Status>
       )
   }
 }
 
-function Status({ dot, children }: { dot: string; children: ReactNode }) {
+function Status({ dot, ping, children }: { dot: string; ping?: boolean; children: ReactNode }) {
   return (
     <span className="flex items-center gap-1.5 whitespace-nowrap text-muted-foreground">
-      <span aria-hidden className={`size-2 rounded-full ${dot}`} />
+      <span aria-hidden className="relative flex size-2">
+        {ping && <span className={`absolute inline-flex size-full rounded-full opacity-40 motion-safe:animate-ping ${dot}`} />}
+        <span className={`relative inline-flex size-2 rounded-full ${dot}`} />
+      </span>
       {children}
     </span>
   )

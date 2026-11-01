@@ -1,6 +1,6 @@
 // The hand-written REST client. Response shapes come from Go via tygo (src/gen).
 // Add one function per endpoint to `api`; screens call them from TanStack Query.
-import type { Active, Context, Health, Info, JetStreamNames, NewContext, PassphraseChange, Ref, Settings, Vault } from "@/gen/api"
+import type { Active, Context, ContextUpdate, Health, Info, JetStreamNames, NewContext, PassphraseChange, Ref, Settings, Vault } from "@/gen/api"
 import type { StreamDetail, StreamList, StreamSubjects } from "@/gen/api"
 import type { Connections, ConnectionState, KickRequest } from "@/gen/api"
 import type { FieldError, StreamPurge, StreamPurged, StreamSummary } from "@/gen/api"
@@ -47,6 +47,7 @@ export const api = {
   setContextSettings: (ref: Ref, settings: Settings) =>
     request<Context>("PUT", `/api/contexts/${encodeURIComponent(ref.source)}/${encodeURIComponent(ref.name)}/settings`, settings),
   createContext: (c: NewContext) => request<Context>("POST", "/api/contexts", c),
+  updateContext: (ref: Ref, u: ContextUpdate) => request<Context>("PUT", `/api/contexts/${encodeURIComponent(ref.source)}/${encodeURIComponent(ref.name)}`, u),
   moveIntoVault: (ref: Ref, name?: string) =>
     request<Context>("POST", `/api/contexts/${encodeURIComponent(ref.source)}/${encodeURIComponent(ref.name)}/move-to-vault`, name ? { name } : {}),
   removeContext: (ref: Ref) => request<object>("POST", `/api/contexts/${encodeURIComponent(ref.source)}/${encodeURIComponent(ref.name)}/remove`, { confirm: true }),
@@ -72,6 +73,9 @@ export const api = {
     request<ConsumerSummary>("PUT", `/api/streams/${encodeURIComponent(stream)}/consumers/${encodeURIComponent(name)}/pause`, { seconds }),
   resumeConsumer: (stream: string, name: string) =>
     request<ConsumerSummary>("DELETE", `/api/streams/${encodeURIComponent(stream)}/consumers/${encodeURIComponent(name)}/pause`),
+  createConsumer: (stream: string, config: object) => request<ConsumerSummary>("POST", `/api/streams/${encodeURIComponent(stream)}/consumers`, config),
+  updateConsumer: (stream: string, name: string, config: object) =>
+    request<ConsumerSummary>("PUT", `/api/streams/${encodeURIComponent(stream)}/consumers/${encodeURIComponent(name)}`, config),
   deleteConsumer: (stream: string, name: string) => request<object>("DELETE", `/api/streams/${encodeURIComponent(stream)}/consumers/${encodeURIComponent(name)}`),
   browse: (stream: string, req: MessagePageRequest, signal?: AbortSignal) =>
     request<MessagePage>("POST", `/api/streams/${encodeURIComponent(stream)}/messages`, req, signal),

@@ -1,4 +1,5 @@
-// The Messages tab of a stream (ADR-0003). Rows are metadata only, read in
+// The message browser (ADR-0003): the Message browser screen, and the
+// Messages tab of a stream, share one table. Rows are metadata only, read in
 // pages of 100 by one Browsing view: a server-side ordered consumer that reads
 // forward from an anchor. Each page carries the list index of its first row,
 // worked out from NumPending, so the loaded window sits at its real place on
@@ -6,24 +7,30 @@
 // WorkQueue and Interest streams come back as Direct Get pages instead, which
 // may be shorter; the table only notes that they transfer payloads.
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
-import { keepPreviousData, useInfiniteQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query"
-import { useParams } from "@tanstack/react-router"
+import { keepPreviousData, useInfiniteQuery, useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query"
+import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router"
+import { ArrowRight, Clock, Eye, Funnel, Hash, X } from "lucide-react"
+import { cn } from "cn"
 
 import { api } from "@/api"
+import { Badge } from "@/components/badge"
 import { CopyCli } from "@/components/copy-cli"
+import { ScreenHeader } from "@/components/screen-header"
 import { shellQuote } from "@/stream-config"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { useActiveContext } from "@/contexts"
 import type { MessagePage, MsgMeta } from "@/gen/api"
 import { follow, scrollTopFor, trackHeight, type Scroll } from "@/scaled-scroll"
-import { bytes } from "@/screens/overview"
-import { useStream } from "@/screens/stream"
+import { bytes, count as fmtCount } from "@/screens/overview"
+import { useStreamDetail } from "@/screens/stream"
+import { useRefresh } from "@/screens/streams"
 import { MessageDrawer } from "@/screens/message"
 
 const ROW = 32
 const PAGE = 100
 const MAX_PAGES = 50 // 5,000 rows of metadata held at once
 const cols = "grid grid-cols-[6rem_13rem_minmax(8rem,16rem)_5rem_3rem_minmax(0,1fr)] items-center gap-3 px-4"
+const MAX_TRACK = 4_000_000 // scaled-scroll caps the track here; the footer says when it does
 
 // Anchor is where the view's consumer starts. A jump pins its first row to the
 // top of the view; a re-anchor from scrolling only makes sure the view is covered.
@@ -34,13 +41,73 @@ type Page = MessagePage & { index: number }
 // Next. back is how far below `from` its own anchor started, when it set one.
 type Seek = { from: number; dir: 1 | -1; back?: number; anchored?: boolean; orClose?: boolean }
 
+// The Messages tab of a stream.
 export function StreamMessages() {
   const { stream } = useParams({ from: "/streams/$stream" })
-  return <MessageTable key={stream} stream={stream} />
+  return (
+    <div className="h-[calc(100vh-15rem)] min-h-105">
+      <MessageTable key={stream} stream={stream} />
+    </div>
+  )
+}
+
+// The Message browser screen: pick a stream in the header, browse it below.
+export function MessageBrowserScreen() {
+  const { stream: picked } = useSearch({ from: "/messages" })
+  const navigate = useNavigate()
+  const { data: active } = useActiveContext()
+  const noJs = active?.status === "connected" && !active.capabilities.jetStream
+  const list = useQuery({ queryKey: ["streams", "list", ""], queryFn: ({ signal }) => api.streams("", signal), refetchInterval: useRefresh(), enabled: !noJs })
+  const names = (list.data?.streams ?? []).map((st) => st.name).sort()
+  const stream = picked ?? names[0]
+  return (
+    <>
+      <ScreenHeader title="Message browser">
+        {names.length > 0 && (
+          <>
+            <label htmlFor="browse-stream" className="text-xs text-muted-foreground">
+              Stream
+            </label>
+            <select
+              id="browse-stream"
+              value={stream}
+              onChange={(e) => void navigate({ to: "/messages", search: { stream: e.target.value } })}
+              className="h-8 rounded-lg border border-input bg-card px-2 font-mono text-xs"
+            >
+              {picked && !names.includes(picked) && <option value={picked}>{picked}</option>}
+              {names.map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+            </select>
+            {stream && (
+              <Link to="/streams/$stream" params={{ stream }} className="text-xs text-muted-foreground hover:text-foreground hover:underline">
+                Open stream
+              </Link>
+            )}
+          </>
+        )}
+      </ScreenHeader>
+      <div className="h-[calc(100vh-8.5rem)] min-h-100 px-8 pb-8">
+        {noJs ? (
+          <p className="text-sm text-muted-foreground">This Context has no JetStream, so it has no streams to browse.</p>
+        ) : list.isError ? (
+          <p className="text-destructive">{list.error.message}</p>
+        ) : list.isPending ? (
+          <p className="text-muted-foreground">Loading streams…</p>
+        ) : !stream ? (
+          <div className="grid h-full place-items-center rounded-xl border border-dashed text-xs text-muted-foreground">No streams to browse yet.</div>
+        ) : (
+          <MessageTable key={stream} stream={stream} />
+        )}
+      </div>
+    </>
+  )
 }
 
 function MessageTable({ stream }: { stream: string }) {
-  const { data: s } = useStream()
+  const { data: s } = useStreamDetail(stream)
   const [view] = useState(newView)
   const [filter, setFilter] = useState("")
   const [anchor, setAnchor] = useState<Anchor>({})
@@ -213,67 +280,101 @@ function MessageTable({ stream }: { stream: string }) {
   }
   const topRow = first >= start && first < end ? rows[first - start] : undefined
 
+  const cachedRows = rows.length
   return (
     <>
-      <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-        <SubjectFilter
-          value={filter}
-          onApply={(f) => {
-            setFilter(f)
-            setAnchor({ pin: true })
-          }}
-        />
-        <JumpTo onJump={(a) => setAnchor({ ...a, pin: true })} />
-        <CopyCli cmd={`nats stream view ${stream}${topRow && topRow.seq > 1 ? ` --id ${topRow.seq}` : ""}${filter ? ` --subject ${shellQuote(filter)}` : ""}`} />
-      </div>
-      {lastPage?.direct && (
-        <p role="note" className="text-xs text-muted-foreground">
-          A Browsing consumer would change this WorkQueue or Interest stream, so its rows come from Direct Get. That transfers every listed payload, so large messages load slowly.
-        </p>
-      )}
-      {q.error && <p className="text-destructive">{q.error.message}</p>}
-      <div role="table" aria-label="Messages" aria-rowcount={count + 1} className="overflow-hidden rounded-xl border bg-card">
-        <div role="rowgroup">
-          <div role="row" aria-rowindex={1} className={`${cols} border-b py-2 text-[11px] font-medium tracking-wide text-muted-foreground uppercase`}>
-            <span role="columnheader">Seq</span>
-            <span role="columnheader">Time (UTC)</span>
-            <span role="columnheader">Subject</span>
-            <span role="columnheader" className="text-right">
-              Size
-            </span>
-            <span role="columnheader" className="text-center" title="Headers">
-              Hdrs
-            </span>
-            <span role="columnheader">Payload preview</span>
-          </div>
+      <section aria-label={`Messages in ${stream}`} className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border bg-card">
+        <div className="flex flex-wrap items-center gap-2 border-b px-4 py-2 text-xs">
+          <SubjectFilter
+            value={filter}
+            onApply={(f) => {
+              setFilter(f)
+              setAnchor({ pin: true })
+            }}
+          />
+          <JumpTo onJump={(a) => setAnchor({ ...a, pin: true })} />
+          <span className="flex-1" />
+          <Badge title="Rows come from an ordered consumer that acks nothing and is removed when you leave">
+            <Eye size={11} aria-hidden />
+            Browsing · no side effects
+          </Badge>
+          <span className="text-muted-foreground tabular-nums">
+            <span className="text-foreground">{count.toLocaleString()}</span> messages
+            {filter && (
+              <>
+                {" "}
+                matching <span className="font-mono text-primary">{filter}</span>
+              </>
+            )}
+          </span>
+          <CopyCli compact cmd={`nats stream view ${stream}${topRow && topRow.seq > 1 ? ` --id ${topRow.seq}` : ""}${filter ? ` --subject ${shellQuote(filter)}` : ""}`} />
         </div>
-        <div
-          ref={box}
-          role="rowgroup"
-          tabIndex={0}
-          aria-label="Message rows"
-          className="h-[min(65vh,44rem)] overflow-y-auto"
-          onScroll={(e) => {
-            const scrollTop = e.currentTarget.scrollTop
-            const t = follow(at.current, scrollTop, vh, height)
-            at.current = { scrollTop, top: t }
-            setTop(t)
-          }}
-        >
-          <div style={{ height: trackHeight(height) }}>
-            <div className="sticky top-0 overflow-hidden" style={{ height: vh }}>
-              {q.data && count === 0 ? (
-                <p className="px-4 py-8 text-center text-muted-foreground">{filter ? `No messages match ${filter}.` : "This stream holds no messages."}</p>
-              ) : (
-                <div style={{ transform: `translateY(${-(top % ROW)}px)` }}>{inView}</div>
-              )}
+        {lastPage?.direct && (
+          <p role="note" className="border-b border-warning/20 bg-warning/5 px-4 py-1.5 text-[11px] text-warning">
+            A Browsing consumer would change this WorkQueue or Interest stream, so its rows come from Direct Get. That transfers every listed payload, so large messages load slowly.
+          </p>
+        )}
+        {q.error && <p className="border-b px-4 py-1.5 text-xs text-destructive">{q.error.message}</p>}
+        <div role="table" aria-label="Messages" aria-rowcount={count + 1} className="flex min-h-0 flex-1 flex-col">
+          <div role="rowgroup">
+            <div role="row" aria-rowindex={1} className={`${cols} border-b py-2 text-[11px] font-medium tracking-wide text-fg-faint uppercase`}>
+              <span role="columnheader">Seq</span>
+              <span role="columnheader">Received (UTC)</span>
+              <span role="columnheader">Subject</span>
+              <span role="columnheader" className="text-right">
+                Size
+              </span>
+              <span role="columnheader" className="text-center" title="Headers">
+                Hdrs
+              </span>
+              <span role="columnheader">Payload preview</span>
             </div>
           </div>
+          <div
+            ref={box}
+            role="rowgroup"
+            tabIndex={0}
+            aria-label="Message rows"
+            className="min-h-0 flex-1 overflow-y-auto"
+            onScroll={(e) => {
+              const scrollTop = e.currentTarget.scrollTop
+              const t = follow(at.current, scrollTop, vh, height)
+              at.current = { scrollTop, top: t }
+              setTop(t)
+            }}
+          >
+            <div style={{ height: trackHeight(height) }}>
+              <div className="sticky top-0 overflow-hidden" style={{ height: vh }}>
+                {q.data && count === 0 ? (
+                  <p className="px-4 py-8 text-center text-muted-foreground">{filter ? `No messages match ${filter}.` : "This stream holds no messages."}</p>
+                ) : (
+                  <div style={{ transform: `translateY(${-(top % ROW)}px)` }}>{inView}</div>
+                )}
+              </div>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t px-4 py-1.5 text-[11px] text-fg-faint">
+            <p role="status" className="tabular-nums">
+              {count ? `Rows ${first + 1}–${last} of ${count}${filter ? ` matching ${filter}` : ""}` : q.isFetching ? "Loading messages…" : ""}
+            </p>
+            {count > 0 && (
+              <>
+                <span aria-hidden>·</span>
+                <span className="tabular-nums">
+                  {pages.length} {pages.length === 1 ? "page" : "pages"} ({fmtCount(cachedRows)} rows) of metadata in memory
+                </span>
+                <span aria-hidden>·</span>
+                <span>payloads load only when a message is opened</span>
+              </>
+            )}
+            {height > MAX_TRACK && (
+              <span className="ml-auto">
+                <Badge title="The list is taller than a browser can scroll, so the scrollbar is scaled; the wheel and keys still move row by row">scaled scrollbar</Badge>
+              </span>
+            )}
+          </div>
         </div>
-        <p className="border-t px-4 py-1.5 text-[11px] text-muted-foreground tabular-nums" role="status">
-          {count ? `Rows ${first + 1}–${last} of ${count}${filter ? ` matching ${filter}` : ""}` : q.isFetching ? "Loading messages…" : ""}
-        </p>
-      </div>
+      </section>
       <MessageDrawer
         stream={stream}
         seq={open}
@@ -287,18 +388,19 @@ function MessageTable({ stream }: { stream: string }) {
 }
 
 function Row({ index, m, selected, onOpen }: { index: number; m?: MsgMeta; selected: boolean; onOpen: (seq: number) => void }) {
+  const large = m !== undefined && m.size >= 1 << 20
   return (
     <div
       role="row"
       aria-rowindex={index + 2}
       aria-selected={selected}
-      className={`${cols} border-b text-xs ${m ? "cursor-pointer hover:bg-muted/50" : ""} ${selected ? "bg-primary/10" : ""}`}
+      className={cn(cols, "border-b border-border/60 text-xs", m && "cursor-pointer hover:bg-accent/40", selected && "bg-primary/10")}
       style={{ height: ROW }}
       onClick={m && (() => onOpen(m.seq))}
     >
       {m ? (
         <>
-          <span role="cell" className="font-mono text-muted-foreground tabular-nums">
+          <span role="cell" className="font-mono text-fg-faint tabular-nums">
             <button type="button" title="Open message" className="hover:text-foreground hover:underline">
               #{m.seq}
             </button>
@@ -306,26 +408,35 @@ function Row({ index, m, selected, onOpen }: { index: number; m?: MsgMeta; selec
           <span role="cell" className="font-mono text-muted-foreground tabular-nums">
             {new Date(m.time).toISOString().replace("T", " ").slice(0, 23)}
           </span>
-          <span role="cell" className="truncate font-mono">
+          <span role="cell" className="truncate font-mono text-primary">
             {m.subject}
           </span>
-          <span role="cell" className="text-right tabular-nums">
+          <span role="cell" className={cn("text-right tabular-nums", large ? "font-medium text-warning" : "text-muted-foreground")}>
             {bytes(m.size)}
           </span>
-          <span role="cell" className="text-center text-muted-foreground tabular-nums">
+          <span role="cell" className="text-center text-fg-faint tabular-nums">
             {m.headers}
           </span>
           <span role="cell" className="truncate font-mono text-muted-foreground">
-            {m.preview !== undefined ? m.preview || <i className="font-sans">empty</i> : <i className="font-sans">{m.kind === "binary" ? "binary" : "not loaded until opened"}</i>}
+            {m.preview !== undefined ? m.preview || <i className="font-sans text-fg-faint">empty</i> : <i className="font-sans text-fg-faint">{m.kind === "binary" ? "binary" : "large payload"} · not loaded until opened</i>}
           </span>
         </>
       ) : (
-        <span role="cell" aria-label="Loading" className="col-span-6 h-2.5 w-2/3 animate-pulse rounded bg-muted" />
+        <>
+          <span role="cell" className="font-mono text-fg-faint">
+            …
+          </span>
+          {[70, 60, 40, 20, 90].map((w, k) => (
+            <span key={k} role="cell" aria-label={k === 0 ? "Loading" : undefined} className="h-2.5 animate-pulse rounded bg-accent" style={{ width: `${w}%` }} />
+          ))}
+        </>
       )}
     </div>
   )
 }
 
+// SubjectFilter applies on Enter. The Filter button shows while the typed
+// filter differs from the applied one; the cross clears it.
 function SubjectFilter({ value, onApply }: { value: string; onApply: (filter: string) => void }) {
   const [draft, setDraft] = useState(value)
   return (
@@ -337,64 +448,91 @@ function SubjectFilter({ value, onApply }: { value: string; onApply: (filter: st
         onApply(draft.trim())
       }}
     >
-      <label htmlFor="messages-subject" className="shrink-0 text-xs text-muted-foreground">
+      <Funnel size={13} aria-hidden className="shrink-0 text-fg-faint" />
+      <label htmlFor="messages-subject" className="sr-only">
         Subject
       </label>
-      <Input id="messages-subject" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="orders.> or orders.*.new" className="w-64 font-mono" />
-      <Button type="submit" variant="outline">
-        Filter
-      </Button>
+      <input
+        id="messages-subject"
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        placeholder="Subject filter, e.g. orders.paid, orders.*, orders.>"
+        spellCheck={false}
+        className="h-7 w-80 rounded-md bg-transparent px-1 font-mono placeholder:font-sans placeholder:text-fg-faint"
+      />
+      {draft.trim() !== value && (
+        <Button type="submit" variant="outline" size="sm">
+          Filter
+        </Button>
+      )}
       {value && (
         <Button
           type="button"
           variant="ghost"
+          size="icon-sm"
+          aria-label="Clear filter"
           onClick={() => {
             setDraft("")
             onApply("")
           }}
         >
-          Clear
+          <X aria-hidden />
         </Button>
       )}
     </form>
   )
 }
 
+// JumpTo: a sequence box, and a time box behind "Jump to time…".
 function JumpTo({ onJump }: { onJump: (to: { seq?: number; time?: string }) => void }) {
   const [seq, setSeq] = useState("")
   const [time, setTime] = useState("")
+  const [byTime, setByTime] = useState(false)
+  const pill = "flex h-7 items-center gap-1.5 rounded-md border pl-2"
   return (
     <>
       <form
-        className="flex items-center gap-2"
+        className={pill}
         onSubmit={(e) => {
           e.preventDefault()
-          if (Number(seq) >= 1) onJump({ seq: Math.floor(Number(seq)) })
+          const n = Number(seq.replace(/[,_\s]/g, ""))
+          if (n >= 1) onJump({ seq: Math.floor(n) })
         }}
       >
-        <label htmlFor="jump-seq" className="shrink-0 text-xs text-muted-foreground">
+        <Hash size={12} aria-hidden className="text-fg-faint" />
+        <label htmlFor="jump-seq" className="sr-only">
           Sequence
         </label>
-        <Input id="jump-seq" type="number" min={1} value={seq} onChange={(e) => setSeq(e.target.value)} className="w-28 font-mono" />
-        <Button type="submit" variant="outline" aria-label="Jump to sequence">
-          Jump
+        <input id="jump-seq" inputMode="numeric" value={seq} onChange={(e) => setSeq(e.target.value)} placeholder="Jump to seq" className="h-full w-24 bg-transparent font-mono placeholder:font-sans placeholder:text-fg-faint" />
+        <Button type="submit" variant="ghost" size="icon-xs" aria-label="Jump to sequence">
+          <ArrowRight aria-hidden />
         </Button>
       </form>
-      <form
-        className="flex items-center gap-2"
-        onSubmit={(e) => {
-          e.preventDefault()
-          if (time) onJump({ time: new Date(`${time}Z`).toISOString() })
-        }}
-      >
-        <label htmlFor="jump-time" className="shrink-0 text-xs text-muted-foreground">
-          Time (UTC)
-        </label>
-        <Input id="jump-time" type="datetime-local" step={1} value={time} onChange={(e) => setTime(e.target.value)} className="w-52 font-mono" />
-        <Button type="submit" variant="outline" aria-label="Jump to time">
-          Jump
+      {byTime ? (
+        <form
+          className={pill}
+          onSubmit={(e) => {
+            e.preventDefault()
+            if (time) onJump({ time: new Date(`${time}Z`).toISOString() })
+          }}
+        >
+          <Clock size={12} aria-hidden className="text-fg-faint" />
+          <label htmlFor="jump-time" className="sr-only">
+            Time (UTC)
+          </label>
+          <input id="jump-time" type="datetime-local" step={1} autoFocus value={time} onChange={(e) => setTime(e.target.value)} className="h-full bg-transparent font-mono" />
+          <Button type="submit" variant="ghost" size="icon-xs" aria-label="Jump to time">
+            <ArrowRight aria-hidden />
+          </Button>
+          <Button type="button" variant="ghost" size="icon-xs" aria-label="Close time jump" onClick={() => setByTime(false)}>
+            <X aria-hidden />
+          </Button>
+        </form>
+      ) : (
+        <Button type="button" variant="outline" size="sm" onClick={() => setByTime(true)}>
+          Jump to time…
         </Button>
-      </form>
+      )}
     </>
   )
 }

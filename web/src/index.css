@@ -35,8 +35,6 @@
   --radius: 0.5rem;
   --row-h: 32px;
 }
-:root[data-density="compact"] { --row-h: 28px; }
-:root[data-density="comfortable"] { --row-h: 36px; }
 
 :root,
 [data-theme="dark"] {
@@ -130,6 +128,6 @@
 @theme {
   --animate-tail-in: tail-in 1.5s ease-out;
   @keyframes tail-in {
-    from { background-color: color-mix(in oklab, var(--primary) 18%, transparent); }
+    from { background-color: color-mix(in oklab, var(--primary) 8%, transparent); }
   }
 }

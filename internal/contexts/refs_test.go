@@ -162,19 +162,16 @@ func TestMoveIntoVault(t *testing.T) {
 	}
 
 	// Removing is its own step.
-	if err := m.RemoveCLI(t.Context(), api.Ref{Source: api.SourceApp, Name: "sys"}); !errors.Is(err, ErrInvalid) {
-		t.Fatalf("remove an app Context: %v", err)
-	}
 	if err := m.Activate(t.Context(), cli); err != nil {
 		t.Fatal(err)
 	}
-	if err := m.RemoveCLI(t.Context(), cli); !errors.Is(err, ErrInvalid) {
+	if err := m.Remove(t.Context(), cli); !errors.Is(err, ErrInvalid) {
 		t.Fatalf("remove the active Context: %v", err)
 	}
 	if err := m.Activate(t.Context(), moved.Ref); err != nil {
 		t.Fatal(err)
 	}
-	if err := m.RemoveCLI(t.Context(), cli); err != nil {
+	if err := m.Remove(t.Context(), cli); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(cliFile); !errors.Is(err, os.ErrNotExist) {

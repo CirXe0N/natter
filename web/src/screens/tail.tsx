@@ -1,25 +1,24 @@
 // The Live tail: core NATS messages on a subject filter as they are published,
 // fed by a "tail:<filter>" topic on the live socket. The backend caps the rate
 // and holds payloads up to a memory budget; opening a row fetches its payload.
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { useNavigate, useSearch } from "@tanstack/react-router"
-import { X } from "lucide-react"
+import { CircleAlert, Funnel, X } from "lucide-react"
 
 import { api } from "@/api"
 import { Badge } from "@/components/badge"
 import { CopyCli } from "@/components/copy-cli"
 import { ScreenHeader } from "@/components/screen-header"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { refKey, useActiveContext } from "@/contexts"
 import { TopicTailPrefix, type Tail, type TailRow } from "@/gen/api"
-import { announce, subscribe, usePaused } from "@/live"
+import { announce, PauseLive, subscribe, usePaused } from "@/live"
 import { bytes } from "@/screens/overview"
 import { shellQuote } from "@/stream-config"
 import { add, emptyRing, type Entry } from "@/tail-ring"
 
-const ROW = 28
+const ROW = 24
 const RATE_CAP = 1000 // the backend's token bucket, per second
 const FRESH_MS = 1500 // how long a new row stays highlighted
 
@@ -28,50 +27,66 @@ export function TailScreen() {
   const navigate = useNavigate()
   const { data: active } = useActiveContext()
   const ctx = active?.context ? refKey(active.context) : ""
+  const form = <SubjectForm key={subject} value={subject ?? ""} onApply={(s) => void navigate({ to: "/tail", search: s ? { subject: s } : {} })} />
   return (
     <>
-      <ScreenHeader title="Live tail">
-        <LiveOrPaused />
-      </ScreenHeader>
-      <div className="space-y-4 px-8 pb-8">
-        <SubjectForm key={subject} value={subject ?? ""} onApply={(s) => void navigate({ to: "/tail", search: s ? { subject: s } : {} })} />
+      <ScreenHeader title="Live tail" />
+      <div className="flex h-[calc(100vh-8.5rem)] min-h-100 gap-4 px-8 pb-8">
         {subject ? (
-          <TailView key={`${ctx} ${subject}`} filter={subject} />
+          <TailView key={`${ctx} ${subject}`} filter={subject} form={form} />
         ) : (
-          <p className="text-muted-foreground">Enter a subject filter to watch messages as they are published. Use * for one token and &gt; for the rest, as in orders.&gt;.</p>
+          <section aria-label="Live tail" className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-xl border bg-card">
+            <Toolbar dot="bg-fg-faint">{form}</Toolbar>
+            <p className="grid flex-1 place-items-center px-8 text-center text-xs text-fg-faint">
+              Enter a subject filter to watch messages as they are published. Use * for one token and &gt; for the rest, as in orders.&gt;.
+            </p>
+          </section>
         )}
       </div>
     </>
   )
 }
 
-function LiveOrPaused() {
-  return <p className="text-xs text-muted-foreground">{usePaused() ? <span className="text-warning">Paused</span> : "Live"}</p>
+function Toolbar({ dot, children }: { dot: string; children: ReactNode }) {
+  return (
+    <div className="flex flex-wrap items-center gap-2 border-b px-3 py-2 text-xs">
+      <span aria-hidden className={`size-2 shrink-0 rounded-full ${dot}`} />
+      {children}
+    </div>
+  )
 }
 
+// Enter applies the filter; the Tail button shows while the typed filter is not the one tailed.
 function SubjectForm({ value, onApply }: { value: string; onApply: (subject: string) => void }) {
   const [draft, setDraft] = useState(value)
   return (
     <form
-      className="flex flex-wrap items-center gap-2"
+      className="flex items-center gap-2"
       onSubmit={(e) => {
         e.preventDefault()
         onApply(draft.trim())
       }}
     >
-      <label htmlFor="tail-subject" className="shrink-0 text-xs text-muted-foreground">
-        Subject filter
-      </label>
-      <Input id="tail-subject" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="orders.> or orders.*.new" className="w-64 font-mono" />
-      <Button type="submit" variant="outline">
-        Tail
-      </Button>
-      {value && <CopyCli cmd={`nats sub ${shellQuote(value)}`} />}
+      <input
+        aria-label="Subject filter"
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        placeholder="orders.>"
+        autoComplete="off"
+        spellCheck={false}
+        className="h-7 w-48 rounded-md border bg-background px-2 font-mono placeholder:text-fg-faint focus-visible:border-primary/60"
+      />
+      {(draft.trim() !== value || !value) && (
+        <Button type="submit" variant="ghost" size="sm" disabled={!draft.trim()}>
+          Tail
+        </Button>
+      )}
     </form>
   )
 }
 
-function TailView({ filter }: { filter: string }) {
+function TailView({ filter, form }: { filter: string; form: ReactNode }) {
+  const paused = usePaused()
   const [ring, setRing] = useState(emptyRing)
   const [stats, setStats] = useState<Tail>()
   const [error, setError] = useState("")
@@ -109,25 +124,31 @@ function TailView({ filter }: { filter: string }) {
 
   return (
     <>
-      {stats && <Meter t={stats} />}
-      {problem && (
-        <p role="alert" className="text-destructive">
-          {problem}
-        </p>
-      )}
-      <div className="flex items-center gap-2">
-        <label htmlFor="tail-show" className="shrink-0 text-xs text-muted-foreground">
-          Show rows containing
-        </label>
-        <Input id="tail-show" value={show} onChange={(e) => setShow(e.target.value)} placeholder="text in the subject or payload" className="w-64" />
-        <Button variant="ghost" onClick={() => setRing((r) => ({ ...r, entries: [] }))}>
-          Clear
-        </Button>
-      </div>
-      <div className="flex min-h-0 gap-4">
+      <section aria-label="Live tail" className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-xl border bg-card">
+        <Toolbar dot={problem ? "bg-destructive" : paused ? "bg-warning" : "bg-success motion-safe:animate-pulse"}>
+          {form}
+          <PauseLive />
+          <Button variant="ghost" size="sm" onClick={() => setRing((r) => ({ ...r, entries: [] }))}>
+            Clear
+          </Button>
+          <label className="flex h-7 items-center gap-1.5 rounded-md border bg-background px-2 focus-within:border-primary/60">
+            <Funnel size={12} aria-hidden className="text-fg-faint" />
+            <span className="sr-only">Show rows containing</span>
+            <input value={show} onChange={(e) => setShow(e.target.value)} placeholder="Show rows containing…" className="w-40 bg-transparent placeholder:text-fg-faint" />
+          </label>
+          <span className="flex-1" />
+          {stats && <Meter t={stats} />}
+          <CopyCli cmd={`nats sub ${shellQuote(filter)}`} compact />
+        </Toolbar>
+        {problem && (
+          <p role="alert" className="flex items-center gap-2 border-b border-destructive/20 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+            <CircleAlert size={12} aria-hidden className="shrink-0" />
+            {problem}
+          </p>
+        )}
         <Rows entries={visible} held={(r) => r.held && r.id >= heldFrom} open={open} onOpen={setOpen} filtered={!!show} />
-        {open && <Detail key={open.id} filter={filter} row={open} held={open.held && open.id >= heldFrom} onClose={() => setOpen(undefined)} />}
-      </div>
+      </section>
+      {open && <Detail key={open.id} filter={filter} row={open} held={open.held && open.id >= heldFrom} onClose={() => setOpen(undefined)} />}
     </>
   )
 }
@@ -135,32 +156,26 @@ function TailView({ filter }: { filter: string }) {
 // Meter shows the arrival rate against the cap, and every drop by its source.
 function Meter({ t }: { t: Tail }) {
   const n = (v: number) => v.toLocaleString("en-US")
+  const dropped = t.rateDrops + t.pendingDrops
   return (
-    <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs">
-      <div className="flex items-center gap-2">
-        <span className="tabular-nums">
-          <span className="font-semibold">{n(t.rate)}</span> msgs/s
-        </span>
-        <span aria-hidden className="h-1.5 w-24 overflow-hidden rounded bg-muted">
-          <span className={`block h-full ${t.rate > RATE_CAP ? "bg-warning" : "bg-primary"}`} style={{ width: `${Math.min(100, (t.rate / RATE_CAP) * 100)}%` }} />
-        </span>
-        <span className="text-muted-foreground">shows up to {n(RATE_CAP)}/s, keeps the last 10,000 rows</span>
-      </div>
-      <span className="text-muted-foreground tabular-nums">{n(t.received)} received</span>
-      <span className="flex items-center gap-1.5">
-        <Badge tone={t.rateDrops ? "warning" : "muted"} title="Messages over the rate cap of 1,000 per second">
-          {n(t.rateDrops)} dropped by the rate cap
-        </Badge>
-        <Badge tone={t.pendingDrops ? "warning" : "muted"} title="Messages the NATS client dropped because the tail's pending buffer was full">
-          {n(t.pendingDrops)} dropped by the client pending limit
-        </Badge>
-        {t.disconnects > 0 && (
-          <Badge tone="destructive" title="The number of messages missed while disconnected is not known">
-            {n(t.disconnects)} server {t.disconnects === 1 ? "disconnect" : "disconnects"}
-          </Badge>
-        )}
+    <span className="flex items-center gap-2 text-fg-faint">
+      <span className="tabular-nums" title={`${n(t.received)} received`}>
+        <span className="text-foreground">{n(t.rate)}</span> msgs/s
       </span>
-    </div>
+      <span aria-hidden className="h-1 w-16 overflow-hidden rounded-full bg-accent">
+        <span className={`block h-full ${t.rate > RATE_CAP ? "bg-warning" : "bg-primary"}`} style={{ width: `${Math.min(100, (t.rate / RATE_CAP) * 100)}%` }} />
+      </span>
+      <span>cap {n(RATE_CAP)}/s · keeps 10,000</span>
+      <Badge tone={dropped ? "warning" : "muted"} title="Over the rate cap of 1,000 per second, or dropped by the NATS client because the tail's pending buffer was full">
+        {n(t.rateDrops)} dropped by the rate cap
+        {t.pendingDrops > 0 && ` · ${n(t.pendingDrops)} by the client pending limit`}
+      </Badge>
+      {t.disconnects > 0 && (
+        <Badge tone="destructive" title="The number of messages missed while disconnected is not known">
+          {n(t.disconnects)} server {t.disconnects === 1 ? "disconnect" : "disconnects"}
+        </Badge>
+      )}
+    </span>
   )
 }
 
@@ -199,7 +214,7 @@ function Rows({ entries, held, open, onOpen, filtered }: { entries: Entry[]; hel
     shown.push(
       <div key={e.key} role="listitem" className="absolute inset-x-0" style={{ top: i * ROW, height: ROW }}>
         {"note" in e ? (
-          <p className="flex h-full items-center truncate border-y border-dashed border-warning/40 bg-warning/10 px-3 text-xs text-warning">{e.note}</p>
+          <p className="flex h-full items-center truncate border-y border-dashed border-warning/40 bg-warning/10 px-3 text-[11.5px] text-warning">{e.note}</p>
         ) : (
           <RowButton row={e.row} held={held(e.row)} fresh={now - e.at < FRESH_MS} selected={open?.id === e.row.id} onOpen={onOpen} />
         )}
@@ -207,8 +222,8 @@ function Rows({ entries, held, open, onOpen, filtered }: { entries: Entry[]; hel
     )
   }
   return (
-    <div ref={box} tabIndex={0} aria-label="Tailed messages, newest first, scrollable" className="relative h-[min(60vh,40rem)] min-w-0 flex-1 overflow-y-auto rounded-xl border bg-card" onScroll={(e) => setTop(e.currentTarget.scrollTop)}>
-      {n === 0 && <p className="px-4 py-8 text-center text-muted-foreground">{filtered ? "No rows match." : "Waiting for messages…"}</p>}
+    <div ref={box} tabIndex={0} aria-label="Tailed messages, newest first, scrollable" className="relative min-h-0 flex-1 overflow-y-auto" onScroll={(e) => setTop(e.currentTarget.scrollTop)}>
+      {n === 0 && <p className="px-4 py-8 text-center text-xs text-fg-faint">{filtered ? "No rows match." : "Waiting for messages…"}</p>}
       <div role="list" aria-label="Tailed messages" style={{ height: n * ROW }}>
         {shown}
       </div>
@@ -224,13 +239,12 @@ function RowButton({ row, held, fresh, selected, onOpen }: { row: TailRow; held:
       type="button"
       onClick={() => onOpen(row)}
       aria-current={selected || undefined}
-      className={`grid h-full w-full grid-cols-[6.5rem_minmax(8rem,16rem)_4.5rem_minmax(0,1fr)] items-center gap-3 border-b px-3 text-left font-mono text-xs hover:bg-accent ${selected ? "bg-accent" : ""} ${fresh ? "motion-safe:animate-tail-in motion-reduce:bg-primary/10" : ""}`}
+      className={`grid h-full w-full grid-cols-[6.5rem_minmax(8rem,14rem)_minmax(0,1fr)] items-center gap-3 px-3 text-left font-mono text-[11.5px] hover:bg-accent/40 ${selected ? "bg-accent" : fresh ? "motion-safe:animate-tail-in motion-reduce:bg-primary/5" : ""}`}
     >
-      <span className="text-muted-foreground tabular-nums">{new Date(row.time).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit", fractionalSecondDigits: 3 })}</span>
-      <span className="truncate">{row.subject}</span>
-      <span className="text-right text-muted-foreground tabular-nums">{bytes(row.size)}</span>
+      <span className="text-fg-faint tabular-nums">{new Date(row.time).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit", fractionalSecondDigits: 3 })}</span>
+      <span className="truncate text-primary">{row.subject}</span>
       <span className="truncate text-muted-foreground">
-        {row.preview !== undefined ? row.preview || <i className="font-sans">empty</i> : <i className="font-sans">{!held ? "payload no longer held" : row.kind === "binary" ? "binary" : "open to see the payload"}</i>}
+        {row.preview !== undefined ? row.preview || <i className="font-sans">empty</i> : <i className="font-sans">{!held ? "payload no longer held" : row.kind === "binary" ? `binary, ${bytes(row.size)}` : "open to see the payload"}</i>}
       </span>
     </button>
   )
@@ -246,26 +260,21 @@ function Detail({ filter, row, held, onClose }: { filter: string; row: TailRow; 
   })
   const m = q.data
   const payload = m?.payload !== undefined && m.kind === "json" ? JSON.stringify(JSON.parse(m.payload), null, 2) : m?.payload
+  const subhead = "mb-1.5 text-[11px] font-medium tracking-wide text-fg-faint uppercase"
   return (
-    <aside aria-label="Message" className="w-[24rem] shrink-0 space-y-3 overflow-auto rounded-xl border bg-card p-4 text-xs">
-      <div className="flex items-start justify-between gap-2">
-        <h2 className="break-all font-mono text-sm font-semibold">{row.subject}</h2>
-        <Button variant="ghost" size="sm" aria-label="Close message" onClick={onClose}>
+    <aside aria-label="Message" className="w-95 shrink-0 space-y-4 overflow-auto rounded-xl border bg-card p-4 text-xs">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="font-mono text-sm break-all text-primary">{row.subject}</h2>
+          <p className="mt-0.5 text-muted-foreground">
+            <time dateTime={row.time}>{new Date(row.time).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit", fractionalSecondDigits: 3 })}</time> · {row.size.toLocaleString()} bytes
+          </p>
+          {row.reply && <p className="mt-0.5 font-mono break-all text-fg-faint">reply to {row.reply}</p>}
+        </div>
+        <Button variant="ghost" size="icon-sm" aria-label="Close message" onClick={onClose}>
           <X aria-hidden />
         </Button>
       </div>
-      <dl className="grid grid-cols-[5rem_1fr] gap-x-3 gap-y-1">
-        <dt className="text-muted-foreground">Received</dt>
-        <dd className="font-mono">{new Date(row.time).toISOString()}</dd>
-        <dt className="text-muted-foreground">Size</dt>
-        <dd>{bytes(row.size)}</dd>
-        {row.reply && (
-          <>
-            <dt className="text-muted-foreground">Reply to</dt>
-            <dd className="break-all font-mono">{row.reply}</dd>
-          </>
-        )}
-      </dl>
       {!held ? (
         <p className="text-muted-foreground">The tail no longer holds this payload. It drops the oldest payloads to stay within its memory budget, and keeps their rows.</p>
       ) : q.error ? (
@@ -274,25 +283,33 @@ function Detail({ filter, row, held, onClose }: { filter: string; row: TailRow; 
         <p className="text-muted-foreground">Loading…</p>
       ) : (
         <>
-          {m.headerValues && (
-            <dl className="grid grid-cols-[minmax(0,8rem)_1fr] gap-x-3 gap-y-1">
-              {Object.entries(m.headerValues).flatMap(([k, vs]) =>
-                vs.map((v, i) => [
-                  <dt key={`${k}-${i}-k`} className="truncate font-mono text-muted-foreground">
-                    {k}
-                  </dt>,
-                  <dd key={`${k}-${i}-v`} className="break-all font-mono">
-                    {v}
-                  </dd>,
-                ]),
-              )}
-            </dl>
-          )}
-          {payload !== undefined ? (
-            <pre className="max-h-[50vh] overflow-auto rounded-md bg-muted p-2 font-mono whitespace-pre-wrap break-all">{payload || <i className="font-sans">empty</i>}</pre>
-          ) : (
-            <p className="text-muted-foreground">Binary payload, {bytes(row.size)}.</p>
-          )}
+          <div>
+            <div className={subhead}>Headers</div>
+            {m.headerValues ? (
+              <table className="w-full">
+                <tbody>
+                  {Object.entries(m.headerValues).flatMap(([k, vs]) =>
+                    vs.map((v, i) => (
+                      <tr key={`${k}-${i}`} className="border-b border-border/60 last:border-0">
+                        <td className="py-1 pr-3 align-top font-mono text-muted-foreground">{k}</td>
+                        <td className="py-1 font-mono break-all">{v}</td>
+                      </tr>
+                    )),
+                  )}
+                </tbody>
+              </table>
+            ) : (
+              <p className="text-fg-faint">No headers</p>
+            )}
+          </div>
+          <div>
+            <div className={subhead}>Payload</div>
+            {payload !== undefined ? (
+              <pre className="max-h-[60vh] overflow-auto rounded-lg border bg-background p-3 font-mono text-[12px] leading-relaxed whitespace-pre-wrap break-all">{payload || <i className="font-sans">empty</i>}</pre>
+            ) : (
+              <p className="text-muted-foreground">Binary payload, {bytes(row.size)}.</p>
+            )}
+          </div>
         </>
       )}
     </aside>

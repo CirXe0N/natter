@@ -3,8 +3,8 @@
 // connection to it.
 //
 // Natter writes natscli's files only when the user asks: a new Context with no
-// Vault secret may go there, and a CLI Context is deleted only on an explicit
-// confirmation. The CLI Registry runs WithoutSelection, so
+// Vault secret may go there, an edit rewrites one, and a CLI Context is deleted
+// only on an explicit confirmation. The CLI Registry runs WithoutSelection, so
 // ~/.config/nats/context.txt is never read or written. Natter's own state
 // lives in <config root>/natter/.
 package contexts
@@ -56,7 +56,11 @@ type Manager struct {
 
 // registries reads one Source. raw lists Contexts without expanding paths or
 // running nsc; live loads one for connecting, with its secrets resolved.
-type registries struct{ raw, live *natscontext.Registry }
+// files is the backend under both, for an edit that must keep unknown fields.
+type registries struct {
+	raw, live *natscontext.Registry
+	files     natscontext.Backend
+}
 
 // Conn is the active Context and its connection. A switch replaces it whole
 // and never mutates it, so holders need no lock. NC is set only once Status is
@@ -95,15 +99,16 @@ func DefaultConfigRoot() (string, error) {
 // after the stock ones, so a test can replace op:// and nsc://.
 func New(root string, v *vault.Vault, extra ...natscontext.CredentialResolver) *Manager {
 	dir := filepath.Join(root, "natter")
-	reg := func(b natscontext.Backend) registries {
+	reg := func(b *natscontext.FileBackend) registries {
 		// Passing any resolver drops the defaults, so they are asked for explicitly.
 		live := []natscontext.RegistryOption{natscontext.WithoutSelection(), natscontext.WithDefaultResolvers(), natscontext.WithCredentialResolver(v)}
 		for _, r := range extra {
 			live = append(live, natscontext.WithCredentialResolver(r))
 		}
 		return registries{
-			raw:  natscontext.NewRegistry(b, natscontext.WithoutSelection(), natscontext.WithoutExpansion()),
-			live: natscontext.NewRegistry(b, live...),
+			raw:   natscontext.NewRegistry(b, natscontext.WithoutSelection(), natscontext.WithoutExpansion()),
+			live:  natscontext.NewRegistry(b, live...),
+			files: b,
 		}
 	}
 	return &Manager{
@@ -150,41 +155,21 @@ func (m *Manager) Create(ctx context.Context, n api.NewContext) (_ api.Context, 
 	if reg.Known(ctx, n.Name) {
 		return invalid(fmt.Sprintf("a Context named %q already exists", n.Name))
 	}
-	opt, ok := secretOption[n.SecretKind]
-	have := n.Secret != "" || n.SecretRef != ""
-	switch {
-	case n.SecretKind == "" && have:
-		return invalid("say which field the secret is for")
-	case n.SecretKind == "":
-	case !ok:
-		return invalid(fmt.Sprintf("unknown secret kind %q", n.SecretKind))
-	case !have:
-		return invalid("the secret is empty")
-	case n.Secret != "" && n.SecretRef != "":
-		return invalid("give a secret or a reference, not both")
-	case n.SecretKind == api.SecretKindPassword && n.User == "":
-		return invalid("a password needs a user")
-	case (n.SecretKind == api.SecretKindCreds || n.SecretKind == api.SecretKindNkey) && n.User != "":
-		return invalid("creds and nkey Contexts have no user")
+	if err := checkSecret(n.SecretKind, n.Secret, n.SecretRef); err != nil {
+		return invalid(err.Error())
 	}
-	if n.SecretRef != "" {
-		if err := checkRef(n.SecretKind, n.SecretRef); err != nil {
-			return invalid(err.Error())
-		}
+	if err := checkUser(n.SecretKind, n.User); err != nil {
+		return invalid(err.Error())
 	}
 	opts := []natscontext.Option{natscontext.WithServerURL(n.URLs), natscontext.WithDescription(n.Description), natscontext.WithUser(n.User)}
 	var put []string
 	defer m.forgetOnError(&err, &put)
-	switch {
-	case n.SecretRef != "":
-		opts = append(opts, opt(n.SecretRef))
-	case n.Secret != "":
-		ref, err := m.vault.Put(n.Secret)
-		if err != nil {
-			return api.Context{}, err
-		}
-		put = append(put, ref)
-		opts = append(opts, opt(ref))
+	value, err := m.storeSecret(ctx, n.Secret, n.SecretRef, &put)
+	if err != nil {
+		return api.Context{}, err
+	}
+	if value != "" {
+		opts = append(opts, secretOption[n.SecretKind](value))
 	}
 	c, err := natscontext.New(n.Name, false, opts...)
 	if err != nil {
@@ -195,6 +180,169 @@ func (m *Manager) Create(ctx context.Context, n api.NewContext) (_ api.Context, 
 	}
 	put = nil // the saved file references them now
 	return m.Get(ctx, api.Ref{Source: target, Name: n.Name})
+}
+
+// checkSecret validates a secret for kind; an empty kind means no secret.
+func checkSecret(kind api.SecretKind, secret api.Secret, ref string) error {
+	_, ok := secretOption[kind]
+	have := secret != "" || ref != ""
+	switch {
+	case kind == "" && have:
+		return errors.New("say which field the secret is for")
+	case kind == "":
+	case !ok:
+		return fmt.Errorf("unknown secret kind %q", kind)
+	case !have:
+		return errors.New("the secret is empty")
+	case secret != "" && ref != "":
+		return errors.New("give a secret or a reference, not both")
+	case ref != "":
+		return checkRef(kind, ref)
+	}
+	return nil
+}
+
+// checkUser checks the user against the kind of secret it goes with.
+func checkUser(kind api.SecretKind, user string) error {
+	switch {
+	case kind == api.SecretKindPassword && user == "":
+		return errors.New("a password needs a user")
+	case (kind == api.SecretKindCreds || kind == api.SecretKindNkey) && user != "":
+		return errors.New("creds and nkey Contexts have no user")
+	}
+	return nil
+}
+
+// storeSecret returns what a Context file holds for a checked secret: the
+// reference as is, or a new Vault entry's reference, which it adds to *put.
+func (m *Manager) storeSecret(ctx context.Context, secret api.Secret, ref string, put *[]string) (string, error) {
+	if secret == "" {
+		return ref, nil
+	}
+	if err := m.ensureVault(ctx); err != nil {
+		return "", err
+	}
+	vref, err := m.vault.Put(secret)
+	if err != nil {
+		return "", err
+	}
+	*put = append(*put, vref)
+	return vref, nil
+}
+
+// ensureVault creates the Vault the first time a secret goes into it, with
+// its key in the OS keyring. With no keyring the user creates it with a
+// passphrase instead.
+func (m *Manager) ensureVault(ctx context.Context) error {
+	if m.vault.Status().State != api.VaultStateNone {
+		return nil
+	}
+	switch err := m.vault.CreateInKeyring(ctx); {
+	case errors.Is(err, vault.ErrNoKeyring):
+		return fmt.Errorf("%w: there is no OS keyring to keep the Vault key in, so create the Vault with a passphrase first", vault.ErrLocked)
+	case errors.Is(err, vault.ErrExists): // another natter made it first; Put says if it is locked
+		return nil
+	default:
+		return err
+	}
+}
+
+// Update edits ref in place. Its file is rewritten with only the edited
+// fields changed. A replaced Vault secret is deleted from the Vault after the
+// save. The caller reconnects ref if it is active.
+func (m *Manager) Update(ctx context.Context, ref api.Ref, u api.ContextUpdate) (_ api.Context, err error) {
+	reg, err := m.registries(ref)
+	if err != nil {
+		return api.Context{}, err
+	}
+	old, err := reg.raw.Load(ctx, ref.Name)
+	if errors.Is(err, natscontext.ErrNotFound) {
+		return api.Context{}, fmt.Errorf("%w: %s", ErrUnknown, key(ref))
+	}
+	if err != nil {
+		return api.Context{}, err
+	}
+	kind := u.SecretKind
+	if u.KeepSecret {
+		kind = secretKind(old)
+	} else {
+		switch err := checkSecret(u.SecretKind, u.Secret, u.SecretRef); {
+		case err != nil:
+			return invalid(err.Error())
+		case u.Secret != "" && ref.Source == api.SourceCLI:
+			return invalid("a nats CLI Context cannot hold a Vault secret, which natscli cannot read")
+		}
+	}
+	if err := checkUser(kind, u.User); err != nil {
+		return invalid(err.Error())
+	}
+	stale := vaultRefs(old)
+	if u.KeepSecret {
+		stale = nil
+	} else if len(stale) > 0 && m.vault.Status().State != api.VaultStateUnlocked {
+		return invalid("unlock the Vault first, so the old secret is deleted from it")
+	}
+
+	// The file is edited as JSON so fields natscontext adds later survive.
+	raw, err := reg.files.Load(ctx, ref.Name)
+	if err != nil {
+		return api.Context{}, err
+	}
+	fields := map[string]any{}
+	if err := json.Unmarshal(raw, &fields); err != nil {
+		return api.Context{}, err
+	}
+	fields["description"], fields["url"], fields["user"] = u.Description, u.URLs, u.User
+	var put []string
+	defer m.forgetOnError(&err, &put)
+	if !u.KeepSecret {
+		for _, f := range secretFields {
+			delete(fields, f)
+		}
+		value, err := m.storeSecret(ctx, u.Secret, u.SecretRef, &put)
+		if err != nil {
+			return api.Context{}, err
+		}
+		if kind != "" {
+			fields[string(kind)] = value
+		}
+	}
+	edited, err := json.Marshal(fields)
+	if err != nil {
+		return api.Context{}, err
+	}
+	mem := natscontext.NewMemoryBackend()
+	if err := mem.Save(ctx, ref.Name, edited); err != nil {
+		return api.Context{}, err
+	}
+	c, err := natscontext.NewRegistry(mem, natscontext.WithoutSelection(), natscontext.WithoutExpansion()).Load(ctx, ref.Name)
+	if err != nil {
+		return api.Context{}, err
+	}
+	if err := reg.raw.Save(ctx, c, ref.Name); err != nil { // Save validates
+		return invalid(err.Error())
+	}
+	put = nil // the saved file references them now
+	if len(stale) > 0 {
+		if err := m.vault.Delete(stale...); err != nil {
+			slog.Warn("could not delete a replaced secret from the Vault", "context", key(ref), "err", err)
+		}
+	}
+	return m.Get(ctx, ref)
+}
+
+// secretFields are the JSON keys secretKind and Update know, named like SecretKind.
+var secretFields = []string{"password", "token", "creds", "nkey"}
+
+// vaultRefs lists the natter-vault:// references in c's secret fields.
+func vaultRefs(c *natscontext.Context) []string {
+	var out []string
+	for _, v := range []string{c.Password(), c.Token(), c.Creds(), c.NKey()} {
+		if scheme(v) == vault.Scheme {
+			out = append(out, v)
+		}
+	}
+	return out
 }
 
 // forgetOnError deletes the Vault entries in *put when *err is set, so a
@@ -226,7 +374,7 @@ func checkRef(kind api.SecretKind, ref string) error {
 
 // MoveIntoVault copies a CLI Context with a Plaintext secret into Natter's
 // directory under newName (empty keeps the name), with its password, token,
-// creds and nkey in the Vault. It never touches the CLI file; RemoveCLI does that.
+// creds and nkey in the Vault. It never touches the CLI file; Remove does that.
 func (m *Manager) MoveIntoVault(ctx context.Context, ref api.Ref, newName string) (_ api.Context, err error) {
 	if ref.Source != api.SourceCLI {
 		return invalid("only a nats CLI Context can be moved into the Vault")
@@ -260,6 +408,9 @@ func (m *Manager) MoveIntoVault(ctx context.Context, ref api.Ref, newName string
 		if v != "" && referenceSchemes[scheme(v)] == "" {
 			return invalid(fmt.Sprintf("the %s is a Plaintext secret the Vault cannot hold yet", field))
 		}
+	}
+	if err := m.ensureVault(ctx); err != nil {
+		return api.Context{}, err
 	}
 	var opts []natscontext.Option
 	var put []string
@@ -329,12 +480,10 @@ func plaintextValue(kind api.SecretKind, v string) (api.Secret, error) {
 	return api.Secret(b), nil
 }
 
-// RemoveCLI deletes a CLI Context file. The caller has the user's explicit
-// confirmation. The active Context is refused: switch away first.
-func (m *Manager) RemoveCLI(ctx context.Context, ref api.Ref) error {
-	if ref.Source != api.SourceCLI {
-		return fmt.Errorf("%w: only a nats CLI Context file can be removed", ErrInvalid)
-	}
+// Remove deletes a Context's file, its Settings and, for a Natter Context, its
+// secrets in the Vault. The caller has the user's explicit confirmation. The
+// active Context is refused: switch away first.
+func (m *Manager) Remove(ctx context.Context, ref api.Ref) error {
 	reg, err := m.registries(ref)
 	if err != nil {
 		return err
@@ -344,11 +493,24 @@ func (m *Manager) RemoveCLI(ctx context.Context, ref api.Ref) error {
 	if a := m.Active(); a != nil && a.Context.Ref == ref {
 		return fmt.Errorf("%w: %s is the active Context; switch to another first", ErrInvalid, key(ref))
 	}
-	if !reg.raw.Known(ctx, ref.Name) {
+	c, err := reg.raw.Load(ctx, ref.Name)
+	if errors.Is(err, natscontext.ErrNotFound) {
 		return fmt.Errorf("%w: %s", ErrUnknown, key(ref))
+	}
+	if err != nil {
+		return err
+	}
+	stale := vaultRefs(c)
+	if len(stale) > 0 && m.vault.Status().State != api.VaultStateUnlocked {
+		return fmt.Errorf("%w: unlock the Vault first, so this Context's secret is deleted with it", ErrInvalid)
 	}
 	if err := reg.raw.Delete(ctx, ref.Name); err != nil {
 		return err
+	}
+	if len(stale) > 0 {
+		if err := m.vault.Delete(stale...); err != nil {
+			return err
+		}
 	}
 	return m.writeSettings(ref, api.Settings{})
 }

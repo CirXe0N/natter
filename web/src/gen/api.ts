@@ -56,6 +56,10 @@ export interface Context extends Ref, Settings {
   urls: string;
   user: string;
   secret: SecretStorage;
+  /**
+   * SecretKind is the field the secret is in, empty when there is none.
+   */
+  secretKind?: SecretKind;
   mode: Mode;
 }
 /**
@@ -168,6 +172,23 @@ export interface NewContext {
   source?: Source;
 }
 /**
+ * ContextUpdate edits a Context. Its name and Source stay, and every field
+ * Natter does not edit (TLS, JetStream domain, inbox prefix…) is kept.
+ */
+export interface ContextUpdate {
+  description: string;
+  urls: string;
+  user: string;
+  /**
+   * KeepSecret leaves the secret as it is. Otherwise SecretKind, Secret and
+   * SecretRef replace it as in NewContext, and an empty SecretKind removes it.
+   */
+  keepSecret?: boolean;
+  secretKind?: SecretKind;
+  secret?: Secret;
+  secretRef?: string;
+}
+/**
  * MoveRequest asks to copy a CLI Context with a Plaintext secret into Natter's
  * directory, with the secret in the Vault. The CLI file is left as it is.
  */
@@ -178,8 +199,7 @@ export interface MoveRequest {
   name?: string;
 }
 /**
- * RemoveRequest confirms deleting a CLI Context file. It is separate from
- * moving, and Confirm must be true.
+ * RemoveRequest confirms deleting a Context's file. Confirm must be true.
  */
 export interface RemoveRequest {
   confirm: boolean;

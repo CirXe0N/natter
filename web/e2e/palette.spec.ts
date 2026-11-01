@@ -15,7 +15,7 @@ test("the command palette switches Context, opens a stream, and returns focus", 
   await page.keyboard.press("Enter")
   await expect(palette).toHaveCount(0)
   await expect(switcher).toHaveAccessibleName("Context: app. Switch Context")
-  await expect(page.getByRole("banner").getByText("JetStream", { exact: true })).toBeVisible()
+  await expect(page.getByRole("navigation", { name: "Breadcrumb" }).getByRole("link", { name: "app" })).toBeVisible()
   await expect(page.getByRole("link", { name: "Overview" })).toBeFocused()
 
   // Streams and buckets come from the Context just activated.

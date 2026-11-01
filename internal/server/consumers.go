@@ -18,7 +18,9 @@ import (
 func init() {
 	routes = append(routes,
 		route{pattern: "GET /api/streams/{name}/consumers", handle: (*server).listConsumers},
+		route{pattern: "POST /api/streams/{name}/consumers", handle: (*server).createConsumer},
 		route{pattern: "GET /api/streams/{name}/consumers/{consumer}", handle: (*server).consumerDetail},
+		route{pattern: "PUT /api/streams/{name}/consumers/{consumer}", handle: (*server).updateConsumer},
 		route{pattern: "PUT /api/streams/{name}/consumers/{consumer}/pause", handle: (*server).pauseConsumer},
 		route{pattern: "DELETE /api/streams/{name}/consumers/{consumer}/pause", handle: (*server).resumeConsumer},
 		route{pattern: "DELETE /api/streams/{name}/consumers/{consumer}", handle: (*server).deleteConsumer},
@@ -87,6 +89,124 @@ func (s *server) consumerDetail(w http.ResponseWriter, r *http.Request) {
 		d.Cluster, d.Leader = cl.Name, cl.Leader
 	}
 	writeJSON(w, d)
+}
+
+// decodeConsumerConfig reads a consumer config in the server's own JSON
+// shape. Unknown keys are refused so a typo cannot be silently dropped.
+func decodeConsumerConfig(w http.ResponseWriter, r *http.Request) (cfg jsmapi.ConsumerConfig, ok bool) {
+	dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxBody))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&cfg); err != nil {
+		writeConsumerFieldError(w, fmt.Errorf("The consumer config is not valid JSON: %w", err), "")
+		return cfg, false
+	}
+	return cfg, true
+}
+
+// createConsumer refuses a name in use: the server's create is create-or-update,
+// so without the check a typo'd "new" consumer would silently rewrite one.
+func (s *server) createConsumer(w http.ResponseWriter, r *http.Request) {
+	a := s.jetStream(w)
+	if a == nil {
+		return
+	}
+	stream := r.PathValue("name")
+	if !jsm.IsValidName(stream) {
+		writeStreamError(w, fmt.Errorf("%w: %q", errNoStream, stream))
+		return
+	}
+	cfg, ok := decodeConsumerConfig(w, r)
+	if !ok {
+		return
+	}
+	if cfg.Name == "" {
+		writeConsumerFieldError(w, errors.New("A consumer needs a name."), "name")
+		return
+	}
+	if cfg.Durable != "" && cfg.Durable != cfg.Name {
+		writeConsumerFieldError(w, errors.New("A durable consumer's durable_name must be its name."), "name")
+		return
+	}
+	if jsm.IsValidName(cfg.Name) {
+		known, err := a.JSM.IsKnownConsumer(stream, cfg.Name)
+		if err != nil {
+			writeConsumerError(w, err)
+			return
+		}
+		if known {
+			writeConsumerFieldError(w, fmt.Errorf("A consumer named %q already exists on %s.", cfg.Name, stream), "name")
+			return
+		}
+	}
+	c, err := a.JSM.NewConsumerFromDefault(stream, cfg)
+	if err != nil {
+		writeConsumerFieldError(w, err)
+		return
+	}
+	s.writeConsumer(w, c)
+}
+
+// updateConsumer sends the whole new config. The server refuses changes to
+// the fields fixed at create (deliver and ack policy, push or pull…).
+func (s *server) updateConsumer(w http.ResponseWriter, r *http.Request) {
+	a := s.jetStream(w)
+	if a == nil {
+		return
+	}
+	old := loadConsumer(w, a, r.PathValue("name"), r.PathValue("consumer"))
+	if old == nil {
+		return
+	}
+	cfg, ok := decodeConsumerConfig(w, r)
+	if !ok {
+		return
+	}
+	if cfg.Name != old.Name() || (cfg.Durable != "" && cfg.Durable != old.Name()) {
+		writeConsumerFieldError(w, errors.New("A consumer cannot be renamed."), "name")
+		return
+	}
+	c, err := a.JSM.NewConsumerFromDefault(old.StreamName(), cfg)
+	if err != nil {
+		writeConsumerFieldError(w, err)
+		return
+	}
+	s.writeConsumer(w, c)
+}
+
+// consumerFieldHints maps words in a refusal to the consumer config key it is
+// about, first match wins, as fieldHints does for streams.
+var consumerFieldHints = []struct{ word, field string }{
+	{"already in use", "name"}, {"already exists", "name"}, {"durable", "name"},
+	{"deliver policy", "deliver_policy"}, {"deliver_policy", "deliver_policy"},
+	{"start sequence", "opt_start_seq"}, {"opt_start_seq", "opt_start_seq"},
+	{"start time", "opt_start_time"}, {"opt_start_time", "opt_start_time"},
+	{"ack policy", "ack_policy"}, {"ack_policy", "ack_policy"},
+	{"ack wait", "ack_wait"}, {"ack_wait", "ack_wait"},
+	{"replay", "replay_policy"},
+	{"heart", "idle_heartbeat"}, {"flow control", "flow_control"}, {"flow_control", "flow_control"},
+	{"push", "deliver_subject"}, {"pull", "deliver_subject"},
+	{"max waiting", "max_waiting"}, {"max_waiting", "max_waiting"},
+	{"backoff", "backoff"}, {"max deliver", "max_deliver"}, {"max_deliver", "max_deliver"},
+	{"max ack pending", "max_ack_pending"}, {"max_ack_pending", "max_ack_pending"},
+	{"deliver subject", "deliver_subject"}, {"deliver_subject", "deliver_subject"},
+	{"deliver group", "deliver_group"}, {"deliver_group", "deliver_group"}, {"queue", "deliver_group"},
+	{"filter", "filter_subjects"},
+	{"inactive", "inactive_threshold"},
+	{"replicas", "num_replicas"}, {"storage", "mem_storage"},
+	{"batch", "max_batch"}, {"expires", "max_expires"}, {"max_expires", "max_expires"},
+	{"max bytes", "max_bytes"}, {"max_bytes", "max_bytes"},
+	{"priority group", "priority_groups"}, {"priority_groups", "priority_groups"}, {"pinned", "priority_timeout"}, {"priority", "priority_policy"},
+	{"rate limit", "rate_limit_bps"}, {"rate_limit", "rate_limit_bps"},
+	{"metadata", "metadata"}, {"description", "description"}, {"sample", "sample_freq"},
+	{"name", "name"},
+}
+
+func writeConsumerFieldError(w http.ResponseWriter, err error, field ...string) {
+	if jsm.IsNatsError(err, 10014) { // JSConsumerNotFoundErr
+		writeConsumerError(w, err)
+		return
+	}
+	writeHintedError(w, err, consumerFieldHints, field...)
 }
 
 // pauseConsumer pauses until now + seconds; resume is the matching DELETE.

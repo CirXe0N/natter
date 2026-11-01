@@ -193,3 +193,47 @@ func TestTheKeyringItemNameAvoidsBackslashAndQuote(t *testing.T) {
 		t.Fatalf("%q %q", a, b)
 	}
 }
+
+func TestAVaultCreatedOnFirstUseKeepsItsKeyOnlyInTheKeyring(t *testing.T) {
+	keyring.MockInit()
+	dir := t.TempDir()
+	if err := Open(t.TempDir()).CreateInKeyring(t.Context()); !errors.Is(err, ErrNoKeyring) {
+		t.Fatalf("without a keyring: %v", err)
+	}
+
+	v := attach(t, dir)
+	if err := v.CreateInKeyring(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if got := v.Status(); got != (api.Vault{State: api.VaultStateUnlocked, Keyring: api.KeyringOn}) {
+		t.Fatalf("created: %+v", got)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "vault.key.age")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatal("a keyring-only Vault wrote a passphrase wrapper")
+	}
+	if err := v.CreateInKeyring(t.Context()); !errors.Is(err, ErrExists) {
+		t.Fatalf("second create: %v", err)
+	}
+	ref := put(t, v, "s3cret")
+
+	restarted := attach(t, dir)
+	if s, err := resolve(t, restarted, ref); err != nil || s != "s3cret" {
+		t.Fatalf("after a restart: %q %v", s, err)
+	}
+	if err := restarted.SetKeyring(t.Context(), false); !errors.Is(err, ErrOnlyKey) {
+		t.Fatalf("dropping the only key: %v", err)
+	}
+	if err := restarted.SetPassphrase("", "backup"); err != nil {
+		t.Fatal(err)
+	}
+	if err := restarted.SetKeyring(t.Context(), false); err != nil {
+		t.Fatalf("dropping the keyring copy once a passphrase exists: %v", err)
+	}
+	locked := attach(t, dir)
+	if err := locked.UnlockPassphrase("backup"); err != nil {
+		t.Fatal(err)
+	}
+	if s, err := resolve(t, locked, ref); err != nil || s != "s3cret" {
+		t.Fatalf("with the backup passphrase: %q %v", s, err)
+	}
+}

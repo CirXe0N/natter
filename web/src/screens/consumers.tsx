@@ -1,19 +1,22 @@
-// The Consumers tab of a stream, and one consumer's detail with pause, resume and delete.
-import { useState } from "react"
+// The Consumers tab of a stream (a read-only table), and one consumer's
+// page under /consumers, where it is paused, resumed, edited and deleted.
+import { useId, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Link, useNavigate, useParams } from "@tanstack/react-router"
 
 import { api } from "@/api"
 import { Badge } from "@/components/badge"
-import { BlockedButton } from "@/components/blocked-button"
 import { CopyCli } from "@/components/copy-cli"
+import { Pause, Pencil, Play, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { useBlockedReason } from "@/contexts"
 import type { ConsumerSummary } from "@/gen/api"
 import { count } from "@/screens/overview"
 import { useStream } from "@/screens/stream"
+import { ScreenHeader } from "@/components/screen-header"
 import { Ago, useRefresh } from "@/screens/streams"
+import { Confirm } from "@/screens/stream-actions"
 
 const th = "px-3 py-2 text-left text-[11px] font-medium text-muted-foreground"
 const td = "h-(--row-h) px-3"
@@ -77,7 +80,7 @@ export function StreamConsumers() {
                 <tr key={c.name} className="border-b last:border-0">
                   <th scope="row" className={`${td} text-left font-normal`}>
                     <span className="flex items-center gap-2">
-                      <Link to="/streams/$stream/consumers/$consumer" params={{ stream, consumer: c.name }} className="font-mono hover:underline">
+                      <Link to="/consumers/$stream/$consumer" params={{ stream, consumer: c.name }} className="font-mono hover:underline">
                         {c.name}
                       </Link>
                       {c.natter && <NatterBadge />}
@@ -144,12 +147,13 @@ function configValue(key: string, v: unknown) {
 }
 
 export function ConsumerDetail() {
-  const { stream, consumer } = useParams({ from: "/streams/$stream/consumers/$consumer" })
+  const { stream, consumer } = useParams({ from: "/consumers/$stream/$consumer" })
   const navigate = useNavigate()
   const qc = useQueryClient()
   const blocked = useBlockedReason()
   const [seconds, setSeconds] = useState(3600)
   const [confirming, setConfirming] = useState(false)
+  const reason = useId()
   const { data: d, error } = useQuery({
     queryKey: ["streams", "consumer", stream, consumer],
     queryFn: ({ signal }) => api.consumer(stream, consumer, signal),
@@ -162,14 +166,26 @@ export function ConsumerDetail() {
     mutationFn: () => api.deleteConsumer(stream, consumer),
     onSuccess: async () => {
       setConfirming(false)
-      await navigate({ to: "/streams/$stream/consumers", params: { stream } })
+      await navigate({ to: "/consumers" })
       done()
     },
   })
-  if (error) return <p className="text-destructive">{error.message}</p>
-  if (!d) return <p className="text-muted-foreground">Loading consumer…</p>
+  const header = (
+    <ScreenHeader title={<span className="font-mono">{consumer}</span>}>
+      <Link to="/consumers" className="text-xs text-muted-foreground hover:text-foreground hover:underline">
+        All consumers
+      </Link>
+    </ScreenHeader>
+  )
+  if (error || !d)
+    return (
+      <>
+        {header}
+        <p className={`px-8 ${error ? "text-destructive" : "text-muted-foreground"}`}>{error ? error.message : "Loading consumer…"}</p>
+      </>
+    )
   const now = Date.now() / 1000
-  const failure = pause.error ?? resume.error ?? remove.error
+  const failure = pause.error ?? resume.error
   const items: [string, React.ReactNode][] = [
     ["Pending (lag)", count(d.pending)],
     ["Ack pending", count(d.ackPending)],
@@ -180,86 +196,104 @@ export function ConsumerDetail() {
     ["Last active", <Ago time={d.lastActive} now={now} />],
     ["Created", <Ago time={d.created} now={now} />],
   ]
+  const block = { disabled: !!blocked, focusableWhenDisabled: true, "aria-describedby": blocked ? reason : undefined } as const
+  const summary = [d.durable ? "Durable" : "Ephemeral", d.push ? "push" : "pull", `ack ${d.ackPolicy}`, d.filter.length ? `filter ${d.filter.join(", ")}` : "all subjects"]
   return (
     <>
-      <div className="flex flex-wrap items-center gap-2">
-        <Link to="/streams/$stream/consumers" params={{ stream }} className="text-xs text-muted-foreground hover:text-foreground hover:underline">
-          All consumers
-        </Link>
-        <span className="font-mono text-sm">{d.name}</span>
-        {d.natter && <NatterBadge />}
-        {d.paused && <PausedCell c={d} />}
-        {!d.durable && <Badge title="The server removes it after its inactive threshold.">Ephemeral</Badge>}
-        {d.push && <Badge>Push</Badge>}
-        <span className="flex-1" />
-        <CopyCli cmd={`nats consumer info ${stream} ${d.name}`} />
+      {header}
+      <div className="space-y-5 px-8 pb-10">
+        <section aria-label="Consumer" className="space-y-4 rounded-xl border bg-card p-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h2 className="flex flex-wrap items-center gap-2 font-mono text-sm font-semibold">
+                <Link to="/streams/$stream" params={{ stream }} className="text-muted-foreground hover:text-foreground hover:underline">
+                  {stream}
+                </Link>
+                <span className="text-muted-foreground">›</span> {d.name}
+                {d.natter && <NatterBadge />}
+                {d.paused && <PausedCell c={d} />}
+              </h2>
+              <p className="mt-0.5 text-xs text-muted-foreground">{summary.join(" · ")}</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <CopyCli cmd={`nats consumer info ${stream} ${d.name}`} compact />
+              {d.paused ? (
+                <Button variant="outline" size="sm" {...block} disabled={block.disabled || resume.isPending} onClick={() => resume.mutate()}>
+                  <Play aria-hidden />
+                  Resume
+                </Button>
+              ) : (
+                <span className="flex items-center gap-1.5">
+                  <label htmlFor="pause-for" className="sr-only">
+                    Pause for
+                  </label>
+                  <select id="pause-for" value={seconds} onChange={(e) => setSeconds(Number(e.target.value))} className="h-7 rounded-md border bg-background px-2 text-xs">
+                    {pauseFor.map((p) => (
+                      <option key={p.seconds} value={p.seconds}>
+                        {p.label}
+                      </option>
+                    ))}
+                  </select>
+                  <Button variant="outline" size="sm" {...block} disabled={block.disabled || pause.isPending} onClick={() => pause.mutate()}>
+                    <Pause aria-hidden />
+                    Pause
+                  </Button>
+                </span>
+              )}
+              <Button variant="outline" size="sm" {...block} onClick={() => void navigate({ to: "/consumers/$stream/$consumer/edit", params: { stream, consumer: d.name } })}>
+                <Pencil aria-hidden />
+                Edit
+              </Button>
+              <Button variant="outline" size="sm" {...block} onClick={() => setConfirming(true)} className="border-destructive/30 text-destructive hover:bg-destructive/10">
+                <Trash2 aria-hidden />
+                Delete…
+              </Button>
+            </div>
+          </div>
+          {blocked && (
+            <p id={reason} className="text-xs text-muted-foreground">
+              {blocked}
+            </p>
+          )}
+          {failure && (
+            <p role="alert" className="text-xs text-destructive">
+              {failure.message}
+            </p>
+          )}
+          {d.paused && d.pauseUntil && <p className="rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-warning">Paused until {new Date(d.pauseUntil).toLocaleString()}. It delivers nothing until then.</p>}
+          <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-4">
+            {items.map(([k, v]) => (
+              <div key={k} className="bg-card px-3 py-2.5">
+                <dt className="text-[11px] text-muted-foreground">{k}</dt>
+                <dd className="mt-0.5 font-medium tabular-nums">{v}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+        <dl className="divide-y overflow-hidden rounded-xl border bg-card text-xs">
+          {Object.entries(d.config).map(([k, v]) => (
+            <div key={k} className="grid grid-cols-[14rem_1fr] gap-4 px-4 py-2">
+              <dt className="font-mono text-muted-foreground">{k}</dt>
+              <dd className="min-w-0 break-words font-mono">{configValue(k, v)}</dd>
+            </div>
+          ))}
+        </dl>
+        <Dialog open={confirming} onOpenChange={setConfirming}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Delete consumer {d.name}</DialogTitle>
+              <DialogDescription>
+                {d.pending > 0 || d.ackPending > 0
+                  ? `It still has ${count(d.pending)} pending and ${count(d.ackPending)} awaiting ack. Deleting it forgets its position, and every client using it loses it.`
+                  : "Every client using it loses it."}
+              </DialogDescription>
+            </DialogHeader>
+            <Confirm name={d.name} verb="Delete consumer" danger="This cannot be undone." pending={remove.isPending} error={remove.error?.message} onConfirm={() => remove.mutate()}>
+              <CopyCli cmd={`nats consumer rm ${stream} ${d.name} --force`} />
+            </Confirm>
+          </DialogContent>
+        </Dialog>
       </div>
-      {d.paused && d.pauseUntil && <p className="rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-warning">Paused until {new Date(d.pauseUntil).toLocaleString()}. It delivers nothing until then.</p>}
-      <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border bg-border sm:grid-cols-4">
-        {items.map(([k, v]) => (
-          <div key={k} className="bg-card px-3 py-2.5">
-            <dt className="text-[11px] text-muted-foreground">{k}</dt>
-            <dd className="mt-0.5 font-medium tabular-nums">{v}</dd>
-          </div>
-        ))}
-      </dl>
-      <section aria-label="Actions" className="flex flex-wrap items-center gap-2 rounded-xl border bg-card px-4 py-3">
-        {d.paused ? (
-          <BlockedButton reason={blocked} variant="outline" disabled={resume.isPending} onClick={() => resume.mutate()}>
-            Resume
-          </BlockedButton>
-        ) : (
-          <>
-            <label htmlFor="pause-for" className="text-xs text-muted-foreground">
-              Pause for
-            </label>
-            <select id="pause-for" value={seconds} onChange={(e) => setSeconds(Number(e.target.value))} className="h-8 rounded-md border bg-background px-2 text-xs">
-              {pauseFor.map((p) => (
-                <option key={p.seconds} value={p.seconds}>
-                  {p.label}
-                </option>
-              ))}
-            </select>
-            <BlockedButton reason={blocked} variant="outline" disabled={pause.isPending} onClick={() => pause.mutate()}>
-              Pause
-            </BlockedButton>
-          </>
-        )}
-        <span className="flex-1" />
-        <BlockedButton reason={blocked} variant="destructive" onClick={() => setConfirming(true)}>
-          Delete consumer…
-        </BlockedButton>
-        {failure && <p className="w-full text-xs text-destructive">{failure.message}</p>}
-      </section>
-      <dl className="divide-y overflow-hidden rounded-xl border bg-card text-xs">
-        {Object.entries(d.config).map(([k, v]) => (
-          <div key={k} className="grid grid-cols-[14rem_1fr] gap-4 px-4 py-2">
-            <dt className="font-mono text-muted-foreground">{k}</dt>
-            <dd className="min-w-0 break-words font-mono">{configValue(k, v)}</dd>
-          </div>
-        ))}
-      </dl>
-      <Dialog open={confirming} onOpenChange={setConfirming}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete consumer {d.name}?</DialogTitle>
-            <DialogDescription>
-              {d.pending > 0 || d.ackPending > 0
-                ? `It still has ${count(d.pending)} pending and ${count(d.ackPending)} awaiting ack. Deleting it forgets its position and every client using it loses it. `
-                : "Every client using it loses it. "}
-              This cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setConfirming(false)}>
-              Keep it
-            </Button>
-            <Button variant="destructive" disabled={remove.isPending} onClick={() => remove.mutate()}>
-              Delete consumer
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </>
   )
 }

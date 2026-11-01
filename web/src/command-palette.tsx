@@ -13,7 +13,7 @@ import { refKey, useActivateContext, useContexts } from "@/contexts"
 
 export type PaletteCommand = { id: string; label: string; group: string; hint?: string; cli?: string; run: () => void }
 
-const screens = ["/overview", "/health", "/connections", "/streams", "/consumers", "/messages", "/kv", "/publish", "/tail", "/contexts"] as const
+const screens = ["/overview", "/connections", "/streams", "/consumers", "/messages", "/kv", "/publish", "/tail", "/contexts"] as const
 
 function useCommands(): PaletteCommand[] {
   const navigate = useNavigate()
@@ -65,11 +65,11 @@ export function CommandPalette() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="flex h-8 w-72 items-center gap-2 rounded-lg border bg-background px-3 text-xs text-muted-foreground hover:text-foreground"
+        className="group flex h-8 w-full max-w-115 min-w-48 shrink items-center gap-2.5 rounded-lg border bg-background/80 px-3 text-xs text-muted-foreground shadow-inner transition hover:border-primary/40 hover:text-foreground"
       >
-        <Search size={14} aria-hidden />
-        <span className="flex-1 text-left">Search or run a command…</span>
-        <kbd className="font-mono text-[11px]">⌘K</kbd>
+        <Search size={14} aria-hidden className="text-fg-faint group-hover:text-primary" />
+        <span className="flex-1 truncate text-left">Search streams, keys, subjects, or run a command…</span>
+        <kbd className="rounded border bg-popover px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">⌘K</kbd>
       </button>
       <CommandDialog open={open} onOpenChange={setOpen} title="Command palette" description="Jump to a screen, switch Context, open a stream or bucket, or run an action." className="sm:max-w-xl">
         <Command key={String(open)}>

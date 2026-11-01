@@ -11,6 +11,7 @@ test("tails a wildcard filter under Read-only mode, opens a row, filters, and pa
     await page.getByLabel("Subject filter").fill("e2e.tail.>")
     await page.getByRole("button", { name: "Tail", exact: true }).click()
     await expect(page).toHaveURL(/\/tail\?subject=e2e\.tail\./)
+    await expect(page.getByRole("button", { name: "Tail", exact: true })).toHaveCount(0) // shows again only when the filter is edited
     await expect(page.getByRole("button", { name: "Copy as CLI: nats sub 'e2e.tail.>'" })).toBeVisible()
 
     const rows = page.getByRole("list", { name: "Tailed messages" }).getByRole("listitem")
@@ -31,7 +32,7 @@ test("tails a wildcard filter under Read-only mode, opens a row, filters, and pa
     await page.getByLabel("Show rows containing").fill("")
 
     await page.getByRole("button", { name: "Pause live updates" }).click()
-    await expect(page.getByText("Paused", { exact: true })).toBeVisible()
+    await expect(page.getByRole("button", { name: "Resume live updates" })).toBeVisible()
     const frozen = await rows.first().textContent()
     await page.waitForTimeout(1_500)
     expect(await rows.first().textContent()).toBe(frozen)

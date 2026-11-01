@@ -22,6 +22,7 @@ import (
 
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
+	"github.com/zalando/go-keyring"
 
 	"github.com/CirXe0N/natter/internal/contexts"
 	"github.com/CirXe0N/natter/internal/natstest"
@@ -100,7 +101,13 @@ func main() {
 			time.Sleep(100 * time.Millisecond)
 		}
 	}()
-	ctxs := contexts.New(root, vault.Open(filepath.Join(root, "natter")))
+	// go-keyring's in-memory provider plays the OS keyring, as on a desktop.
+	keyring.MockInit()
+	v := vault.Open(filepath.Join(root, "natter"))
+	if err := v.AttachKeyring(context.Background(), memKeyring{}); err != nil {
+		log.Fatal(err)
+	}
+	ctxs := contexts.New(root, v)
 	defer ctxs.Close()
 
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
@@ -292,3 +299,9 @@ func seedJobs(url string) error {
 	}
 	return st.DeleteMsg(ctx, 120)
 }
+
+type memKeyring struct{}
+
+func (memKeyring) Set(s, u, v string) error        { return keyring.Set(s, u, v) }
+func (memKeyring) Get(s, u string) (string, error) { return keyring.Get(s, u) }
+func (memKeyring) Delete(s, u string) error        { return keyring.Delete(s, u) }
