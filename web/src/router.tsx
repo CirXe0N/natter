@@ -13,6 +13,7 @@ import { EditStream, NewStreamScreen } from "@/screens/stream-form"
 import { StreamMessages } from "@/screens/messages"
 import { PublishScreen } from "@/screens/publish"
 import { BucketScreen, KVScreen } from "@/screens/kv"
+import { TailScreen } from "@/screens/tail"
 
 // Each screen is one route here. staticData.title names it in the top bar,
 // the browser tab and the left nav. Replace EmptyScreen with the real screen.
@@ -27,7 +28,7 @@ const routeTree = root.addChildren([
   createRoute({ ...screen, path: "/health", staticData: { title: "Health" }, component: HealthScreen }),
   createRoute({ ...screen, path: "/connections", staticData: { title: "Connections" }, component: ConnectionsScreen, validateSearch: (s: Record<string, unknown>): { server?: string; cid?: number } => (typeof s.server === "string" && typeof s.cid === "number" ? { server: s.server, cid: s.cid } : {}) }),
   createRoute({ ...screen, path: "/publish", staticData: { title: "Publish / request" }, component: PublishScreen }),
-  createRoute({ ...screen, path: "/tail", staticData: { title: "Live tail" } }),
+  createRoute({ ...screen, path: "/tail", staticData: { title: "Live tail" }, component: TailScreen, validateSearch: (s: Record<string, unknown>): { subject?: string } => (typeof s.subject === "string" && s.subject ? { subject: s.subject } : {}) }),
   createRoute({ ...screen, path: "/streams", staticData: { title: "Streams" }, component: StreamsScreen, validateSearch: (s: Record<string, unknown>): { subject?: string } => (typeof s.subject === "string" && s.subject ? { subject: s.subject } : {}) }),
   createRoute({ ...screen, path: "/streams/new", staticData: { title: "New stream" }, component: NewStreamScreen }),
   createRoute({ ...screen, path: "/consumers", staticData: { title: "Consumers" } }),

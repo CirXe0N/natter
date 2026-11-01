@@ -125,3 +125,11 @@
   * { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
   ::selection { background: var(--selection); }
 }
+
+/* A Live tail row that just arrived fades from a tint. Use it under motion-safe: only, with a static fallback. */
+@theme {
+  --animate-tail-in: tail-in 1.5s ease-out;
+  @keyframes tail-in {
+    from { background-color: color-mix(in oklab, var(--primary) 18%, transparent); }
+  }
+}

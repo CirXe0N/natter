@@ -17,6 +17,7 @@ import type { SendPreview, SendRequest, SendResult } from "@/gen/api"
 import type { KVBucket, KVEntry } from "@/gen/api"
 import type { Example, ExampleCopy } from "@/gen/api"
 import type { Msg } from "@/gen/api"
+import type { TailMessage } from "@/gen/api"
 
 async function request<T>(method: string, path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
   const res = await fetch(path, {
@@ -102,4 +103,6 @@ export const api = {
   },
   kvDelete: (bucket: string, key: string, purge: boolean) =>
     request<unknown>("DELETE", `/api/kv/${encodeURIComponent(bucket)}/keys/${encodeURIComponent(key)}${purge ? "?purge=true" : ""}`),
+  tailMessage: (filter: string, id: number, signal?: AbortSignal) =>
+    request<TailMessage>("GET", `/api/tail/message?${new URLSearchParams({ filter, id: String(id) })}`, undefined, signal),
 }

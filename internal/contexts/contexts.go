@@ -491,15 +491,7 @@ func (m *Manager) connect(ctx context.Context, c api.Context) *Conn {
 		}
 		return &Conn{Context: c, Status: api.ConnStatusFailed, Err: err}
 	}
-	nctx, err := m.sources[c.Source].live.Load(ctx, c.Name)
-	if err != nil {
-		return failed(err)
-	}
-	opts, err := nctx.NATSOptions(nats.Name("Natter"), nats.MaxReconnects(-1))
-	if err != nil {
-		return failed(err)
-	}
-	nc, err := nats.Connect(nctx.ServerURL(), opts...)
+	nctx, nc, err := m.dial(ctx, c)
 	if err != nil {
 		return failed(err)
 	}
@@ -517,6 +509,27 @@ func (m *Manager) connect(ctx context.Context, c api.Context) *Conn {
 		}
 	}
 	return conn
+}
+
+// Dial opens a connection to c of its own, apart from the active one, for a
+// feed that must not share that connection's read loop. opts come after the
+// defaults, so a nats.Name there wins. The caller closes it.
+func (m *Manager) Dial(ctx context.Context, c api.Context, opts ...nats.Option) (*nats.Conn, error) {
+	_, nc, err := m.dial(ctx, c, opts...)
+	return nc, err
+}
+
+func (m *Manager) dial(ctx context.Context, c api.Context, opts ...nats.Option) (*natscontext.Context, *nats.Conn, error) {
+	nctx, err := m.sources[c.Source].live.Load(ctx, c.Name)
+	if err != nil {
+		return nil, nil, err
+	}
+	nopts, err := nctx.NATSOptions(append([]nats.Option{nats.Name("Natter"), nats.MaxReconnects(-1)}, opts...)...)
+	if err != nil {
+		return nil, nil, err
+	}
+	nc, err := nats.Connect(nctx.ServerURL(), nopts...)
+	return nctx, nc, err
 }
 
 // SetSettings stores Natter's own fields for ref. If ref is active and its

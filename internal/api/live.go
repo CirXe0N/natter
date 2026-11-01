@@ -39,6 +39,11 @@ type ServerFrame struct {
 	Error    string    `json:"error,omitempty"`
 	Overview *Overview `json:"overview,omitempty"`
 	KV       *KVKeys   `json:"kv,omitempty"`
+	// Gap counts frames of Topic the socket dropped, oldest first, because the
+	// tab fell behind. It comes in a frame of its own, just before the next
+	// frame that did arrive.
+	Gap  int   `json:"gap,omitempty"`
+	Tail *Tail `json:"tail,omitempty"`
 }
 
 // StatsSource says where the Overview's numbers come from.
@@ -107,4 +112,54 @@ func (n Num) MarshalJSON() ([]byte, error) {
 		return []byte("null"), nil
 	}
 	return json.Marshal(float32(n))
+}
+
+// TopicTailPrefix starts a Live tail's topic. The rest is its subject filter,
+// wildcards allowed, as in "tail:orders.>".
+const TopicTailPrefix = "tail:"
+
+// Tail is one frame of a Live tail: the rows since the previous frame, and its
+// counters since the tail started. The backend sends one every 250 ms.
+type Tail struct {
+	// Problem says, for the user, why the tail is not receiving.
+	Problem string    `json:"problem,omitempty"`
+	Rows    []TailRow `json:"rows"`
+	// HeldFrom is the oldest row ID whose payload may still be held. Rows
+	// before it have lost theirs to the memory budget.
+	HeldFrom uint64 `json:"heldFrom"`
+	// Rate is how many messages arrived in the last second, dropped ones included.
+	Rate     uint64 `json:"rate"`
+	Received uint64 `json:"received"`
+	// PendingDrops are messages nats.go dropped because the tail's pending
+	// limit was full. RateDrops are messages over the rate cap.
+	PendingDrops uint64 `json:"pendingDrops"`
+	RateDrops    uint64 `json:"rateDrops"`
+	// Disconnects counts how often the server closed the tail's connection, a
+	// slow-consumer cut-off among the possible reasons. How many messages were
+	// missed meanwhile is unknown. Disconnect is the last one's error.
+	Disconnects uint64 `json:"disconnects"`
+	Disconnect  string `json:"disconnect,omitempty"`
+}
+
+// TailRow is one message of a Live tail. IDs count up by one per row, so a
+// jump shows how many rows the tab missed. Held says the backend kept the
+// payload when the message arrived; HeldFrom says whether it still does.
+type TailRow struct {
+	ID      uint64    `json:"id"`
+	Time    time.Time `json:"time" tstype:"string"`
+	Subject string    `json:"subject"`
+	Reply   string    `json:"reply,omitempty"`
+	Size    int       `json:"size"`
+	Headers int       `json:"headers"`
+	Preview *string   `json:"preview,omitempty"`
+	Kind    MsgKind   `json:"kind,omitempty"`
+	Held    bool      `json:"held"`
+}
+
+// TailMessage is one held message of a Live tail, opened. Payload is set for
+// a text or JSON payload; a binary one only has its Size.
+type TailMessage struct {
+	TailRow      `tstype:",extends"`
+	HeaderValues map[string][]string `json:"headerValues,omitempty"`
+	Payload      *string             `json:"payload,omitempty"`
 }
