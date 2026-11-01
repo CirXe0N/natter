@@ -37,7 +37,7 @@ A per-Context lock that blocks every action that changes server state or data wh
 _Avoid_: Safe mode, view-only
 
 **Launch token**:
-A random value the app prints at startup that a browser must present once to get a session; until the UI has login, it is what proves a request comes from the person running the app.
+A random value the app prints at startup that a browser must present once to get a session; until the UI has login, it is what proves a request comes from the person running the app. In launcher mode (`natter open`, which the app launcher entry runs) it is not printed: it travels in the launch URL that natter hands the app window, or in a redirect file with `-redirect-file`.
 _Avoid_: Access token, auth token, NATS token (that is a NATS credential type)
 
 **Browsing**:

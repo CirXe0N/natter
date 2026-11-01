@@ -14,3 +14,11 @@ var dist embed.FS
 
 // Dist is the built frontend, with index.html at its root.
 var Dist, _ = fs.Sub(dist, "dist")
+
+// The app icon, for launcher entries that natter install-desktop writes.
+var (
+	//go:embed public/icon-512.png
+	Icon512 []byte
+	//go:embed public/icon-192.png
+	Icon192 []byte
+)
