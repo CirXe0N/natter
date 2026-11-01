@@ -13,6 +13,10 @@ const (
 	TopicOverview Topic = "overview"
 )
 
+// TopicKV plus a bucket name is that bucket's live key list. Untyped, so the
+// generated Topic stays a string that any bucket fits.
+const TopicKV = "kv:"
+
 // ClientOp is what the browser asks of the WebSocket.
 type ClientOp string
 
@@ -34,6 +38,7 @@ type ServerFrame struct {
 	// Error says why a subscribe was refused.
 	Error    string    `json:"error,omitempty"`
 	Overview *Overview `json:"overview,omitempty"`
+	KV       *KVKeys   `json:"kv,omitempty"`
 }
 
 // StatsSource says where the Overview's numbers come from.
