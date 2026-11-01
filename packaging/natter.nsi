@@ -1,4 +1,4 @@
-; Per-user installer for the Windows desktop build. packaging/windows.sh runs
+; Per-user installer for the Windows desktop build. packaging/desktop.sh runs
 ; it with -DVERSION, -DEXE (the built natter.exe), -DLICENSES and -DOUT (the installer).
 ; Installing per user, without admin rights, lets the updater replace natter.exe.
 Unicode true

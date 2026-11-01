@@ -45,9 +45,17 @@ macOS and Windows warn about the unsigned binaries the first time they run. [Uns
 
 ## Desktop builds
 
-The `desktop` jobs in the same workflow build the Wails desktop app (ticket 26) with `packaging/desktop.sh`, one native runner per OS because it needs cgo: DMG and zipped `.app` on macOS, installer and bare `.exe` on Windows, deb, rpm, AppImage and a tarball on Linux. On a tag, `desktop-publish` adds them to GoReleaser's draft release with `checksums-desktop.txt`. Pull requests build them too, as workflow artifacts.
+The `desktop` jobs in the same workflow build the Wails desktop app with `packaging/desktop.sh`. It needs cgo, so each OS builds on its own runner.
 
-Wails is pinned to an exact version in `go.mod`, and `packaging/desktop.sh` runs the `wails3` CLI at the same version. Change both together. Only `-tags desktop` compiles Wails in. `TestDefaultBuildHasNoWails` fails if the plain build ever depends on it.
+| OS | Artifacts |
+|---|---|
+| macOS | DMG and zipped `.app` |
+| Windows | installer and bare `.exe` |
+| Linux | deb, rpm, AppImage and a tarball |
+
+On a tag, `desktop-publish` adds them to GoReleaser's draft release with `checksums-desktop.txt`. Pull requests build them too, as workflow artifacts.
+
+Wails is pinned to an exact version in `go.mod`. The `wails3` CLI runs at the same version in `packaging/desktop.sh`, `release.yml` and the commands below. To move to a new Wails version, change every `v3.1.0` (`grep -rn wails/v3 go.mod packaging .github docs`), then run `go mod tidy`. Only `-tags desktop` compiles Wails in. `TestDefaultBuildHasNoWails` fails if the plain build ever depends on it.
 
 `npm --prefix web run e2e:webkit` runs the end-to-end tests in WebKit, the engine the desktop app uses on macOS and Linux. The `e2e` workflow runs both engines. On distributions Playwright does not support, such as Arch, run the browser in its container and point the tests at it:
 

@@ -74,8 +74,8 @@ func main() {
 	portSet := *dev // the Vite proxy targets the default port, so never fall back
 	flag.Visit(func(f *flag.Flag) { portSet = portSet || f.Name == "port" })
 
-	if window != nil {
-		if err := window(*vaultKey); err != nil {
+	if windowApp != nil {
+		if err := windowApp(*vaultKey); err != nil {
 			fail(err)
 		}
 		return
@@ -107,13 +107,13 @@ func fail(err error) {
 	os.Exit(1)
 }
 
-// window opens Natter in a window of its own. Only the desktop build sets it,
-// and then plain natter and natter open both use it.
-var window func(vaultKey string) error
+// windowApp runs Natter in a window of its own. Only the desktop build sets
+// it, and then plain natter and natter open both use it.
+var windowApp func(vaultKey string) error
 
 // serveInBackground starts serve in a goroutine and waits until it hands
 // open the Launch token URL. errc then reports when the server stops. The URL
-// never leaves the process.
+// is never printed or put on a command line.
 func serveInBackground(serve func(open func(launchURL string) error) error) (launchURL string, errc <-chan error, err error) {
 	urlc := make(chan string, 1)
 	done := make(chan error, 1)

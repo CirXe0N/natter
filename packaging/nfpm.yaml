@@ -1,4 +1,4 @@
-# deb and rpm of the desktop build. packaging/linux.sh runs it from the repo
+# deb and rpm of the desktop build. packaging/desktop.sh runs it from the repo
 # root with VERSION set; nfpm expands it.
 name: natter
 arch: amd64

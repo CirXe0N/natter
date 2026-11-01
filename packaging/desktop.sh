@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Builds the desktop app (ticket 26) for the OS it runs on, and its installers,
+# Builds the desktop app for the OS it runs on, and its installers,
 # into dist/desktop. Run from the repo root after building web/dist. cgo
 # needs native runners: Linux wants gtk4 and webkitgtk-6.0 development files.
 #   VERSION     package version, e.g. 1.2.3 (default 0.0.0)
@@ -10,11 +10,11 @@ VERSION=${VERSION:-0.0.0}
 export VERSION
 out=dist/desktop
 mkdir -p "$out"
-# Exact versions, matching go.mod's Wails.
+# Exact versions. Wails matches go.mod and release.yml.
 wails() { go run github.com/wailsapp/wails/v3/cmd/wails3@v3.1.0 "$@"; }
 nfpm() { go run github.com/goreleaser/nfpm/v2/cmd/nfpm@v2.48.0 "$@"; }
 GOFLAGS=-tags=desktop scripts/licenses.sh # the desktop build links Wails too
-build() { go build -tags desktop -trimpath -ldflags "-s -w ${LDEXTRA:-} -X main.version=${LDVERSION:-} -X main.updateKey=${UPDATE_KEY:-}" "$@" ./cmd/natter; }
+build() { go build -tags desktop,production -trimpath -ldflags "-s -w ${LDEXTRA:-} -X main.version=${LDVERSION:-} -X main.updateKey=${UPDATE_KEY:-}" "$@" ./cmd/natter; }
 
 case "$(go env GOOS)" in
 linux)

@@ -39,7 +39,7 @@ jobs:
           MACOS_NOTARY_KEY_ID: ${{ secrets.MACOS_NOTARY_KEY_ID }}
           MACOS_NOTARY_KEY: ${{ secrets.MACOS_NOTARY_KEY }}
 
-  # The desktop build (ticket 26) needs cgo, so each OS builds on its own runner.
+  # The desktop build needs cgo, so each OS builds on its own runner.
   desktop:
     strategy:
       fail-fast: false
@@ -78,6 +78,8 @@ jobs:
     runs-on: ubuntu-24.04
     permissions:
       contents: write # upload to the draft release GoReleaser made
+    env:
+      UPDATER_SIGNING_KEY: ${{ secrets.UPDATER_SIGNING_KEY }} # job level: a step's if can't see its own env
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -97,8 +99,6 @@ jobs:
             dist/desktop/natter-desktop_windows_amd64.exe \
             dist/desktop/natter-desktop_linux_amd64.AppImage
           rm "$key"
-        env:
-          UPDATER_SIGNING_KEY: ${{ secrets.UPDATER_SIGNING_KEY }}
       - name: Upload
         run: |
           (cd dist/desktop && sha256sum * >checksums-desktop.txt)

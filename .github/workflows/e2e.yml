@@ -7,8 +7,7 @@ permissions:
   contents: read
 
 jobs:
-  # Each engine gets its own runner: the specs change the one backend they share.
-  # WebKit is what the desktop build renders in on macOS and Linux.
+  # One runner per engine; web/playwright.config.ts says why.
   e2e:
     strategy:
       fail-fast: false

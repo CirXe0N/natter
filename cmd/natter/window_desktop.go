@@ -25,10 +25,9 @@ var updateKey string
 
 const updateManifest = "https://github.com/CirXe0N/natter/releases/latest/download/update-manifest.json"
 
-func init() { window = openWindow }
+func init() { windowApp = openWindow }
 
-// openWindow serves Natter on a loopback port and shows it in a Wails window
-// (ticket 26, Shape A). The webview loads Natter's own server, so the Launch
+// openWindow serves Natter on a loopback port and shows it in a Wails window. The webview loads Natter's own server, so the Launch
 // token, Host and Origin checks stay on, and Wails' asset server serves
 // nothing.
 func openWindow(vaultKey string) error {
@@ -49,7 +48,6 @@ func openWindow(vaultKey string) error {
 			UniqueID:               "io.github.cirxe0n.natter",
 			OnSecondInstanceLaunch: func(application.SecondInstanceData) { show() },
 		},
-		Mac:   application.MacOptions{ApplicationShouldTerminateAfterLastWindowClosed: false},
 		Linux: application.LinuxOptions{ProgramName: "natter"},
 	})
 

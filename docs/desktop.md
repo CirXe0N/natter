@@ -10,12 +10,12 @@ Releases also include a desktop build: Natter in a window of its own, with a tra
 |---|---|
 | macOS | `natter-desktop_darwin_universal.dmg`. Drag Natter to Applications |
 | Windows | `natter-desktop_windows_amd64-setup.exe`. Installs for your user only, no admin rights needed |
-| Linux | `natter_<version>_amd64.deb` or `.rpm`, `natter-desktop_linux_amd64.AppImage`, or `natter-bin` from the AUR |
+| Linux | The `natter` deb or rpm package, `natter-desktop_linux_amd64.AppImage`, or `natter-bin` from the AUR |
 
 On Linux it needs GTK 4 and WebKitGTK 6.0, which the packages pull in. The AppImage expects them on the system.
 
 - **One window.** Starting Natter again shows the window that is already open. Closing the window hides it, and Natter keeps running in the tray. Quit from the tray menu, or with Cmd+Q on macOS.
-- **No terminal, no token to copy.** The app starts Natter's normal server on a free loopback port and opens the window signed in. The Launch token never leaves the process.
+- **No terminal, no token to copy.** The app starts Natter's normal server on a free loopback port and opens the window signed in. The Launch token is never printed or put on a command line. Like `natter`, the app keeps its Launch token URL in natter's own config folder, so `natter open` can attach to it.
 - **Updates.** The macOS app, the Windows install and the AppImage check for updates once a day, and when you choose **Check for Updates…** in the tray. They install only updates signed with Natter's release key. A deb, rpm or AUR install updates through your package manager.
 - **Ctrl+K / Cmd+K** opens the command palette, as in the browser. No menu claims it.
 - **NVIDIA on Linux.** WebKitGTK cannot draw through NVIDIA's DMA-BUF path, so on NVIDIA the app turns that renderer off (`WEBKIT_DISABLE_DMABUF_RENDERER=1`) before the window opens.
