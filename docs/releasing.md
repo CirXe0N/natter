@@ -14,7 +14,9 @@ git tag vX.Y.Z
 git push origin main vX.Y.Z
 ```
 
-The tag triggers the workflow. It builds the frontend again, builds all six binaries with `CGO_ENABLED=0`, and creates a **draft** GitHub Release with archives, `checksums.txt`, an SBOM per archive and a cosign signature of the checksums. Read the draft, then publish it. After the release commit, remove `web/dist` again on the next commit (`git rm -r --cached web/dist`, keep `.gitkeep`) so development diffs stay small.
+The tag triggers the workflow. It builds the frontend again, builds all six binaries with `CGO_ENABLED=0`, and creates a **draft** GitHub Release with archives, `checksums.txt`, an SBOM per archive and a cosign signature of the checksums. Read the draft, then publish it.
+
+While the repository is private, tag builds skip the cosign signature. Keyless signing records the repository's name, the tag and the commit in Sigstore's public transparency log, permanently, which would reveal the private repository. The workflow reads the repository's visibility, so signing starts by itself once it is public. After the release commit, remove `web/dist` again on the next commit (`git rm -r --cached web/dist`, keep `.gitkeep`) so development diffs stay small.
 
 `go install github.com/CirXe0N/natter/cmd/natter@vX.Y.Z` then serves the full UI. The version shown in the footer comes from `-X main.version` in release archives and from the module version otherwise.
 
@@ -29,6 +31,8 @@ go run github.com/goreleaser/goreleaser/v2@v2.19.0 release --snapshot --clean --
 Use `--skip=sign` instead if `syft` is installed. Signing needs a CI identity and only runs on a tag.
 
 ## Verify a download
+
+`checksums.txt` is always there; the `.sigstore.json` signature only on releases made while the repository is public.
 
 ```sh
 sha256sum -c checksums.txt --ignore-missing
