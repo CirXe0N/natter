@@ -13,7 +13,7 @@ export class ApiError extends Error {
 }
 import type { ConsumerDetail, ConsumerList, ConsumerSummary } from "@/gen/api"
 import type { MessagePage, MessagePageRequest } from "@/gen/api"
-import type { SendRequest, SendResult } from "@/gen/api"
+import type { SendPreview, SendRequest, SendResult } from "@/gen/api"
 import type { KVBucket, KVEntry } from "@/gen/api"
 
 async function request<T>(method: string, path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
@@ -73,6 +73,7 @@ export const api = {
   browse: (stream: string, req: MessagePageRequest, signal?: AbortSignal) =>
     request<MessagePage>("POST", `/api/streams/${encodeURIComponent(stream)}/messages`, req, signal),
   send: (r: SendRequest) => request<SendResult>("POST", "/api/send", r),
+  sendPreview: (r: SendRequest, signal?: AbortSignal) => request<SendPreview>("POST", "/api/send/preview", r, signal),
   // keepalive so it still goes out while the page unloads
   closeBrowsing: (view: string) => void fetch(`/api/browsing/${encodeURIComponent(view)}`, { method: "DELETE", keepalive: true }),
   kvBuckets: (signal?: AbortSignal) => request<KVBucket[]>("GET", "/api/kv", undefined, signal),

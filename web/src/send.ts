@@ -8,6 +8,7 @@ export function sendCli(r: SendRequest, context?: string): string {
   if (context) parts.push("--context", shellQuote(context))
   parts.push(r.mode === "pub" ? "pub" : "request", shellQuote(r.subject), shellQuote(r.payload))
   for (const [k, v] of r.headers) parts.push("-H", shellQuote(`${k}:${v}`))
+  if (r.count > 1) parts.push("--count", String(r.count))
   if (r.mode === "req" && r.timeoutMs > 0) parts.push("--timeout", `${r.timeoutMs}ms`)
   return parts.join(" ")
 }

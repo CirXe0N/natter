@@ -59,3 +59,22 @@ test("a payload over max_payload is refused before sending, and Read-only blocks
     await page.request.put("/api/contexts/cli/app/settings", { data: {} })
   }
 })
+
+test("placeholders preview from the server, a bad one is flagged, and a count sends many", async ({ page }) => {
+  await page.getByRole("button", { name: "Request", exact: true }).click()
+  await page.getByLabel("Subject").fill("e2e.echo")
+  await page.getByLabel("Payload", { exact: true }).fill("n={{Count}}")
+  const preview = page.getByRole("region", { name: "Preview" })
+  await expect(preview.getByLabel("Preview payload")).toHaveText("n=1")
+
+  await page.getByLabel("Payload", { exact: true }).fill("n={{Bogus}}")
+  await expect(page.getByRole("alert").filter({ hasText: "Unknown or broken placeholder" })).toBeVisible()
+
+  await page.getByLabel("Payload", { exact: true }).fill("n={{Count}}")
+  await page.getByLabel("Count", { exact: true }).fill("3")
+  await expect(page.getByRole("button", { name: /Copy as CLI: .*--count 3/ })).toBeVisible()
+  await page.getByRole("button", { name: "Send 3 requests" }).click()
+  const result = page.getByRole("region", { name: "Result" })
+  await expect(result).toContainText("3 of 3 sent")
+  await expect(result.getByLabel("Reply payload")).toContainText("echo:n=3")
+})
