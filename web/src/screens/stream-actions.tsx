@@ -59,7 +59,7 @@ export function StreamActions({ name }: { name: string }) {
   )
 }
 
-// TypeName disables its action until the stream name is typed in full.
+// Confirm disables its action until the stream name is typed in full.
 function Confirm({ name, verb, danger, onConfirm, pending, error, children }: { name: string; verb: string; danger: string; onConfirm: () => void; pending: boolean; error?: string; children?: ReactNode }) {
   const [typed, setTyped] = useState("")
   return (

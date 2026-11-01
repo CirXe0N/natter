@@ -7,6 +7,7 @@ import { ChevronDown, ChevronRight } from "lucide-react"
 
 import { api } from "@/api"
 import { CopyCli } from "@/components/copy-cli"
+import { shellQuote } from "@/stream-config"
 import { ScreenHeader } from "@/components/screen-header"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -251,7 +252,7 @@ function Subjects({ s }: { s: StreamDetail }) {
           </Button>
         </form>
         <span className="flex-1" />
-        <CopyCli cmd={`nats stream subjects ${s.name}${filter === ">" ? "" : ` '${filter}'`}`} />
+        <CopyCli cmd={`nats stream subjects ${s.name}${filter === ">" ? "" : ` ${shellQuote(filter)}`}`} />
       </div>
       {subs.isError ? (
         <p className="px-4 py-3 text-xs text-destructive">{subs.error.message}</p>

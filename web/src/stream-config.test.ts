@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
 
-import { cliFor, defaults, formatDuration, parseDuration, toConfig, toValues } from "./stream-config.ts"
+import { cliFor, defaults, formatDuration, parseDuration, shellQuote, toConfig, toValues } from "./stream-config.ts"
 
 test("durations round trip", () => {
   assert.equal(parseDuration("1h30m"), 5400e9)
@@ -27,4 +27,10 @@ test("the CLI command lists only what differs", () => {
   assert.equal(cliFor(config), "nats stream add ORDERS --subjects 'orders.>,orders2.*' --retention work --max-age 1d")
   const edited = { ...config, max_msgs: 5, deny_purge: true }
   assert.equal(cliFor(edited, config), "nats stream edit ORDERS --max-msgs 5 --deny-purge --force")
+})
+
+test("shellQuote quotes only what the shell would split or expand", () => {
+  assert.equal(shellQuote("orders.eu"), "orders.eu")
+  assert.equal(shellQuote("orders.>"), "'orders.>'")
+  assert.equal(shellQuote("it's"), `'it'\\''s'`)
 })

@@ -7,6 +7,7 @@ import { Link, useNavigate, useSearch } from "@tanstack/react-router"
 import { api } from "@/api"
 import { Badge } from "@/components/badge"
 import { CopyCli } from "@/components/copy-cli"
+import { shellQuote } from "@/stream-config"
 import { ScreenHeader } from "@/components/screen-header"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -33,7 +34,7 @@ export function StreamsScreen() {
   return (
     <>
       <ScreenHeader title="Streams">
-        <CopyCli cmd={`nats stream ls -a${subject ? ` --subject '${subject}'` : ""}`} />
+        <CopyCli cmd={`nats stream ls -a${subject ? ` --subject ${shellQuote(subject)}` : ""}`} />
         <NewStreamButton />
       </ScreenHeader>
       <div className="space-y-4 px-8 pb-8">

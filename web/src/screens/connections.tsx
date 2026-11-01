@@ -16,7 +16,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input"
 import { useActiveContext, useBlockedReason } from "@/contexts"
 import type { Connection, ConnectionState } from "@/gen/api"
-import { usePaused } from "@/live"
+import { shellQuote } from "@/stream-config"
+import { useRefresh } from "@/screens/streams"
 import { bytes, count } from "@/screens/overview"
 
 // Highlight thresholds: an RTT over 100 ms, or over 1 MiB waiting to be sent to
@@ -59,12 +60,11 @@ export function ConnectionsScreen() {
   const [state, setState] = useState<ConnectionState>("open")
   const [filter, setFilter] = useState("")
   const [sort, setSort] = useState<Sort>({ key: "rtt", desc: true })
-  const paused = usePaused()
   const selected = useSearch({ from: "/connections" })
   const { data, error } = useQuery({
     queryKey: ["connections", state],
     queryFn: ({ signal }) => api.connections(state, signal),
-    refetchInterval: paused ? false : 5000,
+    refetchInterval: useRefresh(),
   })
 
   const columns = state === "open" ? cols : closedCols
@@ -278,8 +278,6 @@ function useKickBlocked() {
   if (active && !active.capabilities.system) return "Kick needs System credentials. This Context has none."
 }
 
-const quote = (s: string) => `'${s.replaceAll("'", `'\\''`)}'`
-
 function KickAction({ c }: { c: Connection }) {
   const [open, setOpen] = useState(false)
   const { data: active } = useActiveContext()
@@ -292,8 +290,8 @@ function KickAction({ c }: { c: Connection }) {
       return qc.invalidateQueries({ queryKey: ["connections"] })
     },
   })
-  const ctx = active?.context?.source === "cli" ? ` --context ${quote(active.context.name)}` : ""
-  const cli = `nats${ctx} request ${quote(`$SYS.REQ.SERVER.${c.server}.KICK`)} ${quote(JSON.stringify({ cid: c.cid }))}`
+  const ctx = active?.context?.source === "cli" ? ` --context ${shellQuote(active.context.name)}` : ""
+  const cli = `nats${ctx} request ${shellQuote(`$SYS.REQ.SERVER.${c.server}.KICK`)} ${shellQuote(JSON.stringify({ cid: c.cid }))}`
   return (
     <div className="flex flex-wrap items-center gap-2 border-t pt-3">
       <BlockedButton reason={blocked} size="sm" variant="destructive" onClick={() => setOpen(true)}>
