@@ -23,7 +23,7 @@ func init() {
 		route{pattern: "GET /api/kv", handle: (*server).listBuckets},
 		route{pattern: "GET /api/kv/{bucket}/keys/{key...}", handle: (*server).kvValue},
 		route{pattern: "GET /api/kv/{bucket}/history/{key...}", handle: (*server).kvHistory},
-		// No allowReadOnly on these three: Read-only mode refuses them.
+		// No allowReadOnly on these two: Read-only mode refuses them.
 		route{pattern: "PUT /api/kv/{bucket}/keys/{key...}", handle: (*server).kvPut},
 		route{pattern: "DELETE /api/kv/{bucket}/keys/{key...}", handle: (*server).kvDelete},
 	)
@@ -79,6 +79,8 @@ func (s *server) kvValue(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/octet-stream")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("Content-Disposition", "attachment")
+	w.Header().Set("Content-Security-Policy", "sandbox")
+	w.Header().Set("Cache-Control", "no-store")
 	w.Write(e.Value())
 }
 

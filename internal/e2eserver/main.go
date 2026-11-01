@@ -186,7 +186,7 @@ func seedEvents(ctx context.Context, js jetstream.JetStream) error {
 
 // seedSessions makes the KV bucket sessions: user.1 with three revisions,
 // and a writer that keeps changing it, so the KV spec sees live changes
-// without a write path in the UI. clock is put every 300 ms; blink is put
+// the UI did not make. clock is put every 300 ms; blink is put
 // and deleted in turn every 700 ms.
 func seedSessions(url string) error {
 	nc, err := nats.Connect(url, nats.UserInfo("app", "app"))

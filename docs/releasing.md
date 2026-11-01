@@ -20,13 +20,13 @@ The tag triggers the workflow. It builds the frontend again, builds all six bina
 
 ## Check the config without releasing
 
-Every pull request runs `goreleaser release --snapshot` in CI. Locally:
+Every pull request runs `goreleaser release --snapshot --skip=sign` in CI. Locally:
 
 ```sh
 go run github.com/goreleaser/goreleaser/v2@v2.19.0 release --snapshot --clean --skip=sbom,sign
 ```
 
-Drop `--skip` if `syft` is installed. Signing needs a CI identity and only runs on a tag.
+Use `--skip=sign` instead if `syft` is installed. Signing needs a CI identity and only runs on a tag.
 
 ## Verify a download
 
