@@ -50,7 +50,7 @@ func installDesktop(exe string) error {
 			return err
 		}
 		ps := exec.Command("powershell", "-NoProfile", "-NonInteractive", "-Command",
-			`$s = (New-Object -ComObject WScript.Shell).CreateShortcut($env:NATTER_LNK); $s.TargetPath = $env:NATTER_EXE; $s.Arguments = 'open'; $s.IconLocation = $env:NATTER_ICO; $s.WindowStyle = 7; $s.Description = 'A UI for NATS'; $s.Save()`)
+			`$s = (New-Object -ComObject WScript.Shell).CreateShortcut($env:NATTER_LNK); $s.TargetPath = $env:NATTER_EXE; $s.Arguments = 'open'; $s.IconLocation = $env:NATTER_ICO; $s.WindowStyle = 7; $s.Description = 'A UI for NATS™'; $s.Save()`)
 		// Values go in the environment so no path needs PowerShell quoting.
 		// WindowStyle 7 starts the console minimized until natter frees it.
 		ps.Env = append(os.Environ(), "NATTER_LNK="+entry, "NATTER_EXE="+exe, "NATTER_ICO="+icon)

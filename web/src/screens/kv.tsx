@@ -259,7 +259,8 @@ function KeyDetail({ bucket, name, entry, onClose }: { bucket: string; name: str
   )
 }
 
-// ValueView is the one place a value is drawn. Swap it for ticket 16's payload viewer once that lands.
+// ValueView is the one place a value is drawn.
+// shortcut: plain text, no hex or JSON tree; switch to PayloadViewer once the key list carries each value's size (MetaOnly entries have none).
 function ValueView({ value }: { value: Uint8Array }) {
   return <pre className="max-h-96 overflow-auto whitespace-pre-wrap break-all rounded-lg border bg-background p-3 font-mono text-xs">{new TextDecoder().decode(value)}</pre>
 }
