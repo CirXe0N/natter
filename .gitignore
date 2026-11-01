@@ -8,3 +8,5 @@ node_modules/
 /web/playwright/.auth/
 /web/test-results/
 /web/playwright-report/
+/dist/
+/THIRD_PARTY_LICENSES.txt
