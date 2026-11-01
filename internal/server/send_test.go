@@ -2,6 +2,7 @@ package server_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -31,6 +32,10 @@ func TestSend(t *testing.T) {
 
 	published := make(chan *nats.Msg, 1)
 	if _, err := nc.ChanSubscribe("pub.x", published); err != nil {
+		t.Fatal(err)
+	}
+	bulk := make(chan *nats.Msg, 10)
+	if _, err := nc.ChanSubscribe("bulk.*", bulk); err != nil {
 		t.Fatal(err)
 	}
 	nc.Subscribe("svc.echo", func(m *nats.Msg) {
@@ -160,11 +165,42 @@ func TestSend(t *testing.T) {
 		}
 	}
 
+	// Placeholders render per message, {{Count}} runs from 1, and a bad one in
+	// the payload stays as typed. Header names are never templated.
+	res, _ = send(api.SendRequest{Mode: "pub", Subject: "bulk.{{Count}}", Count: 3, Payload: "n={{ Count }}", Headers: [][2]string{{"X-N", "{{Count}}"}}}, 200)
+	if res.Status != api.SendStatusPublished || res.Sent != 3 {
+		t.Fatalf("bulk publish: %+v", res)
+	}
+	for i := 1; i <= 3; i++ {
+		got := <-bulk
+		if got.Subject != fmt.Sprintf("bulk.%d", i) || string(got.Data) != fmt.Sprintf("n=%d", i) || got.Header.Get("X-N") != fmt.Sprint(i) {
+			t.Fatalf("message %d: %s %q %v", i, got.Subject, got.Data, got.Header)
+		}
+	}
+	res, _ = send(api.SendRequest{Mode: "req", Subject: "svc.echo", Count: 2, Payload: "{{Count}}"}, 200)
+	if res.Status != api.SendStatusOK || res.Sent != 2 || res.Reply.Payload != "echo:2" {
+		t.Fatalf("bulk request: %+v", res)
+	}
+	send(api.SendRequest{Mode: "pub", Subject: "bulk.x", Headers: [][2]string{{"X", "{{Foo}}"}}}, http.StatusBadRequest)
+	send(api.SendRequest{Mode: "pub", Subject: "bulk.x", Count: 10001}, http.StatusBadRequest)
+
 	// Read-only mode blocks a publish and a request alike.
 	if r := call("PUT", "/api/contexts/cli/app/settings", `{"readOnly":true}`); r.StatusCode != 200 {
 		t.Fatal(r.StatusCode)
 	}
 	for _, mode := range []api.SendMode{"pub", "req"} {
 		send(api.SendRequest{Mode: mode, Subject: "svc.echo"}, http.StatusForbidden)
+		send(api.SendRequest{Mode: mode, Subject: "svc.echo", Count: 5}, http.StatusForbidden)
+	}
+
+	// The preview sends nothing, so Read-only mode lets it through.
+	pr := call("POST", "/api/send/preview", `{"subject":"a.{{Count}}","headers":[["X","{{Bogus}}"],["Y"," v{{Count}} "]],"payload":"{{Count"}`)
+	var prev api.SendPreview
+	if pr.StatusCode != 200 || json.NewDecoder(pr.Body).Decode(&prev) != nil {
+		t.Fatalf("preview: %d", pr.StatusCode)
+	}
+	if prev.Subject != "a.1" || prev.SubjectError != "" || prev.Payload != "{{Count" || prev.PayloadError == "" ||
+		prev.Headers[0][1] != "{{Bogus}}" || prev.HeaderErrors[0] == "" || prev.Headers[1][1] != "v1" || prev.HeaderErrors[1] != "" {
+		t.Errorf("preview: %+v", prev)
 	}
 }

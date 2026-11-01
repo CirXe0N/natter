@@ -1,5 +1,5 @@
 // Publish / request: send one message to a subject, or send it as a request and see the reply.
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Plus, X } from "lucide-react"
 
@@ -12,7 +12,7 @@ import { ScreenHeader } from "@/components/screen-header"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useActiveContext, useBlockedReason } from "@/contexts"
-import type { SendMode, SendRequest, SendResult, SendStatus } from "@/gen/api"
+import type { SendMode, SendPreview, SendRequest, SendResult, SendStatus } from "@/gen/api"
 import { messageSize, sendCli } from "@/send"
 
 type Entry = { id: number; at: Date; request: SendRequest; result?: SendResult; refused?: string }
@@ -57,6 +57,7 @@ export function PublishScreen() {
   const [headers, setHeaders] = useState<[string, string][]>([])
   const [payload, setPayload] = useState("")
   const [format, setFormat] = useState<"json" | "text">("json")
+  const [count, setCount] = useState("1")
   const [shown, setShown] = useState<number>()
 
   const history = useQuery({ queryKey: historyKey, queryFn: (): Entry[] => [], staleTime: Infinity })
@@ -66,19 +67,31 @@ export function PublishScreen() {
     setShown(e.id)
   }
 
-  const request: SendRequest = { mode, subject: subject.trim(), headers: headers.filter(([k]) => k.trim()).map(([k, v]) => [k.trim(), v]), payload, timeoutMs: mode === "req" ? Number(timeoutMs) || 0 : 0 }
+  const request: SendRequest = { mode, subject: subject.trim(), headers: headers.filter(([k]) => k.trim()).map(([k, v]) => [k.trim(), v]), payload, timeoutMs: mode === "req" ? Number(timeoutMs) || 0 : 0, count: Math.max(1, Math.trunc(Number(count)) || 1) }
   const send = useMutation({
     mutationFn: (r: SendRequest) => api.send(r),
     onSuccess: (result, r) => record({ id: Date.now(), at: new Date(), request: r, result }),
     onError: (err, r) => record({ id: Date.now(), at: new Date(), request: r, refused: err.message }),
   })
 
+  // The server renders the Placeholders; the browser only asks, a moment after typing stops.
+  const hasPlaceholder = [request.subject, request.payload, ...request.headers.map(([, v]) => v)].some((t) => t.includes("{{"))
+  const [settled, setSettled] = useState(request)
+  const requestKey = JSON.stringify(request)
+  useEffect(() => {
+    const t = setTimeout(() => setSettled(JSON.parse(requestKey)), 300)
+    return () => clearTimeout(t)
+  }, [requestKey])
+  const preview = useQuery({ queryKey: ["send", "preview", settled], queryFn: ({ signal }) => api.sendPreview(settled, signal), enabled: hasPlaceholder, placeholderData: (p) => p })
+  const pv = hasPlaceholder ? preview.data : undefined
+  const badHeader = pv?.headerErrors.some(Boolean) ?? false
+
   const max = active?.maxPayload
   const size = messageSize(request.payload, request.headers)
   const over = max !== undefined && size > max
   const connected = active?.status === "connected"
   const jsonError = format === "json" && payload.trim() ? jsonProblem(payload) : undefined
-  const invalid = !request.subject || over || !connected
+  const invalid = !request.subject || over || !connected || badHeader
   const cliContext = active?.context?.source === "cli" ? active.context.name : undefined
   const sel = entries.find((e) => e.id === shown) ?? entries[0]
 
@@ -110,7 +123,12 @@ export function PublishScreen() {
                 <Input type="number" min={1} max={60000} value={timeoutMs} onChange={(e) => setTimeoutMs(e.target.value)} className="tabular-nums" />
               </label>
             )}
+            <label className="flex w-24 flex-col gap-1.5">
+              <span className={label}>Count</span>
+              <Input type="number" min={1} max={10000} value={count} onChange={(e) => setCount(e.target.value)} className="tabular-nums" />
+            </label>
           </div>
+          <Problem text={pv?.subjectError} />
 
           <fieldset className="flex flex-col gap-2">
             <legend className={label}>Headers</legend>
@@ -123,6 +141,7 @@ export function PublishScreen() {
                 </Button>
               </div>
             ))}
+            {pv?.headerErrors.map((e, i) => e && <Problem key={i} text={e} where={`Header ${i + 1}`} fatal />)}
             <div>
               <Button type="button" variant="outline" size="sm" onClick={() => setHeaders([...headers, ["", ""]])}>
                 <Plus aria-hidden /> Add header
@@ -136,6 +155,7 @@ export function PublishScreen() {
               <Segmented name="Payload mode" value={format} onChange={setFormat} options={[["json", "JSON"], ["text", "Text"]]} />
             </div>
             <CodeEditor value={payload} onChange={setPayload} mode={format} label="Payload" />
+            <Problem text={pv?.payloadError} />
             <div className="flex flex-wrap justify-between gap-2 text-xs">
               <span className={jsonError ? "text-destructive" : "text-muted-foreground"}>{jsonError ?? (format === "json" && payload.trim() ? "Valid JSON" : "")}</span>
               <span role={over ? "alert" : undefined} className={`tabular-nums ${over ? "text-destructive" : "text-muted-foreground"}`}>
@@ -145,9 +165,14 @@ export function PublishScreen() {
             </div>
           </div>
 
+          <p className="text-xs text-muted-foreground">
+            Placeholders like <code className="font-mono">{"{{Count}}"}</code>, <code className="font-mono">{"{{ID}}"}</code>, <code className="font-mono">{"{{TimeStamp}}"}</code>, <code className="font-mono">{"{{Unix}}"}</code>, <code className="font-mono">{"{{UnixNano}}"}</code>, <code className="font-mono">{"{{Time}}"}</code> and <code className="font-mono">{"{{Random 10 100}}"}</code> get a fresh value in the subject, header values and payload on every send, as in the nats CLI. Header names are never changed. Count starts at 1. A broken placeholder leaves that text as typed, except in a header value, where the send is refused as in the nats CLI.
+          </p>
+          {pv && <PreviewView p={pv} />}
+
           <div className="flex flex-wrap items-center gap-3">
             <BlockedButton type="submit" reason={blocked} disabled={invalid || send.isPending}>
-              {send.isPending ? "Sending…" : mode === "pub" ? "Publish message" : "Send request"}
+              {send.isPending ? "Sending…" : mode === "pub" ? (request.count > 1 ? `Publish ${request.count} messages` : "Publish message") : request.count > 1 ? `Send ${request.count} requests` : "Send request"}
             </BlockedButton>
             {!connected && <span className="text-xs text-muted-foreground">Connect a Context first.</span>}
           </div>
@@ -178,6 +203,29 @@ export function PublishScreen() {
   )
 }
 
+function Problem({ text, where, fatal }: { text?: string; where?: string; fatal?: boolean }) {
+  if (!text) return null
+  return (
+    <p role="alert" className="text-xs text-destructive">
+      {where && `${where}: `}Unknown or broken placeholder. {text}. {fatal ? "The send is refused until it is fixed." : "This text is sent as typed."}
+    </p>
+  )
+}
+
+// PreviewView is message 1 as the server renders it.
+function PreviewView({ p }: { p: SendPreview }) {
+  return (
+    <section aria-label="Preview" className="flex flex-col gap-1 rounded-xl border bg-card p-3 text-xs">
+      <h2 className={label}>Preview of message 1</h2>
+      <span className="break-all font-mono">{p.subject}</span>
+      {p.headers.map(([k, v], i) => (
+        <span key={i} className="break-all font-mono text-muted-foreground">{k}: {v}</span>
+      ))}
+      {p.payload && <pre aria-label="Preview payload" className="max-h-40 overflow-auto whitespace-pre-wrap break-all font-mono">{p.payload}</pre>}
+    </section>
+  )
+}
+
 function StatusBadge({ e }: { e: Entry }) {
   if (e.refused) return <Badge tone="destructive">Refused</Badge>
   const t = tones[e.result!.status]
@@ -191,6 +239,7 @@ function ResultView({ e }: { e: Entry }) {
       <div className="flex items-center gap-2">
         <StatusBadge e={e} />
         {r && <span className="text-muted-foreground tabular-nums">{r.latencyMs.toFixed(1)} ms</span>}
+        {r && e.request.count > 1 && <span className="text-muted-foreground tabular-nums">{r.sent} of {e.request.count} sent</span>}
       </div>
       {e.refused && <p role="alert" className="text-destructive">{e.refused}</p>}
       {r && explain[r.status] && <p className="text-muted-foreground">{explain[r.status]}</p>}

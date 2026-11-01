@@ -1,0 +1,86 @@
+[
+  {
+    "in": "plain text",
+    "count": 1,
+    "out": "plain text",
+    "err": false
+  },
+  {
+    "in": "{{Count}}",
+    "count": 1,
+    "out": "1",
+    "err": false
+  },
+  {
+    "in": "{{Count}}",
+    "count": 7,
+    "out": "7",
+    "err": false
+  },
+  {
+    "in": "{{Cnt}}",
+    "count": 3,
+    "out": "3",
+    "err": false
+  },
+  {
+    "in": "n={{ Count }}/{{Count}}",
+    "count": 2,
+    "out": "n=2/2",
+    "err": false
+  },
+  {
+    "in": "{{Foo}}",
+    "count": 1,
+    "out": "{{Foo}}",
+    "err": true
+  },
+  {
+    "in": "{{Count",
+    "count": 1,
+    "out": "{{Count",
+    "err": true
+  },
+  {
+    "in": "a {{Count}} {{Bogus}} b",
+    "count": 5,
+    "out": "a {{Count}} {{Bogus}} b",
+    "err": true
+  },
+  {
+    "in": "{{Request}}",
+    "count": 1,
+    "out": "{{Request}}",
+    "err": true
+  },
+  {
+    "in": "{{.Count}}",
+    "count": 4,
+    "out": "4",
+    "err": false
+  },
+  {
+    "in": "{{Random 5}}",
+    "count": 1,
+    "out": "{{Random 5}}",
+    "err": true
+  },
+  {
+    "in": "",
+    "count": 1,
+    "out": "",
+    "err": false
+  },
+  {
+    "in": "{\"n\":{{Count}}}",
+    "count": 9,
+    "out": "{\"n\":9}",
+    "err": false
+  },
+  {
+    "in": "{{Random 0 0}}",
+    "count": 1,
+    "out": "",
+    "err": false
+  }
+]

@@ -18,6 +18,23 @@ type SendRequest struct {
 	Headers   [][2]string `json:"headers" tstype:"Headers"`
 	Payload   string      `json:"payload"`
 	TimeoutMs int         `json:"timeoutMs"`
+	// Count is how many messages to send, like nats pub --count. Zero means 1.
+	// Subject, header values and payload may hold Placeholders, rendered anew
+	// for each message, with {{Count}} running from 1.
+	Count int `json:"count"`
+}
+
+// SendPreview is message number 1 of a SendRequest with its Placeholders
+// rendered. An error field holds the reason when that text has a bad
+// Placeholder (an unknown name, a broken {{…}}); the text then stays as typed.
+// HeaderErrors parallels Headers, with "" for a header that is fine.
+type SendPreview struct {
+	Subject      string      `json:"subject"`
+	SubjectError string      `json:"subjectError,omitempty"`
+	Headers      [][2]string `json:"headers" tstype:"Headers"`
+	HeaderErrors []string    `json:"headerErrors"`
+	Payload      string      `json:"payload"`
+	PayloadError string      `json:"payloadError,omitempty"`
 }
 
 // SendStatus is how a send ended. A request that got a reply with a
@@ -50,4 +67,6 @@ type SendResult struct {
 	LatencyMs float64    `json:"latencyMs"`
 	Reply     *Reply     `json:"reply,omitempty"`
 	Error     string     `json:"error,omitempty"`
+	// Sent is how many messages went out. Result is the last one's.
+	Sent int `json:"sent"`
 }

@@ -543,6 +543,26 @@ export interface SendRequest {
   headers: Headers;
   payload: string;
   timeoutMs: number /* int */;
+  /**
+   * Count is how many messages to send, like nats pub --count. Zero means 1.
+   * Subject, header values and payload may hold Placeholders, rendered anew
+   * for each message, with {{Count}} running from 1.
+   */
+  count: number /* int */;
+}
+/**
+ * SendPreview is message number 1 of a SendRequest with its Placeholders
+ * rendered. An error field holds the reason when that text has a bad
+ * Placeholder (an unknown name, a broken {{…}}); the text then stays as typed.
+ * HeaderErrors parallels Headers, with "" for a header that is fine.
+ */
+export interface SendPreview {
+  subject: string;
+  subjectError?: string;
+  headers: Headers;
+  headerErrors: string[];
+  payload: string;
+  payloadError?: string;
 }
 /**
  * SendStatus is how a send ended. A request that got a reply with a
@@ -575,6 +595,10 @@ export interface SendResult {
   latencyMs: number /* float64 */;
   reply?: Reply;
   error?: string;
+  /**
+   * Sent is how many messages went out. Result is the last one's.
+   */
+  sent: number /* int */;
 }
 
 //////////
