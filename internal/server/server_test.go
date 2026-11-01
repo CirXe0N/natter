@@ -74,6 +74,18 @@ func TestLaunchTokenExchange(t *testing.T) {
 	}
 }
 
+func TestCrossSiteLaunchHopsThroughItsOwnOrigin(t *testing.T) {
+	// natter open's redirect file is a file:// page. A 303 would keep the chain
+	// cross-site and the Strict cookie would not reach /.
+	w := do(newHandler(), "GET", "/launch?token="+token, func(r *http.Request) { r.Header.Set("Sec-Fetch-Site", "cross-site") })
+	if w.Code != http.StatusOK || !strings.Contains(w.Body.String(), `http-equiv="refresh" content="0;url=/"`) {
+		t.Errorf("got %d %q, want a page that refreshes to /", w.Code, w.Body.String())
+	}
+	if len(w.Result().Cookies()) != 1 {
+		t.Errorf("cookies = %v, want the session cookie", w.Result().Cookies())
+	}
+}
+
 func TestEachExchangeMintsAFreshSession(t *testing.T) {
 	h := newHandler()
 	a, b := launch(t, h), launch(t, h)

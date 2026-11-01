@@ -37,6 +37,8 @@ cosign verify-blob checksums.txt --bundle checksums.txt.sigstore.json \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
 
+macOS and Windows warn about the unsigned binaries the first time they run. [Unsigned-binary warnings](desktop.md#unsigned-binary-warnings) says how to get past each warning.
+
 ## Third-party licences
 
 `scripts/licenses.sh` writes `THIRD_PARTY_LICENSES.txt` (every linked Go module and production npm package) before each build, and every archive contains it.

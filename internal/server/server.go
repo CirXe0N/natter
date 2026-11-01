@@ -164,6 +164,13 @@ func (s *server) launch(w http.ResponseWriter, r *http.Request) {
 	s.sessions.Store(id, struct{}{})
 	http.SetCookie(w, &http.Cookie{Name: s.cookie, Value: id, Path: "/", HttpOnly: true, SameSite: http.SameSiteStrictMode})
 	w.Header().Set("Referrer-Policy", "no-referrer")
+	if r.Header.Get("Sec-Fetch-Site") == "cross-site" {
+		// A redirect would stay cross-site, so the Strict cookie would not
+		// reach /. Navigating from this origin makes the next request same-site.
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Write([]byte(`<!doctype html><meta http-equiv="refresh" content="0;url=/"><title>Natter</title>`))
+		return
+	}
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
