@@ -559,6 +559,23 @@ export interface MessagePage {
   messages: MsgMeta[];
   pending: number /* uint64 */;
 }
+/**
+ * Msg is one opened message: its metadata and its own headers. Its payload is
+ * served on its own, as raw bytes, by GET …/messages/{seq}/payload.
+ */
+export interface Msg {
+  seq: number /* uint64 */;
+  subject: string;
+  time: string;
+  size: number /* int */;
+  headers: { [key: string]: string[]};
+}
+/**
+ * MsgDelete deletes one message. Erase overwrites its data on disk too.
+ */
+export interface MsgDelete {
+  erase?: boolean;
+}
 
 //////////
 // source: send.go

@@ -16,6 +16,7 @@ import type { MessagePage, MessagePageRequest } from "@/gen/api"
 import type { SendPreview, SendRequest, SendResult } from "@/gen/api"
 import type { KVBucket, KVEntry } from "@/gen/api"
 import type { Example, ExampleCopy } from "@/gen/api"
+import type { Msg } from "@/gen/api"
 
 async function request<T>(method: string, path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
   const res = await fetch(path, {
@@ -91,4 +92,8 @@ export const api = {
     if (!res.ok) throw new Error((await res.text()).trim() || res.statusText)
     return new Uint8Array(await res.arrayBuffer())
   },
+  message: (stream: string, seq: number, signal?: AbortSignal) => request<Msg>("GET", `/api/streams/${encodeURIComponent(stream)}/messages/${seq}`, undefined, signal),
+  // raw bytes for the PayloadViewer: Range requests work, ?download saves a file
+  payloadUrl: (stream: string, seq: number) => `/api/streams/${encodeURIComponent(stream)}/messages/${seq}/payload`,
+  deleteMessage: (stream: string, seq: number, erase: boolean) => request<object>("DELETE", `/api/streams/${encodeURIComponent(stream)}/messages/${seq}`, { erase }),
 }

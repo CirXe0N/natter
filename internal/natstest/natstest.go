@@ -23,6 +23,7 @@ const config = `
 host: 127.0.0.1
 port: -1
 http: 127.0.0.1:-1
+max_payload: 8MB
 system_account: SYS
 jetstream { store_dir: %q }
 accounts {

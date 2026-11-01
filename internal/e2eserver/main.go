@@ -60,6 +60,9 @@ func main() {
 	if err := seedSessions(ns.ClientURL()); err != nil {
 		log.Fatal(err)
 	}
+	if err := seedBlobs(ns.ClientURL()); err != nil {
+		log.Fatal(err)
+	}
 	// A client the Connections spec can find and kick. nats.go reconnects it, so a rerun finds it again.
 	victim, err := nats.Connect(ns.ClientURL(), nats.UserInfo("app", "app"), nats.Name("orders-service"))
 	if err != nil {
@@ -205,5 +208,47 @@ func seedSessions(url string) error {
 			}
 		}
 	}()
+	return nil
+}
+
+// seedBlobs makes BLOBS for opening messages: 1 is 4 MB of JSON with a
+// header, 2 is 4 MB of binary, and 3 to 12 are small ones to delete.
+func seedBlobs(url string) error {
+	nc, err := nats.Connect(url, nats.UserInfo("app", "app"))
+	if err != nil {
+		return err
+	}
+	defer nc.Close()
+	js, err := jetstream.New(nc)
+	if err != nil {
+		return err
+	}
+	ctx := context.Background()
+	if _, err := js.CreateStream(ctx, jetstream.StreamConfig{Name: "BLOBS", Subjects: []string{"blobs.>"}, AllowDirect: true}); err != nil {
+		return err
+	}
+	doc := []byte(`{"items":[`)
+	for i := 0; len(doc) < 4<<20-100; i++ {
+		doc = fmt.Appendf(doc, `{"id":%d,"name":"item-%d","tags":["a","b"]},`, i, i)
+	}
+	doc = append(doc[:len(doc)-1], `],"end":true}`...)
+	bin := make([]byte, 4<<20)
+	for i := range bin {
+		bin[i] = byte(i)
+	}
+	m := nats.NewMsg("blobs.json")
+	m.Header.Set("Content-Type", "application/json")
+	m.Data = doc
+	if _, err := js.PublishMsg(ctx, m); err != nil {
+		return err
+	}
+	if _, err := js.Publish(ctx, "blobs.bin", bin); err != nil {
+		return err
+	}
+	for i := 3; i <= 12; i++ {
+		if _, err := js.Publish(ctx, "blobs.small", fmt.Appendf(nil, "small %d", i)); err != nil {
+			return err
+		}
+	}
 	return nil
 }
