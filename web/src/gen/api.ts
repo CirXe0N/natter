@@ -445,6 +445,13 @@ export interface ServerFrame {
   error?: string;
   overview?: Overview;
   kv?: KVKeys;
+  /**
+   * Gap counts frames of Topic the socket dropped, oldest first, because the
+   * tab fell behind. It comes in a frame of its own, just before the next
+   * frame that did arrive.
+   */
+  gap?: number /* int */;
+  tail?: Tail;
 }
 /**
  * StatsSource says where the Overview's numbers come from.
@@ -513,6 +520,69 @@ export interface JetStreamUsage {
  * Num is one point of a series. NaN marks a missing point and is null in JSON.
  */
 export type Num = number /* float32 */;
+/**
+ * TopicTailPrefix starts a Live tail's topic. The rest is its subject filter,
+ * wildcards allowed, as in "tail:orders.>".
+ */
+export const TopicTailPrefix = "tail:";
+/**
+ * Tail is one frame of a Live tail: the rows since the previous frame, and its
+ * counters since the tail started. The backend sends one every 250 ms.
+ */
+export interface Tail {
+  /**
+   * Problem says, for the user, why the tail is not receiving.
+   */
+  problem?: string;
+  rows: TailRow[];
+  /**
+   * HeldFrom is the oldest row ID whose payload may still be held. Rows
+   * before it have lost theirs to the memory budget.
+   */
+  heldFrom: number /* uint64 */;
+  /**
+   * Rate is how many messages arrived in the last second, dropped ones included.
+   */
+  rate: number /* uint64 */;
+  received: number /* uint64 */;
+  /**
+   * PendingDrops are messages nats.go dropped because the tail's pending
+   * limit was full. RateDrops are messages over the rate cap.
+   */
+  pendingDrops: number /* uint64 */;
+  rateDrops: number /* uint64 */;
+  /**
+   * Disconnects counts how often the server closed the tail's connection, a
+   * slow-consumer cut-off among the possible reasons. How many messages were
+   * missed meanwhile is unknown. Disconnect is the last one's error.
+   */
+  disconnects: number /* uint64 */;
+  disconnect?: string;
+}
+/**
+ * TailRow is one message of a Live tail. IDs count up by one per row, so a
+ * jump shows how many rows the tab missed. Held says the backend kept the
+ * payload when the message arrived; HeldFrom says whether it still does.
+ */
+export interface TailRow {
+  id: number /* uint64 */;
+  time: string;
+  subject: string;
+  reply?: string;
+  size: number /* int */;
+  headers: number /* int */;
+  preview?: string;
+  kind?: MsgKind;
+  held: boolean;
+}
+/**
+ * TailMessage is one held message of a Live tail, opened. Payload is set for
+ * a text or JSON payload; a binary one only has its Size.
+ */
+export interface TailMessage extends TailRow {
+  headerValues?: { [key: string]: string[]};
+  payload?: string;
+}
 
 //////////
 // source: messages.go

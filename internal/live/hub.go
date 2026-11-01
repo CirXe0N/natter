@@ -45,10 +45,18 @@ type Hub struct {
 
 type running struct {
 	Producer
-	stop context.CancelFunc
-	subs map[*client]struct{}
-	idle *time.Timer // set while subs is empty
+	stop  context.CancelFunc
+	subs  map[*client]struct{}
+	idle  *time.Timer // set while subs is empty
+	lossy bool        // the Producer is Lossy
 }
+
+// Lossy marks a Producer whose updates each carry new data, like a Live
+// tail's rows, so a newer one cannot replace an older one. A client queues up
+// to maxQueued of them, drops the oldest past that, and sends a gap marker.
+type Lossy interface{ Lossy() }
+
+const maxQueued = 16
 
 // NewHub serves the given topics. Each producer is made on first subscribe.
 func NewHub(topics map[api.Topic]func() Producer) *Hub {
@@ -106,7 +114,9 @@ func (h *Hub) subscribe(c *client, t api.Topic) {
 			return
 		}
 		ctx, stop := context.WithCancel(context.Background())
-		run = &running{Producer: mk(), stop: stop, subs: map[*client]struct{}{}}
+		p := mk()
+		_, lossy := p.(Lossy)
+		run = &running{Producer: p, stop: stop, subs: map[*client]struct{}{}, lossy: lossy}
 		h.running[t] = run
 		go run.Run(ctx, func(frame []byte, snapshot bool) { h.broadcast(run, t, frame, snapshot) })
 	}
@@ -172,20 +182,38 @@ func (h *Hub) broadcast(run *running, t api.Topic, frame []byte, snapshot bool) 
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	for c := range run.subs {
-		c.send(t, frame, snapshot)
+		if run.lossy && !snapshot {
+			c.queue(t, frame)
+		} else {
+			c.send(t, frame, snapshot)
+		}
 	}
 }
 
-// client is one WebSocket. Its queue holds at most two frames per topic,
-// the newest snapshot and the newest update after it: every topic today is a
-// metric, so a newer value replaces one not yet written.
+// Producer returns t's running producer, or nil.
+func (h *Hub) Producer(t api.Topic) Producer {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if run := h.running[t]; run != nil {
+		return run.Producer
+	}
+	return nil
+}
+
+// client is one WebSocket. Its queue holds, per topic, the newest snapshot
+// and the newest update after it, since a metric's newer value replaces one
+// not yet written. A Lossy topic's updates queue instead.
 type client struct {
 	mu      sync.Mutex
 	pending map[api.Topic]*slot
 	kick    chan struct{} // 1-buffered: pending changed
 }
 
-type slot struct{ snapshot, update []byte }
+type slot struct {
+	snapshot, update []byte
+	queued           [][]byte // a Lossy topic's updates, oldest first
+	gap              int      // how many were dropped before queued[0]
+}
 
 func newClient() *client {
 	return &client{pending: map[api.Topic]*slot{}, kick: make(chan struct{}, 1)}
@@ -199,9 +227,28 @@ func (c *client) send(t api.Topic, frame []byte, snapshot bool) {
 		c.pending[t] = s
 	}
 	if snapshot {
-		s.snapshot, s.update = frame, nil
+		*s = slot{snapshot: frame}
 	} else {
 		s.update = frame
+	}
+	c.mu.Unlock()
+	select {
+	case c.kick <- struct{}{}:
+	default:
+	}
+}
+
+// queue adds a Lossy topic's update, dropping the oldest past maxQueued.
+func (c *client) queue(t api.Topic, frame []byte) {
+	c.mu.Lock()
+	s := c.pending[t]
+	if s == nil {
+		s = &slot{}
+		c.pending[t] = s
+	}
+	if s.queued = append(s.queued, frame); len(s.queued) > maxQueued {
+		s.queued = s.queued[1:]
+		s.gap++
 	}
 	c.mu.Unlock()
 	select {
@@ -235,8 +282,13 @@ func (c *client) write(ctx context.Context, conn *websocket.Conn, timeout time.D
 			return
 		case <-c.kick:
 		}
-		for _, s := range c.take() {
-			for _, frame := range [][]byte{s.snapshot, s.update} {
+		for t, s := range c.take() {
+			frames := [][]byte{s.snapshot, s.update}
+			if s.gap > 0 {
+				gap, _ := json.Marshal(api.ServerFrame{Topic: t, Gap: s.gap})
+				frames = append(frames, gap)
+			}
+			for _, frame := range append(frames, s.queued...) {
 				if frame == nil {
 					continue
 				}

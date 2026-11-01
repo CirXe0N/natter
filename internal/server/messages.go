@@ -8,11 +8,8 @@ import (
 	"net/http"
 	"regexp"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
-	"unicode"
-	"unicode/utf8"
 
 	"github.com/nats-io/jsm.go"
 	natsserver "github.com/nats-io/nats-server/v2/server"
@@ -21,6 +18,7 @@ import (
 
 	"github.com/CirXe0N/natter/internal/api"
 	"github.com/CirXe0N/natter/internal/contexts"
+	"github.com/CirXe0N/natter/internal/live"
 )
 
 // Browsing (ADR-0003): each open message table is a view that holds one
@@ -245,13 +243,4 @@ func (v *view) preview(ctx context.Context, rows []api.MsgMeta) {
 	wg.Wait()
 }
 
-func classify(b []byte) (api.MsgKind, *string) {
-	s := string(b)
-	switch {
-	case len(b) > 0 && json.Valid(b):
-		return api.MsgKindJSON, &s
-	case utf8.Valid(b) && !strings.ContainsFunc(s, func(r rune) bool { return unicode.IsControl(r) && r != '\n' && r != '\r' && r != '\t' }):
-		return api.MsgKindText, &s
-	}
-	return api.MsgKindBinary, nil
-}
+var classify = live.Classify // shared with the Live tail

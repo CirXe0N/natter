@@ -151,13 +151,13 @@ func TestPendingFramesCollapseToTheLatestPerTopic(t *testing.T) {
 	c.send("b", []byte("x"), false)
 	got := c.take()
 	if len(got) != 2 || string(got["a"].snapshot) != "snap" || string(got["a"].update) != "2" || string(got["b"].update) != "x" {
-		t.Fatalf("pending a %q, b %q; want the snapshot kept and the latest update", got["a"], got["b"])
+		t.Fatalf("pending a %v, b %v; want the snapshot kept and the latest update", got["a"], got["b"])
 	}
 
 	c.send("a", []byte("1"), false)
 	c.send("a", []byte("snap2"), true)
 	if got := c.take()["a"]; string(got.snapshot) != "snap2" || got.update != nil {
-		t.Fatalf("pending %q; a snapshot supersedes earlier updates", got)
+		t.Fatalf("pending %v; a snapshot supersedes earlier updates", got)
 	}
 }
 
@@ -169,4 +169,66 @@ func TestClientThatStopsReadingIsDisconnected(t *testing.T) {
 	c := dial(t, url) // never reads, so the socket buffers fill and a write stalls
 	send(t, c, api.ClientOpSub, "t")
 	eventually(t, "stalled client is still subscribed", func() bool { return p.stopped.Load() == 1 })
+}
+
+func TestLossyTopicDropsOldestFramesAndSendsAGapMarker(t *testing.T) {
+	c := newClient()
+	for n := 1; n <= maxQueued+4; n++ {
+		c.queue("tail:x", []byte(strconv.Itoa(n)))
+	}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		conn, err := websocket.Accept(w, r, nil)
+		if err != nil {
+			return
+		}
+		defer conn.CloseNow()
+		c.write(r.Context(), conn, time.Second)
+	}))
+	t.Cleanup(srv.Close)
+	ws := dial(t, "ws://"+srv.Listener.Addr().String())
+
+	var got []string
+	for range maxQueued + 1 {
+		f, err := read(t, ws, 5*time.Second)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got = append(got, f)
+	}
+	if got[0] != `{"topic":"tail:x","gap":4}` || got[1] != "5" || got[maxQueued] != strconv.Itoa(maxQueued+4) {
+		t.Fatalf("frames %q; want a gap of 4, then frames 5 to %d", got, maxQueued+4)
+	}
+}
+
+// quiet is a Lossy producer that only has a snapshot.
+type quiet struct{}
+
+func (quiet) Run(ctx context.Context, _ func([]byte, bool)) { <-ctx.Done() }
+func (quiet) Snapshot() []byte                              { return []byte("snapshot") }
+func (quiet) Lossy()                                        {}
+
+func TestFamilyTopicsGetOneProducerPerArgument(t *testing.T) {
+	var args []string
+	h := NewHub(nil)
+	h.Families = map[api.Topic]func(string) Producer{"tail:": func(arg string) Producer {
+		args = append(args, arg)
+		return quiet{}
+	}}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { h.Serve(w, r, nil) }))
+	t.Cleanup(srv.Close)
+	c := dial(t, "ws://"+srv.Listener.Addr().String())
+
+	send(t, c, api.ClientOpSub, "tail:orders.>")
+	if got, err := read(t, c, 5*time.Second); err != nil || got != "snapshot" {
+		t.Fatalf("first frame %q, %v; want the snapshot", got, err)
+	}
+	send(t, c, api.ClientOpSub, "tail:orders.*")
+	read(t, c, 5*time.Second)
+	if _, ok := h.Producer("tail:orders.*").(quiet); !ok || len(args) != 2 || args[0] != "orders.>" {
+		t.Fatalf("args %q; want one lossy producer per filter", args)
+	}
+	send(t, c, api.ClientOpSub, "nope:x")
+	if got, _ := read(t, c, 5*time.Second); !strings.Contains(got, "unknown topic") {
+		t.Fatalf("got %q; want an unknown key refused", got)
+	}
 }

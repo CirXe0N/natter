@@ -16,7 +16,8 @@ func (s *server) newHub() *live.Hub {
 		api.TopicOverview: func() live.Producer { return live.NewOverview(s.Contexts.Active) },
 	})
 	h.Families = map[api.Topic]func(string) live.Producer{
-		api.TopicKV: func(bucket string) live.Producer { return live.NewKVKeys(s.Contexts.Active, bucket) },
+		api.TopicKV:         func(bucket string) live.Producer { return live.NewKVKeys(s.Contexts.Active, bucket) },
+		api.TopicTailPrefix: func(filter string) live.Producer { return live.NewTail(filter, s.Contexts) },
 	}
 	return h
 }

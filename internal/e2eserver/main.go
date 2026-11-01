@@ -85,6 +85,18 @@ func main() {
 	if _, err := svc.Subscribe("e2e.echo", func(m *nats.Msg) { _ = m.Respond(append([]byte("echo:"), m.Data...)) }); err != nil {
 		log.Fatal(err)
 	}
+	// Traffic for the Live tail spec: ten messages a second on e2e.tail.*.
+	traffic, err := nats.Connect(ns.ClientURL(), nats.UserInfo("app", "app"), nats.Name("e2e-traffic"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer traffic.Close()
+	go func() {
+		for n := 0; ; n++ {
+			traffic.Publish(fmt.Sprintf("e2e.tail.%d", n%3), fmt.Appendf(nil, `{"n":%d}`, n))
+			time.Sleep(100 * time.Millisecond)
+		}
+	}()
 	ctxs := contexts.New(root, vault.Open(filepath.Join(root, "natter")))
 	defer ctxs.Close()
 
