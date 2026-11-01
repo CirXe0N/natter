@@ -2,8 +2,10 @@
 //
 // Every secret lives in one age file, vault.age, encrypted to a hybrid
 // post-quantum age identity. That identity comes from a plaintext key file
-// passed with -vault-key, or from vault.key.age, a copy of it wrapped with a
-// passphrase (scrypt). Changing the passphrase rewrites only that wrapper.
+// passed with -vault-key, from vault.key.age, a copy of it wrapped with a
+// passphrase (scrypt), or from the OS keyring. Changing the passphrase
+// rewrites only that wrapper. A Vault Natter creates on first use has its
+// key only in the keyring until the user adds a passphrase.
 //
 // An unlocked Vault holds only the identity in memory. Every read and write
 // decrypts the file again, and writes do it under vault.lock, so two natter
@@ -40,6 +42,8 @@ var (
 	ErrExists       = errors.New("a Vault already exists")
 	ErrNoPassphrase = errors.New("this Vault has no passphrase: start natter with -vault-key <key file>")
 	ErrEmpty        = errors.New("the passphrase is empty")
+	// ErrOnlyKey refuses to drop the last copy of the Vault key.
+	ErrOnlyKey = errors.New("the OS keyring holds the only copy of the Vault key: add a passphrase first")
 )
 
 // Vault is the Vault in one directory. The zero identity means locked.
@@ -50,6 +54,7 @@ type Vault struct {
 	// keyring is nil unless an OS keyring passed the canary at startup.
 	keyring   Keyring
 	inKeyring bool
+	keyFile   bool // unlocked with -vault-key, so the user holds a copy of the key
 }
 
 type payload struct {
@@ -105,7 +110,13 @@ func (v *Vault) UnlockKeyFile(path string) error {
 	if !ok || len(ids) > 1 {
 		return fmt.Errorf("%s must hold exactly one post-quantum age identity; create one with `age-keygen -pq -o %s`", path, path)
 	}
-	return v.unlock(id)
+	if err := v.unlock(id); err != nil {
+		return err
+	}
+	v.mu.Lock()
+	v.keyFile = true
+	v.mu.Unlock()
+	return nil
 }
 
 // UnlockPassphrase unwraps the identity from vault.key.age and unlocks.
@@ -180,6 +191,41 @@ func (v *Vault) Create(passphrase api.Secret) error {
 	if v.keyringAttached() {
 		_ = v.SetKeyring(context.Background(), true)
 	}
+	return nil
+}
+
+// CreateInKeyring makes a new Vault whose key lives only in the OS keyring,
+// and leaves it unlocked. Natter calls it the first time a secret goes into
+// the Vault; SetPassphrase adds a passphrase later.
+func (v *Vault) CreateInKeyring(ctx context.Context) error {
+	v.mu.Lock()
+	k := v.keyring
+	v.mu.Unlock()
+	if k == nil {
+		return ErrNoKeyring
+	}
+	id, err := age.GenerateHybridIdentity()
+	if err != nil {
+		return err
+	}
+	unlockFile, err := v.lockFile()
+	if err != nil {
+		return err
+	}
+	defer unlockFile()
+	if _, err := os.Stat(v.path("vault.age")); err == nil {
+		return ErrExists
+	}
+	// The key goes in first: a vault.age nothing can open would strand every secret put in it.
+	if err := do(ctx, func() error { return k.Set(keyringService, v.keyringUser(), id.String()) }); err != nil {
+		return err
+	}
+	if err := v.unlockLocked(id, true); err != nil {
+		return err
+	}
+	v.mu.Lock()
+	v.inKeyring = true
+	v.mu.Unlock()
 	return nil
 }
 

@@ -52,7 +52,7 @@ func (s *server) setContextSettings(w http.ResponseWriter, r *http.Request) {
 	if !readJSON(w, r, &settings) {
 		return
 	}
-	ref := api.Ref{Source: api.Source(r.PathValue("source")), Name: r.PathValue("name")}
+	ref := pathRef(r)
 	if err := s.Contexts.SetSettings(r.Context(), ref, settings); err != nil {
 		writeError(w, err)
 		return
@@ -87,7 +87,7 @@ func writeError(w http.ResponseWriter, err error) {
 		status = http.StatusBadRequest
 	case errors.Is(err, vault.ErrLocked):
 		status = http.StatusLocked
-	case errors.Is(err, vault.ErrExists), errors.Is(err, vault.ErrNoPassphrase), errors.Is(err, vault.ErrNoKeyring):
+	case errors.Is(err, vault.ErrExists), errors.Is(err, vault.ErrNoPassphrase), errors.Is(err, vault.ErrNoKeyring), errors.Is(err, vault.ErrOnlyKey):
 		status = http.StatusConflict
 	}
 	http.Error(w, err.Error(), status)

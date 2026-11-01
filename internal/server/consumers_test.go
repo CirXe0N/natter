@@ -126,6 +126,53 @@ func TestConsumers(t *testing.T) {
 	call("GET", base, "", 200, nil)
 	call("PUT", "/api/contexts/cli/app/settings", `{}`, 200, nil)
 
+	// Create, refuse a taken name, edit, and refuse a field fixed at create.
+	fieldOf := func(body string) string {
+		var e api.FieldError
+		if err := json.Unmarshal([]byte(body), &e); err != nil {
+			t.Fatalf("not a field error: %s", body)
+		}
+		return e.Field
+	}
+	const pull = `{"name":"audit","durable_name":"audit","ack_policy":"explicit","deliver_policy":"all","replay_policy":"instant","filter_subjects":["orders.eu.>","orders.us.>"],"max_deliver":5,"backoff":[1000000000,5000000000],"max_waiting":64,"metadata":{"team":"ops"}}`
+	call("PUT", "/api/contexts/cli/app/settings", `{"readOnly":true}`, 200, nil)
+	call("POST", "/api/streams/ORDERS/consumers", pull, http.StatusForbidden, nil)
+	call("PUT", "/api/contexts/cli/app/settings", `{}`, 200, nil)
+	call("POST", "/api/streams/ORDERS/consumers", pull, 200, &s)
+	if s.Name != "audit" || !s.Durable || s.Push || len(s.Filter) != 2 || s.Pending != 5 {
+		t.Fatalf("created: %+v", s)
+	}
+	if f := fieldOf(call("POST", "/api/streams/ORDERS/consumers", pull, http.StatusBadRequest, nil)); f != "name" {
+		t.Fatalf("a taken name lands on %q", f)
+	}
+	if f := fieldOf(call("POST", "/api/streams/ORDERS/consumers", `{"name":"x","ack_policy":"explicit","deliver_policy":"all","replay_policy":"instant","tyop":1}`, http.StatusBadRequest, nil)); f != "" {
+		t.Fatalf("an unknown key lands on %q", f)
+	}
+	edited := strings.Replace(pull, `"max_deliver":5`, `"max_deliver":9,"description":"edited"`, 1)
+	call("PUT", "/api/streams/ORDERS/consumers/audit", edited, 200, nil)
+	call("GET", "/api/streams/ORDERS/consumers/audit", "", 200, &d)
+	var got struct {
+		MaxDeliver  int               `json:"max_deliver"`
+		Description string            `json:"description"`
+		Metadata    map[string]string `json:"metadata"`
+	}
+	if err := json.Unmarshal(d.Config, &got); err != nil || got.MaxDeliver != 9 || got.Description != "edited" || got.Metadata["team"] != "ops" {
+		t.Fatalf("edited: %+v %v", got, err)
+	}
+	if f := fieldOf(call("PUT", "/api/streams/ORDERS/consumers/audit", strings.Replace(pull, `"ack_policy":"explicit"`, `"ack_policy":"all"`, 1), http.StatusBadRequest, nil)); f != "ack_policy" {
+		t.Fatalf("a fixed field lands on %q", f)
+	}
+	if f := fieldOf(call("PUT", "/api/streams/ORDERS/consumers/audit", strings.ReplaceAll(pull, "audit", "renamed"), http.StatusBadRequest, nil)); f != "name" {
+		t.Fatalf("a rename lands on %q", f)
+	}
+	call("PUT", "/api/streams/ORDERS/consumers/gone", strings.ReplaceAll(pull, "audit", "gone"), http.StatusNotFound, nil)
+	call("POST", "/api/streams/ORDERS/consumers", `{"name":"fanout","durable_name":"fanout","ack_policy":"none","deliver_policy":"new","replay_policy":"instant","deliver_subject":"fanout.out","deliver_group":"workers","flow_control":true,"idle_heartbeat":5000000000}`, 200, &s)
+	if !s.Push {
+		t.Fatalf("push: %+v", s)
+	}
+	call("DELETE", "/api/streams/ORDERS/consumers/audit", "", 200, nil)
+	call("DELETE", "/api/streams/ORDERS/consumers/fanout", "", 200, nil)
+
 	call("DELETE", base, "", 200, nil)
 	call("GET", base, "", http.StatusNotFound, nil)
 	call("GET", "/api/streams/ORDERS/consumers", "", 200, &list)

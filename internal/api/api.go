@@ -55,8 +55,10 @@ type Context struct {
 	URLs        string        `json:"urls"`
 	User        string        `json:"user"`
 	Secret      SecretStorage `json:"secret"`
-	Mode        Mode          `json:"mode"`
-	Settings    `tstype:",extends"`
+	// SecretKind is the field the secret is in, empty when there is none.
+	SecretKind SecretKind `json:"secretKind,omitempty"`
+	Mode       Mode       `json:"mode"`
+	Settings   `tstype:",extends"`
 }
 
 // Mode is how a Context's user is defined on the server.
@@ -155,6 +157,20 @@ type NewContext struct {
 	Source Source `json:"source,omitempty"`
 }
 
+// ContextUpdate edits a Context. Its name and Source stay, and every field
+// Natter does not edit (TLS, JetStream domain, inbox prefix…) is kept.
+type ContextUpdate struct {
+	Description string `json:"description"`
+	URLs        string `json:"urls"`
+	User        string `json:"user"`
+	// KeepSecret leaves the secret as it is. Otherwise SecretKind, Secret and
+	// SecretRef replace it as in NewContext, and an empty SecretKind removes it.
+	KeepSecret bool       `json:"keepSecret,omitempty"`
+	SecretKind SecretKind `json:"secretKind,omitempty"`
+	Secret     Secret     `json:"secret,omitempty"`
+	SecretRef  string     `json:"secretRef,omitempty"`
+}
+
 // MoveRequest asks to copy a CLI Context with a Plaintext secret into Natter's
 // directory, with the secret in the Vault. The CLI file is left as it is.
 type MoveRequest struct {
@@ -162,8 +178,7 @@ type MoveRequest struct {
 	Name string `json:"name,omitempty"`
 }
 
-// RemoveRequest confirms deleting a CLI Context file. It is separate from
-// moving, and Confirm must be true.
+// RemoveRequest confirms deleting a Context's file. Confirm must be true.
 type RemoveRequest struct {
 	Confirm bool `json:"confirm"`
 }

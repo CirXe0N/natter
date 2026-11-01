@@ -11,7 +11,9 @@ test("the shell opens on Overview and navigates between empty screens", async ({
   await expect(page).toHaveURL(/\/streams$/)
   await expect(page.getByRole("heading", { level: 1, name: "Streams" })).toBeVisible()
   await expect(nav.getByRole("link", { name: "Streams" })).toHaveAttribute("aria-current", "page")
-  await expect(page.getByRole("navigation", { name: "Breadcrumb" })).toHaveText("Streams")
+  const crumbs = page.getByRole("navigation", { name: "Breadcrumb" })
+  await expect(crumbs.locator("[aria-current=page]")).toHaveText("Streams")
+  await expect(crumbs.getByRole("link")).toHaveCount(1) // the active Context, which opens Contexts
   await expect(page).toHaveTitle("Streams · Natter")
 
   await page.goBack()
@@ -25,26 +27,6 @@ test.describe("without a session", () => {
     expect(res?.status()).toBe(401)
     await expect(page.getByRole("navigation", { name: "Screens" })).toHaveCount(0)
   })
-})
-
-test("density changes row height, persists, and keeps controls at least 24 px", async ({ page }) => {
-  await page.goto("/overview")
-  const row = page.getByRole("navigation", { name: "Screens" }).getByRole("link", { name: "Streams" })
-  const height = async () => (await row.boundingBox())!.height
-
-  expect(await height()).toBe(32)
-  await page.getByRole("button", { name: "Compact" }).click()
-  expect(await height()).toBe(28)
-  await page.reload()
-  expect(await height()).toBe(28)
-  await expect(page.getByRole("button", { name: "Compact" })).toHaveAttribute("aria-pressed", "true")
-  await page.getByRole("button", { name: "Comfortable" }).click()
-  expect(await height()).toBe(36)
-
-  for (const name of ["Compact", "Default", "Comfortable"]) {
-    const box = (await page.getByRole("button", { name }).boundingBox())!
-    expect(Math.min(box.width, box.height)).toBeGreaterThanOrEqual(24)
-  }
 })
 
 test("keyboard focus draws a 2 px outline", async ({ page }) => {
@@ -61,11 +43,6 @@ test("keyboard focus draws a 2 px outline", async ({ page }) => {
 
   await page.keyboard.press("Tab")
   await expect(page.getByRole("link", { name: "Overview" })).toBeFocused()
-  expect(await outline()).toBe("solid 2px")
-
-  await page.getByRole("button", { name: "Default" }).focus()
-  await page.keyboard.press("ArrowLeft")
-  await expect(page.getByRole("button", { name: "Compact" })).toBeFocused()
   expect(await outline()).toBe("solid 2px")
 })
 

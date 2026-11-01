@@ -145,16 +145,20 @@ func (v *Vault) keyringAttached() bool {
 
 // SetKeyring stores the unlocked Vault key in the OS keyring, or removes it.
 // Only the key moves: vault.age is not touched, and the passphrase wrapper
-// stays, so the passphrase still unlocks the Vault.
+// stays, so the passphrase still unlocks the Vault. Removing the key is
+// refused when nothing else could unlock the Vault after a restart.
 func (v *Vault) SetKeyring(ctx context.Context, on bool) error {
 	v.mu.Lock()
-	k, id := v.keyring, v.id
+	k, id, keyFile := v.keyring, v.id, v.keyFile
 	v.mu.Unlock()
 	if k == nil {
 		return ErrNoKeyring
 	}
 	if id == nil {
 		return ErrLocked
+	}
+	if !on && !keyFile && !v.Status().HasPassphrase {
+		return ErrOnlyKey
 	}
 	err := do(ctx, func() error {
 		if on {

@@ -27,6 +27,11 @@ const tabs = [
 // useStream is the detail every tab shares, fetched once per stream.
 export function useStream() {
   const { stream } = useParams({ from: "/streams/$stream" })
+  return useStreamDetail(stream)
+}
+
+// useStreamDetail is one stream's detail by name, for screens outside /streams/$stream.
+export function useStreamDetail(stream: string) {
   return useQuery({ queryKey: ["streams", "detail", stream], queryFn: ({ signal }) => api.stream(stream, signal), refetchInterval: useRefresh() })
 }
 

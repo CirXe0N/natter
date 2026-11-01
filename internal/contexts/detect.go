@@ -24,7 +24,17 @@ func summarize(ref api.Ref, c *natscontext.Context, s api.Settings) api.Context 
 	if c.Creds() != "" || c.NscURL() != "" || c.UserJWT() != "" {
 		mode = api.ModeJWT
 	}
-	return api.Context{Ref: ref, Description: c.Description(), URLs: c.ServerURL(), User: c.User(), Secret: secretStorage(c), Mode: mode, Settings: s}
+	return api.Context{Ref: ref, Description: c.Description(), URLs: c.ServerURL(), User: c.User(), Secret: secretStorage(c), SecretKind: secretKind(c), Mode: mode, Settings: s}
+}
+
+// secretKind is the first of the fields Natter edits that holds a secret.
+func secretKind(c *natscontext.Context) api.SecretKind {
+	for i, v := range []string{c.Password(), c.Token(), c.Creds(), c.NKey()} {
+		if v != "" {
+			return api.SecretKind(secretFields[i])
+		}
+	}
+	return ""
 }
 
 // referenceSchemes maps each Secret reference scheme to where its secret lives.

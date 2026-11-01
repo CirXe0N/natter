@@ -14,10 +14,11 @@ func init() {
 		route{pattern: "PUT /api/vault/passphrase", handle: (*server).setPassphrase, allowReadOnly: true},
 		route{pattern: "POST /api/vault/keyring", handle: (*server).keyringOn, allowReadOnly: true},
 		route{pattern: "DELETE /api/vault/keyring", handle: (*server).keyringOff, allowReadOnly: true},
-		// These write only Natter's own files; createContext refuses a CLI Context under Read-only itself. Writing or removing a CLI file is natscli's state.
+		// These write Natter's own files, which Read-only allows. Writing or removing a CLI file is natscli's state, so each handler refuses that under Read-only itself.
 		route{pattern: "POST /api/contexts", handle: (*server).createContext, allowReadOnly: true},
+		route{pattern: "PUT /api/contexts/{source}/{name}", handle: (*server).updateContext, allowReadOnly: true},
 		route{pattern: "POST /api/contexts/{source}/{name}/move-to-vault", handle: (*server).moveIntoVault, allowReadOnly: true},
-		route{pattern: "POST /api/contexts/{source}/{name}/remove", handle: (*server).removeContext},
+		route{pattern: "POST /api/contexts/{source}/{name}/remove", handle: (*server).removeContext, allowReadOnly: true},
 	)
 }
 
@@ -105,7 +106,7 @@ func (s *server) moveIntoVault(w http.ResponseWriter, r *http.Request) {
 	if !readJSON(w, r, &req) {
 		return
 	}
-	ref := api.Ref{Source: api.Source(r.PathValue("source")), Name: r.PathValue("name")}
+	ref := pathRef(r)
 	c, err := s.Contexts.MoveIntoVault(r.Context(), ref, req.Name)
 	if err != nil {
 		writeError(w, err)
@@ -114,20 +115,54 @@ func (s *server) moveIntoVault(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, c)
 }
 
-// removeContext deletes a CLI Context file, and only with confirm: true.
+// updateContext edits a Context and reconnects it if it is the active one.
+func (s *server) updateContext(w http.ResponseWriter, r *http.Request) {
+	var u api.ContextUpdate
+	if !readJSON(w, r, &u) {
+		return
+	}
+	ref := pathRef(r)
+	if ref.Source == api.SourceCLI && s.readOnly() {
+		refuseReadOnly(w)
+		return
+	}
+	c, err := s.Contexts.Update(r.Context(), ref, u)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	if a := s.Contexts.Active(); a != nil && a.Context.Ref == ref {
+		if err := s.Contexts.Activate(r.Context(), ref); err != nil {
+			writeError(w, err)
+			return
+		}
+	}
+	writeJSON(w, c)
+}
+
+// removeContext deletes a Context, and only with confirm: true.
 func (s *server) removeContext(w http.ResponseWriter, r *http.Request) {
 	var req api.RemoveRequest
 	if !readJSON(w, r, &req) {
 		return
 	}
 	if !req.Confirm {
-		http.Error(w, "removing a nats CLI Context file needs confirm: true", http.StatusBadRequest)
+		http.Error(w, "removing a Context needs confirm: true", http.StatusBadRequest)
 		return
 	}
-	ref := api.Ref{Source: api.Source(r.PathValue("source")), Name: r.PathValue("name")}
-	if err := s.Contexts.RemoveCLI(r.Context(), ref); err != nil {
+	ref := pathRef(r)
+	if ref.Source == api.SourceCLI && s.readOnly() {
+		refuseReadOnly(w)
+		return
+	}
+	if err := s.Contexts.Remove(r.Context(), ref); err != nil {
 		writeError(w, err)
 		return
 	}
 	writeJSON(w, struct{}{})
+}
+
+// pathRef is the Context a /api/contexts/{source}/{name} path names.
+func pathRef(r *http.Request) api.Ref {
+	return api.Ref{Source: api.Source(r.PathValue("source")), Name: r.PathValue("name")}
 }

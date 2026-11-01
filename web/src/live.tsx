@@ -1,6 +1,6 @@
 // Live updates: one WebSocket per tab to /ws, multiplexed by topic, plus the
 // global pause control and the one status region that announces changes.
-import { useSyncExternalStore } from "react"
+import { useEffect, useSyncExternalStore } from "react"
 import { Pause, Play } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -70,12 +70,15 @@ export function usePaused() {
   )
 }
 
+// PauseLive is the pause control of a screen that streams. Leaving the screen
+// resumes, so no other screen is left paused without a control to resume it.
 export function PauseLive() {
   const isPaused = usePaused()
+  useEffect(() => () => setPaused(false), [])
   return (
-    <Button variant="ghost" size="sm" onClick={() => setPaused(!isPaused)}>
+    <Button variant="outline" size="sm" aria-label={isPaused ? "Resume live updates" : "Pause live updates"} onClick={() => setPaused(!isPaused)}>
       {isPaused ? <Play aria-hidden /> : <Pause aria-hidden />}
-      {isPaused ? "Resume live updates" : "Pause live updates"}
+      {isPaused ? "Resume" : "Pause"}
     </Button>
   )
 }

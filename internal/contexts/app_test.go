@@ -30,7 +30,7 @@ func TestAppContextWithAVaultSecretSurvivesARestart(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := api.Context{Ref: api.Ref{Source: api.SourceApp, Name: "vaulted"}, Description: "in the Vault", URLs: ns.ClientURL(), User: "app", Secret: api.SecretStorageVault, Mode: api.ModeStatic}
+	want := api.Context{Ref: api.Ref{Source: api.SourceApp, Name: "vaulted"}, Description: "in the Vault", URLs: ns.ClientURL(), User: "app", Secret: api.SecretStorageVault, SecretKind: api.SecretKindPassword, Mode: api.ModeStatic}
 	if c != want {
 		t.Fatalf("created %+v", c)
 	}

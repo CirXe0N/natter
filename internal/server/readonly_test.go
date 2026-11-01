@@ -73,6 +73,9 @@ func TestReadOnlyRefusesMutatingRoutes(t *testing.T) {
 	want(call("POST", "/api/contexts", `{"name":"cli-local","urls":"nats://127.0.0.1:1","source":"cli"}`), 403, "write a CLI file under Read-only")
 	want(call("POST", "/api/contexts/cli/app/move-to-vault", `{}`), 200, "move into the Vault under Read-only")
 	want(call("POST", "/api/contexts/cli/app/remove", `{"confirm":true}`), 403, "edit a CLI file under Read-only")
+	want(call("PUT", "/api/contexts/cli/app", `{"urls":"nats://127.0.0.1:1","keepSecret":true,"user":"app"}`), 403, "edit a CLI Context under Read-only")
+	want(call("PUT", "/api/contexts/app/local", `{"urls":"nats://127.0.0.1:2","keepSecret":true}`), 200, "edit a Natter Context under Read-only")
+	want(call("POST", "/api/contexts/app/local/remove", `{"confirm":true}`), 200, "remove a Natter Context under Read-only")
 
 	want(call("PUT", "/api/contexts/cli/app/settings", `{}`), 200, "unlock while locked")
 	want(call("POST", "/api/test/mutate", ""), 204, "mutate after unlock")
