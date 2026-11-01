@@ -107,6 +107,8 @@ type Active struct {
 	Error        string       `json:"error,omitempty"`
 	Server       string       `json:"server,omitempty"`
 	Capabilities Capabilities `json:"capabilities"`
+	// MaxPayload is the server's max_payload in bytes, from nc.MaxPayload().
+	MaxPayload int `json:"maxPayload,omitempty"`
 }
 
 // JetStreamNames feeds the command palette: the active Context's streams and

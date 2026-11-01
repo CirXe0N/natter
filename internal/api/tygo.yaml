@@ -2,3 +2,6 @@ packages:
   - path: github.com/CirXe0N/natter/internal/api
     output_path: ../../web/src/gen/api.ts
     enum_style: union
+    # tygo splits a tstype tag at commas, so a tuple type has to be named here.
+    frontmatter: |
+      export type Headers = [string, string][];

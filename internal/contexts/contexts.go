@@ -420,6 +420,7 @@ func (m *Manager) Status() api.Active {
 	}
 	if a.NC != nil {
 		out.Server = a.NC.ConnectedUrlRedacted()
+		out.MaxPayload = int(a.NC.MaxPayload())
 		if !a.NC.IsConnected() {
 			out.Status = api.ConnStatusReconnecting
 		}
