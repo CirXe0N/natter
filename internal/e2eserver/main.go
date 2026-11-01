@@ -57,6 +57,9 @@ func main() {
 	if err := seedJetStream(ns.ClientURL()); err != nil {
 		log.Fatal(err)
 	}
+	if err := seedSessions(ns.ClientURL()); err != nil {
+		log.Fatal(err)
+	}
 	// A client the Connections spec can find and kick. nats.go reconnects it, so a rerun finds it again.
 	victim, err := nats.Connect(ns.ClientURL(), nats.UserInfo("app", "app"), nats.Name("orders-service"))
 	if err != nil {
@@ -161,4 +164,46 @@ func seedEvents(ctx context.Context, js jetstream.JetStream) error {
 		}
 	}
 	return st.DeleteMsg(ctx, 5)
+}
+
+// seedSessions makes the KV bucket sessions: user.1 with three revisions,
+// and a writer that keeps changing it, so the KV spec sees live changes
+// without a write path in the UI. clock is put every 300 ms; blink is put
+// and deleted in turn every 700 ms.
+func seedSessions(url string) error {
+	nc, err := nats.Connect(url, nats.UserInfo("app", "app"))
+	if err != nil {
+		return err
+	}
+	js, err := jetstream.New(nc)
+	if err != nil {
+		return err
+	}
+	ctx := context.Background()
+	kv, err := js.CreateKeyValue(ctx, jetstream.KeyValueConfig{Bucket: "sessions", History: 5})
+	if err != nil {
+		return err
+	}
+	for _, v := range []string{"v1", "v2", `{"user":1,"cart":3}`} {
+		if _, err := kv.PutString(ctx, "user.1", v); err != nil {
+			return err
+		}
+	}
+	go func() {
+		clock, blink := time.NewTicker(300*time.Millisecond), time.NewTicker(700*time.Millisecond)
+		on := false
+		for {
+			select {
+			case t := <-clock.C:
+				kv.PutString(ctx, "clock", t.UTC().Format(time.TimeOnly))
+			case <-blink.C:
+				if on = !on; on {
+					kv.PutString(ctx, "blink", "on")
+				} else {
+					kv.Delete(ctx, "blink")
+				}
+			}
+		}
+	}()
+	return nil
 }

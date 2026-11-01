@@ -27,7 +27,7 @@ function useCommands(): PaletteCommand[] {
   return [
     ...screens.map((to) => ({ id: `go-${to}`, group: "Go to", label: title(to), run: go(to) })),
     ...(names.data?.streams ?? []).map((n) => ({ id: `stream-${n}`, group: "Streams", label: `Open stream ${n}`, cli: `nats stream info ${n}`, run: () => void navigate({ to: "/streams/$stream", params: { stream: n } }) })),
-    ...(names.data?.buckets ?? []).map((n) => ({ id: `kv-${n}`, group: "Key-Value", label: `Open bucket ${n}`, cli: `nats kv status ${n}`, run: go("/kv") })),
+    ...(names.data?.buckets ?? []).map((n) => ({ id: `kv-${n}`, group: "Key-Value", label: `Open bucket ${n}`, cli: `nats kv status ${n}`, run: () => void navigate({ to: "/kv/$bucket", params: { bucket: n } }) })),
     ...(contexts.data ?? []).map((c) => ({
       id: `ctx-${refKey(c)}`,
       group: "Switch Context",

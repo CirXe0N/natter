@@ -312,6 +312,64 @@ export interface KickRequest {
 }
 
 //////////
+// source: kv.go
+
+/**
+ * KVBucket is one row of the Key-Value screen's bucket list. A bucket is the
+ * stream KV_<bucket>.
+ */
+export interface KVBucket {
+  bucket: string;
+  /**
+   * Values counts stored entries: every kept revision and delete marker.
+   */
+  values: number /* uint64 */;
+  history: number /* int64 */; // revisions kept per key
+  /**
+   * TTL is how long values are kept, in seconds; 0 keeps them forever.
+   */
+  ttl: number /* int64 */;
+  bytes: number /* uint64 */;
+  storage: string; // file or memory
+  replicas: number /* int */;
+}
+/**
+ * KVOp is what a revision did to its key.
+ */
+export const KVOpPut = "put";
+export const KVOpDelete = "delete";
+export const KVOpPurge = "purge"; // a delete that also removed the key's earlier revisions
+export type KVOp = typeof KVOpPut | typeof KVOpDelete | typeof KVOpPurge;
+/**
+ * KVEntry is one revision of a key, without its value.
+ */
+export interface KVEntry {
+  key: string;
+  revision: number /* uint64 */;
+  op: KVOp;
+  created: string;
+}
+/**
+ * KVKeys is the live key list of one bucket, on topic "kv:<bucket>". A Full
+ * frame holds every key and replaces the list. Any other frame holds each key
+ * changed since the last Full frame, at its latest revision, with deletes and
+ * purges as entries to remove; applying it twice is harmless.
+ */
+export interface KVKeys {
+  full?: boolean;
+  /**
+   * Rev is the newest revision the frame includes. A frame that is not Full
+   * and has a lower Rev than the last one applied is stale; skip it.
+   */
+  rev: number /* uint64 */;
+  keys: KVEntry[];
+  /**
+   * Problem says, for the user, why the bucket cannot be watched.
+   */
+  problem?: string;
+}
+
+//////////
 // source: live.go
 
 /**
@@ -319,6 +377,11 @@ export interface KickRequest {
  */
 export type Topic = string;
 export const TopicOverview: Topic = "overview";
+/**
+ * TopicKV plus a bucket name is that bucket's live key list. Untyped, so the
+ * generated Topic stays a string that any bucket fits.
+ */
+export const TopicKV = "kv:";
 /**
  * ClientOp is what the browser asks of the WebSocket.
  */
@@ -343,6 +406,7 @@ export interface ServerFrame {
    */
   error?: string;
   overview?: Overview;
+  kv?: KVKeys;
 }
 /**
  * StatsSource says where the Overview's numbers come from.

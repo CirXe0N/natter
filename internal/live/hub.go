@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -32,6 +33,10 @@ type Hub struct {
 	Grace time.Duration
 	// WriteTimeout disconnects a client that does not take a frame in time.
 	WriteTimeout time.Duration
+
+	// Families serve every topic that starts with a key and goes on, such as
+	// api.TopicKV plus a bucket. The rest of the topic is the argument.
+	Families map[api.Topic]func(arg string) Producer
 
 	topics  map[api.Topic]func() Producer
 	mu      sync.Mutex
@@ -93,6 +98,9 @@ func (h *Hub) subscribe(c *client, t api.Topic) {
 	if run == nil {
 		mk, ok := h.topics[t]
 		if !ok {
+			mk, ok = h.family(t)
+		}
+		if !ok {
 			b, _ := json.Marshal(api.ServerFrame{Topic: t, Error: "unknown topic"})
 			c.send(t, b, false)
 			return
@@ -110,6 +118,15 @@ func (h *Hub) subscribe(c *client, t api.Topic) {
 	if snap := run.Snapshot(); snap != nil {
 		c.send(t, snap, true)
 	}
+}
+
+func (h *Hub) family(t api.Topic) (func() Producer, bool) {
+	for prefix, mk := range h.Families {
+		if arg, ok := strings.CutPrefix(string(t), string(prefix)); ok && arg != "" {
+			return func() Producer { return mk(arg) }, true
+		}
+	}
+	return nil, false
 }
 
 func (h *Hub) unsubscribe(c *client, t api.Topic) {

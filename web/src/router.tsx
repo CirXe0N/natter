@@ -12,6 +12,7 @@ import { StreamsScreen } from "@/screens/streams"
 import { EditStream, NewStreamScreen } from "@/screens/stream-form"
 import { StreamMessages } from "@/screens/messages"
 import { PublishScreen } from "@/screens/publish"
+import { BucketScreen, KVScreen } from "@/screens/kv"
 
 // Each screen is one route here. staticData.title names it in the top bar,
 // the browser tab and the left nav. Replace EmptyScreen with the real screen.
@@ -31,8 +32,9 @@ const routeTree = root.addChildren([
   createRoute({ ...screen, path: "/streams/new", staticData: { title: "New stream" }, component: NewStreamScreen }),
   createRoute({ ...screen, path: "/consumers", staticData: { title: "Consumers" } }),
   createRoute({ ...screen, path: "/messages", staticData: { title: "Message browser" } }),
-  createRoute({ ...screen, path: "/kv", staticData: { title: "Key-Value" } }),
+  createRoute({ ...screen, path: "/kv", staticData: { title: "Key-Value" }, component: KVScreen }),
   createRoute({ ...screen, path: "/contexts", staticData: { title: "Contexts" }, component: ContextsScreen }),
+  createRoute({ ...screen, path: "/kv/$bucket", staticData: { title: "Key-Value" }, component: BucketScreen }),
   stream.addChildren([
     createRoute({ getParentRoute: () => stream, path: "/", staticData: { title: "Stream" }, component: StreamOverview }),
     createRoute({ getParentRoute: () => stream, path: "config", staticData: { title: "Stream" }, component: StreamConfig }),

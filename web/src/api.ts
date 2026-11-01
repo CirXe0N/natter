@@ -14,6 +14,7 @@ export class ApiError extends Error {
 import type { ConsumerDetail, ConsumerList, ConsumerSummary } from "@/gen/api"
 import type { MessagePage, MessagePageRequest } from "@/gen/api"
 import type { SendRequest, SendResult } from "@/gen/api"
+import type { KVBucket, KVEntry } from "@/gen/api"
 
 async function request<T>(method: string, path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
   const res = await fetch(path, {
@@ -74,4 +75,13 @@ export const api = {
   send: (r: SendRequest) => request<SendResult>("POST", "/api/send", r),
   // keepalive so it still goes out while the page unloads
   closeBrowsing: (view: string) => void fetch(`/api/browsing/${encodeURIComponent(view)}`, { method: "DELETE", keepalive: true }),
+  kvBuckets: (signal?: AbortSignal) => request<KVBucket[]>("GET", "/api/kv", undefined, signal),
+  kvHistory: (bucket: string, key: string, signal?: AbortSignal) =>
+    request<KVEntry[]>("GET", `/api/kv/${encodeURIComponent(bucket)}/history/${encodeURIComponent(key)}`, undefined, signal),
+  // The raw bytes of one revision's value.
+  kvValue: async (bucket: string, key: string, revision: number, signal?: AbortSignal) => {
+    const res = await fetch(`/api/kv/${encodeURIComponent(bucket)}/keys/${encodeURIComponent(key)}?revision=${revision}`, { signal })
+    if (!res.ok) throw new Error((await res.text()).trim() || res.statusText)
+    return new Uint8Array(await res.arrayBuffer())
+  },
 }
