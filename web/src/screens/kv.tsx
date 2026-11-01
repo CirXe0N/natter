@@ -16,6 +16,7 @@ import { TopicKV, type KVEntry, type KVOp } from "@/gen/api"
 import { subscribe, usePaused } from "@/live"
 import { bytes, count } from "@/screens/overview"
 import { Ago, useRefresh } from "@/screens/streams"
+import { KeyActions, PutKey } from "@/screens/kv-actions"
 import { shellQuote } from "@/stream-config"
 
 const th = "px-3 py-2 text-left text-[11px] font-medium text-muted-foreground"
@@ -126,6 +127,7 @@ function Bucket({ bucket }: { bucket: string }) {
         <Link to="/kv" className="text-xs text-muted-foreground hover:text-foreground hover:underline">
           All buckets
         </Link>
+        <PutKey bucket={bucket} />
         <CopyCli cmd={`nats kv watch ${shellQuote(bucket)}${prefix ? ` ${shellQuote(`${prefix}>`)}` : ""}`} />
       </ScreenHeader>
       <div className={`grid gap-5 px-8 pb-8 ${open ? "grid-cols-[minmax(0,1fr)_minmax(22rem,32rem)]" : ""}`}>
@@ -205,6 +207,12 @@ function KeyDetail({ bucket, name, entry, onClose }: { bucket: string; name: str
           <X aria-hidden />
         </Button>
       </div>
+      {entry && (
+        <div className="flex flex-wrap items-center gap-2">
+          <PutKey bucket={bucket} name={name} />
+          <KeyActions bucket={bucket} name={name} />
+        </div>
+      )}
       {shown !== undefined && <CopyCli cmd={`nats kv get ${shellQuote(bucket)} ${shellQuote(name)}${picked ? ` --revision ${picked}` : ""}`} />}
       <div className="space-y-1.5">
         <h3 className="text-[11px] font-medium text-muted-foreground">

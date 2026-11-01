@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -139,4 +140,37 @@ func TestKV(t *testing.T) {
 	if f.Topic != "kv:config" || f.KV == nil || !f.KV.Full || len(f.KV.Keys) != 1 || f.KV.Keys[0].Key != "dir/x" {
 		t.Errorf("first kv frame %+v", f)
 	}
+
+	// Put, delete and purge are refused under Read-only mode and work without it.
+	for _, m := range []string{"PUT /api/kv/config/keys/m", "DELETE /api/kv/config/keys/m"} {
+		meth, path, _ := strings.Cut(m, " ")
+		code, body = call(meth, path, "x")
+		want(m+" under Read-only", code, body, 403, "")
+	}
+	if code, body := call("PUT", "/api/contexts/cli/app/settings", `{"readOnly":false}`); code != 200 {
+		t.Fatalf("read-only off: %d %s", code, body)
+	}
+	code, body = call("PUT", "/api/kv/config/keys/dir%2Fm", "\x00bin\xff")
+	want("put", code, body, 200, `"revision"`)
+	if e, err := kv.Get(ctx, "dir/m"); err != nil || string(e.Value()) != "\x00bin\xff" {
+		t.Errorf("put stored %v, %v", e, err)
+	}
+	call("PUT", "/api/kv/config/keys/dir%2Fm", "two")
+	code, body = call("DELETE", "/api/kv/config/keys/dir%2Fm", "")
+	want("delete", code, body, 200, "")
+	if _, err := kv.Get(ctx, "dir/m"); !errors.Is(err, jetstream.ErrKeyNotFound) {
+		t.Errorf("after delete: %v", err)
+	}
+	if h, _ := kv.History(ctx, "dir/m"); len(h) != 3 {
+		t.Errorf("delete kept %d entries, want 2 puts and a marker", len(h))
+	}
+	code, body = call("DELETE", "/api/kv/config/keys/dir%2Fm?purge=true", "")
+	want("purge", code, body, 200, "")
+	if h, _ := kv.History(ctx, "dir/m"); len(h) != 1 {
+		t.Errorf("purge left %d entries, want the purge marker only", len(h))
+	}
+	code, body = call("PUT", "/api/kv/config/keys/bad%20key", "x")
+	want("an invalid key", code, body, 400, "")
+	code, body = call("PUT", "/api/kv/nope/keys/k", "x")
+	want("put to a missing bucket", code, body, 404, "no bucket named nope")
 }

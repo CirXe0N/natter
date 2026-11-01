@@ -96,4 +96,10 @@ export const api = {
   // raw bytes for the PayloadViewer: Range requests work, ?download saves a file
   payloadUrl: (stream: string, seq: number) => `/api/streams/${encodeURIComponent(stream)}/messages/${seq}/payload`,
   deleteMessage: (stream: string, seq: number, erase: boolean) => request<object>("DELETE", `/api/streams/${encodeURIComponent(stream)}/messages/${seq}`, { erase }),
+  kvPut: async (bucket: string, key: string, value: string) => {
+    const res = await fetch(`/api/kv/${encodeURIComponent(bucket)}/keys/${encodeURIComponent(key)}`, { method: "PUT", body: value })
+    if (!res.ok) throw new Error((await res.text()).trim() || res.statusText)
+  },
+  kvDelete: (bucket: string, key: string, purge: boolean) =>
+    request<unknown>("DELETE", `/api/kv/${encodeURIComponent(bucket)}/keys/${encodeURIComponent(key)}${purge ? "?purge=true" : ""}`),
 }

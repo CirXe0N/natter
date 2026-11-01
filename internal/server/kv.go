@@ -3,6 +3,7 @@ package server
 import (
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"slices"
 	"strconv"
@@ -22,6 +23,9 @@ func init() {
 		route{pattern: "GET /api/kv", handle: (*server).listBuckets},
 		route{pattern: "GET /api/kv/{bucket}/keys/{key...}", handle: (*server).kvValue},
 		route{pattern: "GET /api/kv/{bucket}/history/{key...}", handle: (*server).kvHistory},
+		// No allowReadOnly on these three: Read-only mode refuses them.
+		route{pattern: "PUT /api/kv/{bucket}/keys/{key...}", handle: (*server).kvPut},
+		route{pattern: "DELETE /api/kv/{bucket}/keys/{key...}", handle: (*server).kvDelete},
 	)
 }
 
@@ -76,6 +80,45 @@ func (s *server) kvValue(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("Content-Disposition", "attachment")
 	w.Write(e.Value())
+}
+
+// kvPut stores the request body, raw, as the key's new value.
+func (s *server) kvPut(w http.ResponseWriter, r *http.Request) {
+	a, kv := s.bucket(w, r)
+	if kv == nil {
+		return
+	}
+	max := int64(a.NC.MaxPayload())
+	val, err := io.ReadAll(http.MaxBytesReader(w, r.Body, max))
+	if err != nil {
+		http.Error(w, fmt.Sprintf("A value can be at most %d bytes, the server's max payload.", max), http.StatusRequestEntityTooLarge)
+		return
+	}
+	rev, err := kv.Put(r.Context(), r.PathValue("key"), val)
+	if err != nil {
+		writeKVError(w, a, r, err)
+		return
+	}
+	writeJSON(w, map[string]uint64{"revision": rev})
+}
+
+// kvDelete puts a delete marker on the key, or with ?purge=true removes its history too.
+func (s *server) kvDelete(w http.ResponseWriter, r *http.Request) {
+	a, kv := s.bucket(w, r)
+	if kv == nil {
+		return
+	}
+	var err error
+	if r.URL.Query().Get("purge") == "true" {
+		err = kv.Purge(r.Context(), r.PathValue("key"))
+	} else {
+		err = kv.Delete(r.Context(), r.PathValue("key"))
+	}
+	if err != nil {
+		writeKVError(w, a, r, err)
+		return
+	}
+	writeJSON(w, struct{}{})
 }
 
 // kvHistory lists every kept revision of a key, oldest first, without values.
