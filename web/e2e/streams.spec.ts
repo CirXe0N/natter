@@ -25,7 +25,7 @@ test("Streams lists the account's streams, filters by subject, and opens one", a
   await expect(page.getByRole("button", { name: "Copy as CLI: nats stream info ORDERS" })).toBeVisible()
   const stats = page.locator("dl").first()
   await expect(stats).toContainText("Messages3")
-  await expect(stats).toContainText("Largest message1.0 MiB")
+  await expect(stats).toContainText("Largest message8.0 MiB") // natstest raises max_payload for the 4 MB message in BLOBS
 
   const subjects = page.getByRole("region", { name: "Subjects" })
   await subjects.getByRole("button", { name: /orders\./ }).click()
@@ -35,6 +35,6 @@ test("Streams lists the account's streams, filters by subject, and opens one", a
 
   await page.getByRole("link", { name: "Config" }).click()
   await expect(page).toHaveURL(/\/streams\/ORDERS\/config$/)
-  await expect(page.getByText("The server's max_payload of 1.0 MiB applies.")).toBeVisible()
+  await expect(page.getByText("The server's max_payload of 8.0 MiB applies.")).toBeVisible()
   await expect(page.getByRole("button", { name: "Copy as CLI: nats stream info ORDERS --json" })).toBeVisible()
 })

@@ -4,7 +4,7 @@
 // worked out from NumPending, so the loaded window sits at its real place on
 // the scaled scrollbar. Scrolling outside the window re-anchors near the view.
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
-import { keepPreviousData, useInfiniteQuery } from "@tanstack/react-query"
+import { keepPreviousData, useInfiniteQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query"
 import { useParams } from "@tanstack/react-router"
 
 import { api } from "@/api"
@@ -16,6 +16,7 @@ import type { MessagePage, MsgMeta } from "@/gen/api"
 import { follow, scrollTopFor, trackHeight, type Scroll } from "@/scaled-scroll"
 import { bytes } from "@/screens/overview"
 import { useStream } from "@/screens/stream"
+import { MessageDrawer } from "@/screens/message"
 
 const ROW = 32
 const PAGE = 100
@@ -27,6 +28,9 @@ const cols = "grid grid-cols-[6rem_13rem_minmax(8rem,16rem)_5rem_3rem_minmax(0,1
 type Anchor = { seq?: number; time?: string; pin?: boolean }
 type Param = { seq?: number; time?: string; index?: number }
 type Page = MessagePage & { index: number }
+// Seek finds the message before or after seq `from` for the drawer's Prev and
+// Next. back is how far below `from` its own anchor started, when it set one.
+type Seek = { from: number; dir: 1 | -1; back?: number; anchored?: boolean; orClose?: boolean }
 
 export function StreamMessages() {
   const { stream } = useParams({ from: "/streams/$stream" })
@@ -49,8 +53,9 @@ function MessageTable({ stream }: { stream: string }) {
     }
   }, [view])
 
+  const queryKey = ["streams", "messages", stream, filter, anchor]
   const q = useInfiniteQuery({
-    queryKey: ["streams", "messages", stream, filter, anchor],
+    queryKey,
     queryFn: async ({ pageParam, signal }): Promise<Page> => {
       const p = await api.browse(stream, { view, filter: filter || undefined, seq: pageParam.seq, time: pageParam.time }, signal)
       // A jump's first page lies as many rows before the end as it has messages after it.
@@ -135,8 +140,75 @@ function MessageTable({ stream }: { stream: string }) {
     else if (first < start || first > end) show((first < start ? start : Math.max(start, end - visible + 1)) * ROW)
   })
 
+  // The drawer's message, and Prev and Next across pages. Next reads on, or
+  // anchors at from + 1. Prev anchors below `from`, doubling the distance
+  // while nothing matches there.
+  const qc = useQueryClient()
+  const [open, setOpen] = useState<number>()
+  const [seek, setSeek] = useState<Seek>()
+  const reveal = (i: number) => {
+    const t = at.current.top // not `first`: a landing jump may have just moved the view
+    if (i * ROW < t) show(i * ROW)
+    else if ((i + 1) * ROW > t + vh) show((i + 1) * ROW - vh)
+  }
+  useEffect(() => {
+    if (!seek || !q.data || q.isFetching || q.isPlaceholderData) return
+    const { from, dir } = seek
+    const lo = rows[0]?.seq ?? Infinity
+    const hi = rows.at(-1)?.seq ?? 0
+    const land = (k: number) => {
+      setOpen(rows[k].seq)
+      setSeek(undefined)
+      reveal(start + k)
+    }
+    const none = () => {
+      setSeek(undefined)
+      if (seek.orClose) setOpen(undefined)
+    }
+    if (dir === 1) {
+      const k = rows.findIndex((r) => r.seq > from)
+      if (seek.anchored) return k >= 0 ? land(k) : none()
+      if (lo <= from && from <= hi) {
+        if (k >= 0) return land(k)
+        if (q.hasNextPage) return void q.fetchNextPage({ cancelRefetch: false })
+        return none()
+      }
+      setSeek({ ...seek, anchored: true })
+      return setAnchor({ seq: from + 1, pin: true })
+    }
+    const k = rows.findLastIndex((r) => r.seq < from)
+    if (k >= 0 && (hi >= from || !q.hasNextPage)) return land(k)
+    if (k >= 0 && seek.back) return void q.fetchNextPage({ cancelRefetch: false }) // shortcut: pages up to `from`, fine unless a long empty stretch doubled back far
+    const firstSeq = s?.firstSeq ?? 1
+    if (seek.back && from - seek.back <= firstSeq) return none()
+    const back = seek.back ? seek.back * 2 : PAGE
+    setSeek({ ...seek, back })
+    setAnchor({ seq: Math.max(1, from - back), pin: true })
+  })
+  const openAt = open === undefined ? -1 : rows.findIndex((r) => r.seq === open)
+  const step = (dir: 1 | -1) => () => open !== undefined && setSeek({ from: open, dir })
+  // Drop a deleted row from the cached pages: invalidating would refetch every page and rewind the consumer.
+  const dropRow = (seq: number) => {
+    qc.setQueryData<InfiniteData<Page, Param>>(queryKey, (d) => {
+      if (!d) return d
+      let shift = 0
+      const pages = d.pages.map((p) => {
+        const i = p.messages.findIndex((m) => m.seq === seq)
+        const page = { ...p, index: p.index - shift, messages: i < 0 ? p.messages : p.messages.toSpliced(i, 1) }
+        if (i >= 0) shift = 1
+        return page
+      })
+      return { ...d, pages }
+    })
+    void qc.invalidateQueries({ queryKey: ["streams", "detail", stream] })
+    setSeek({ from: seq, dir: 1, orClose: true })
+  }
+
   const inView = []
-  for (let i = first; i < last; i++) inView.push(<Row key={i} index={i} m={i >= start && i < end ? rows[i - start] : undefined} />)
+  for (let i = first; i < last; i++) {
+    const m = i >= start && i < end ? rows[i - start] : undefined
+    inView.push(<Row key={i} index={i} m={m} selected={m !== undefined && m.seq === open} onOpen={setOpen} />)
+  }
   const topRow = first >= start && first < end ? rows[first - start] : undefined
 
   return (
@@ -195,17 +267,34 @@ function MessageTable({ stream }: { stream: string }) {
           {count ? `Rows ${first + 1}–${last} of ${count}${filter ? ` matching ${filter}` : ""}` : q.isFetching ? "Loading messages…" : ""}
         </p>
       </div>
+      <MessageDrawer
+        stream={stream}
+        seq={open}
+        prev={openAt >= 0 && start + openAt === 0 ? undefined : step(-1)}
+        next={openAt >= 0 && start + openAt === count - 1 ? undefined : step(1)}
+        onClose={() => setOpen(undefined)}
+        onDeleted={dropRow}
+      />
     </>
   )
 }
 
-function Row({ index, m }: { index: number; m?: MsgMeta }) {
+function Row({ index, m, selected, onOpen }: { index: number; m?: MsgMeta; selected: boolean; onOpen: (seq: number) => void }) {
   return (
-    <div role="row" aria-rowindex={index + 2} className={`${cols} border-b text-xs`} style={{ height: ROW }}>
+    <div
+      role="row"
+      aria-rowindex={index + 2}
+      aria-selected={selected}
+      className={`${cols} border-b text-xs ${m ? "cursor-pointer hover:bg-muted/50" : ""} ${selected ? "bg-primary/10" : ""}`}
+      style={{ height: ROW }}
+      onClick={m && (() => onOpen(m.seq))}
+    >
       {m ? (
         <>
           <span role="cell" className="font-mono text-muted-foreground tabular-nums">
-            #{m.seq}
+            <button type="button" title="Open message" className="hover:text-foreground hover:underline">
+              #{m.seq}
+            </button>
           </span>
           <span role="cell" className="font-mono text-muted-foreground tabular-nums">
             {new Date(m.time).toISOString().replace("T", " ").slice(0, 23)}

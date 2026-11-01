@@ -42,3 +42,18 @@ type MessagePage struct {
 	Messages []MsgMeta `json:"messages"`
 	Pending  uint64    `json:"pending"`
 }
+
+// Msg is one opened message: its metadata and its own headers. Its payload is
+// served on its own, as raw bytes, by GET …/messages/{seq}/payload.
+type Msg struct {
+	Seq     uint64              `json:"seq"`
+	Subject string              `json:"subject"`
+	Time    time.Time           `json:"time" tstype:"string"`
+	Size    int                 `json:"size"`
+	Headers map[string][]string `json:"headers"`
+}
+
+// MsgDelete deletes one message. Erase overwrites its data on disk too.
+type MsgDelete struct {
+	Erase bool `json:"erase,omitempty"`
+}
