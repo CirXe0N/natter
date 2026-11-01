@@ -1,0 +1,56 @@
+version: 2
+project_name: natter
+
+before:
+  hooks:
+    - npm --prefix web ci
+    - npm --prefix web run build # web/dist is embedded by web/embed.go
+    - ./scripts/licenses.sh
+
+builds:
+  - main: ./cmd/natter
+    binary: natter
+    env: [CGO_ENABLED=0]
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+    flags: [-trimpath]
+    ldflags: ["-s -w -X main.version={{.Version}}"]
+    mod_timestamp: "{{ .CommitTimestamp }}"
+
+archives:
+  - formats: [tar.gz]
+    format_overrides:
+      - { goos: windows, formats: [zip] }
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files: [THIRD_PARTY_LICENSES.txt]
+
+checksum:
+  name_template: checksums.txt
+
+sboms:
+  - artifacts: archive # needs syft on PATH
+
+signs:
+  - cmd: cosign
+    signature: "${artifact}.sigstore.json"
+    args: ["sign-blob", "--bundle=${signature}", "${artifact}", "--yes"]
+    artifacts: checksum
+
+# Off until an Apple Developer ID exists: set the five MACOS_* secrets and it turns on.
+notarize:
+  macos:
+    - enabled: '{{ isEnvSet "MACOS_SIGN_P12" }}'
+      sign:
+        certificate: "{{ .Env.MACOS_SIGN_P12 }}"
+        password: "{{ .Env.MACOS_SIGN_PASSWORD }}"
+      notarize:
+        issuer_id: "{{ .Env.MACOS_NOTARY_ISSUER_ID }}"
+        key_id: "{{ .Env.MACOS_NOTARY_KEY_ID }}"
+        key: "{{ .Env.MACOS_NOTARY_KEY }}"
+
+release:
+  draft: true
+  header: |
+    Natter is a UI for NATS™. Unsigned-binary warnings and how to verify downloads are in [docs/releasing.md](https://github.com/CirXe0N/natter/blob/{{ .Tag }}/docs/releasing.md).
+  footer: |
+    NATS™ is a trademark of the Linux Foundation. Natter is an independent project and is not affiliated with or endorsed by the Linux Foundation, the CNCF or Synadia.

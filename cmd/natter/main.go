@@ -106,10 +106,8 @@ func run(bind string, port int, portSet bool, allowedHosts []string, dev bool, v
 		}
 	}()
 
-	version := "(unknown)"
-	if bi, ok := debug.ReadBuildInfo(); ok {
-		version = bi.Main.Version
-	}
+	bi, _ := debug.ReadBuildInfo()
+	version := buildVersion(version, bi)
 	srv := &http.Server{
 		Handler:           server.New(server.Config{Token: token, Port: port, AllowedHosts: allowedHosts, UI: web.Dist, TrustedOrigins: trusted, Version: version, Contexts: ctxs}),
 		ReadHeaderTimeout: 10 * time.Second,

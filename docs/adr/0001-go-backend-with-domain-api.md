@@ -7,3 +7,4 @@ The UI is a web app served by a Go backend, shipped as one binary with the front
 - Every new UI capability needs a backend endpoint; the frontend cannot reach NATS on its own.
 - The single binary is the only way the app is distributed (GitHub Releases and `go install`). A container image was considered and dropped on 2026-10-31: one binary is all the user wants to run.
 - Until the UI has its own login, the backend binds to localhost by default and every request needs the Launch token's session cookie plus an expected `Host` and `Origin`. Localhost alone does not stop other websites in the same browser (CSRF, DNS rebinding). Listening on another address is possible but prints a warning, and the token requirement still applies.
+- `web/dist` is gitignored, except on release commits, which add the built frontend (`git add -f web/dist`) so `go install` serves the full UI. See `docs/releasing.md`.
