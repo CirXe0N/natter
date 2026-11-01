@@ -1,6 +1,8 @@
 package server
 
 import (
+	"encoding/json"
+	"net/http/httptest"
 	"testing"
 
 	jsmapi "github.com/nats-io/jsm.go/api"
@@ -29,6 +31,22 @@ func TestStreamHealth(t *testing.T) {
 		got, problem := health(&c.info)
 		if got != c.want || (got == api.StreamHealthOK) != (problem == "") {
 			t.Errorf("%s: %s %q, want %s", c.name, got, problem, c.want)
+		}
+	}
+}
+
+func TestFieldErrorPicksTheLongestMatchingKey(t *testing.T) {
+	for msg, want := range map[string]string{
+		"max msgs per subject must be positive":            "max_msgs_per_subject",
+		"subjects overlap with an existing stream":         "subjects",
+		"max msgs must be positive":                        "max_msgs",
+		"duplicates window can not be larger then max age": "duplicate_window",
+	} {
+		rec := httptest.NewRecorder()
+		writeFieldError(rec, jsmapi.ApiError{Code: 400, Description: msg})
+		var got api.FieldError
+		if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil || rec.Code != 400 || got.Field != want {
+			t.Errorf("%q: %d %+v, want field %s", msg, rec.Code, got, want)
 		}
 	}
 }

@@ -77,6 +77,7 @@ func TestReadOnlyRefusesMutatingRoutes(t *testing.T) {
 	want(call("PUT", "/api/contexts/cli/app/settings", `{}`), 200, "unlock while locked")
 	want(call("POST", "/api/test/mutate", ""), 204, "mutate after unlock")
 	want(call("POST", "/api/connections/kick", "{}"), 400, "kick reaches its handler once Read-only is off")
+	want(call("POST", "/api/connections/kick", `{"server":"PING","cid":1}`), 400, "kick refuses a server that is not a server ID")
 	want(call("POST", "/api/contexts/cli/app/remove", `{}`), 400, "remove without confirm")
 	want(call("POST", "/api/contexts", `{"name":"cli-local","urls":"nats://127.0.0.1:1","source":"cli"}`), 200, "write a CLI file after unlock")
 }

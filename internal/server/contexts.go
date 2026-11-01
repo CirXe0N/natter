@@ -65,8 +65,11 @@ func (s *server) setContextSettings(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, c)
 }
 
+// maxBody caps every JSON request body.
+const maxBody = 1 << 20
+
 func readJSON(w http.ResponseWriter, r *http.Request, v any) bool {
-	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(v); err != nil {
+	if err := json.NewDecoder(io.LimitReader(r.Body, maxBody)).Decode(v); err != nil {
 		http.Error(w, "invalid JSON body: "+err.Error(), http.StatusBadRequest)
 		return false
 	}

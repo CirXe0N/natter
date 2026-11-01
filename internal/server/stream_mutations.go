@@ -16,7 +16,7 @@ import (
 // decodeConfig reads a stream config in the server's own JSON shape. Unknown
 // keys are refused so a typo cannot be silently dropped.
 func decodeConfig(w http.ResponseWriter, r *http.Request) (cfg jsmapi.StreamConfig, ok bool) {
-	dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<20))
+	dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxBody))
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(&cfg); err != nil {
 		writeFieldError(w, fmt.Errorf("The stream config is not valid JSON: %w", err), "")
@@ -92,7 +92,7 @@ func (s *server) purgeStream(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var body api.StreamPurge
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<20)).Decode(&body); err != nil {
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxBody)).Decode(&body); err != nil {
 		http.Error(w, "The purge request is not valid JSON.", http.StatusBadRequest)
 		return
 	}
@@ -118,7 +118,7 @@ func (s *server) deleteStream(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var body api.StreamDelete
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<20)).Decode(&body); err != nil {
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxBody)).Decode(&body); err != nil {
 		http.Error(w, "The delete request is not valid JSON.", http.StatusBadRequest)
 		return
 	}
@@ -138,17 +138,18 @@ func (s *server) deleteStream(w http.ResponseWriter, r *http.Request) {
 }
 
 // fieldHints maps words in a refusal to the config key they are about, first
-// match wins. Order matters: "max age" must be tried before "age"-like words.
+// match wins, so a longer phrase goes before a word it contains ("max msgs per
+// subject" before "subject").
 var fieldHints = []struct{ word, field string }{
+	{"max msgs per", "max_msgs_per_subject"}, {"max_msgs_per", "max_msgs_per_subject"},
 	{"already in use", "name"}, {"name", "name"},
 	{"overlap", "subjects"}, {"subject", "subjects"},
 	{"replicas", "num_replicas"}, {"peers", "num_replicas"},
 	{"storage", "storage"}, {"retention", "retention"}, {"discard", "discard"},
-	{"max age", "max_age"}, {"max_age", "max_age"},
 	{"duplicate", "duplicate_window"},
+	{"max age", "max_age"}, {"max_age", "max_age"},
 	{"max bytes", "max_bytes"}, {"max_bytes", "max_bytes"},
 	{"max msg size", "max_msg_size"}, {"max_msg_size", "max_msg_size"}, {"message size", "max_msg_size"},
-	{"max msgs per", "max_msgs_per_subject"}, {"max_msgs_per", "max_msgs_per_subject"},
 	{"max msgs", "max_msgs"}, {"max_msgs", "max_msgs"},
 	{"max consumers", "max_consumers"}, {"max_consumers", "max_consumers"},
 	{"description", "description"},
