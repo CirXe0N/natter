@@ -623,11 +623,14 @@ export interface MessagePageRequest {
 /**
  * MessagePage is up to 100 rows in sequence order. Pending is how many
  * matching messages come after the last row, or after the start when there
- * are no rows.
+ * are no rows. Direct says the rows came from a Direct Get, which WorkQueue
+ * and Interest streams need and which transfers every listed payload, so a
+ * page may hold fewer rows.
  */
 export interface MessagePage {
   messages: MsgMeta[];
   pending: number /* uint64 */;
+  direct?: boolean;
 }
 /**
  * Msg is one opened message: its metadata and its own headers. Its payload is

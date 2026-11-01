@@ -3,6 +3,8 @@
 // forward from an anchor. Each page carries the list index of its first row,
 // worked out from NumPending, so the loaded window sits at its real place on
 // the scaled scrollbar. Scrolling outside the window re-anchors near the view.
+// WorkQueue and Interest streams come back as Direct Get pages instead, which
+// may be shorter; the table only notes that they transfer payloads.
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { keepPreviousData, useInfiniteQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query"
 import { useParams } from "@tanstack/react-router"
@@ -224,6 +226,11 @@ function MessageTable({ stream }: { stream: string }) {
         <JumpTo onJump={(a) => setAnchor({ ...a, pin: true })} />
         <CopyCli cmd={`nats stream view ${stream}${topRow && topRow.seq > 1 ? ` --id ${topRow.seq}` : ""}${filter ? ` --subject ${shellQuote(filter)}` : ""}`} />
       </div>
+      {lastPage?.direct && (
+        <p role="note" className="text-xs text-muted-foreground">
+          A Browsing consumer would change this WorkQueue or Interest stream, so its rows come from Direct Get. That transfers every listed payload, so large messages load slowly.
+        </p>
+      )}
       {q.error && <p className="text-destructive">{q.error.message}</p>}
       <div role="table" aria-label="Messages" aria-rowcount={count + 1} className="overflow-hidden rounded-xl border bg-card">
         <div role="rowgroup">

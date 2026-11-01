@@ -333,4 +333,196 @@ func TestBrowsing(t *testing.T) {
 	if p.Pending != 0 || read >= 1000 {
 		t.Fatalf("after a purge: read %d rows, pending %d, want the browse to end early", read, p.Pending)
 	}
+
+	// WorkQueue and Interest streams are listed with Direct Get: no consumer, nothing removed.
+	work, err := js.CreateStream(ctx, jetstream.StreamConfig{Name: "WORK", Subjects: []string{"work.>"}, Retention: jetstream.WorkQueuePolicy, AllowDirect: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := 1; i <= published; i++ {
+		m := nats.NewMsg([]string{"work.a", "work.b"}[i%2])
+		m.Data = []byte(`{"n":1}`)
+		switch i {
+		case 7:
+			m.Data = bytes.Repeat([]byte("a"), 300_000) // over the page's max_bytes on its own
+		case 8:
+			m.Header.Set("A", "1")
+			m.Header.Set("Nats-Sequence", "own")
+		}
+		if _, err := js.PublishMsg(ctx, m); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := work.DeleteMsg(ctx, 150); err != nil {
+		t.Fatal(err)
+	}
+	processor, err := work.CreateConsumer(ctx, jetstream.ConsumerConfig{Durable: "processor", AckPolicy: jetstream.AckExplicitPolicy})
+	if err != nil {
+		t.Fatal(err)
+	}
+	done, _ := processor.Fetch(5)
+	for m := range done.Messages() {
+		if err := m.DoubleAck(ctx); err != nil {
+			t.Fatal(err)
+		}
+	}
+	const queued = published - 5 - 1
+	var workCreated atomic.Int32
+	count("$JS.EVENT.ADVISORY.CONSUMER.CREATED.WORK.*", &workCreated)
+	nc.Flush()
+	acksBefore := acks.Load()
+	procBefore, _ := processor.Info(ctx)
+
+	first := page("WORK", api.MessagePageRequest{View: "view-w"})
+	if len(first.Messages) != 2 || first.Messages[1].Seq != 7 || !first.Direct {
+		t.Fatalf("first WORK page: %d rows, direct %v; want 6 and 7, cut by max_bytes", len(first.Messages), first.Direct)
+	}
+	wrows := first.Messages
+	for p := first; p.Pending > 0; {
+		p = page("WORK", api.MessagePageRequest{View: "view-w", Seq: p.Messages[len(p.Messages)-1].Seq + 1})
+		if len(p.Messages) == 0 || len(p.Messages) > pageSize || !p.Direct {
+			t.Fatalf("a WORK page of %d rows, direct %v", len(p.Messages), p.Direct)
+		}
+		wrows = append(wrows, p.Messages...)
+		if want := uint64(queued - len(wrows)); p.Pending != want {
+			t.Fatalf("WORK pending %d after %d rows, want %d", p.Pending, len(wrows), want)
+		}
+	}
+	var wseqs []uint64
+	wby := map[uint64]api.MsgMeta{}
+	for _, r := range wrows {
+		wseqs = append(wseqs, r.Seq)
+		wby[r.Seq] = r
+	}
+	if len(wrows) != queued || wseqs[0] != 6 || slices.Contains(wseqs, 150) || !slices.IsSorted(wseqs) {
+		t.Fatalf("WORK listed %d rows from %d, want %d from 6 without 150, in order", len(wrows), wseqs[0], queued)
+	}
+	if r := wby[6]; r.Subject != "work.a" || r.Time.IsZero() || r.Size != 7 || r.Headers != 0 || r.Kind != api.MsgKindJSON || pv(r) != `{"n":1}` {
+		t.Errorf("WORK seq 6: %+v", r)
+	}
+	if r := wby[7]; r.Size != 300_000 || r.Preview != nil || r.Kind != "" {
+		t.Errorf("WORK seq 7: size %d kind %q preview %q", r.Size, r.Kind, pv(r))
+	}
+	if r := wby[8]; r.Headers != 2 || r.Subject != "work.a" {
+		t.Errorf("WORK seq 8: %d headers on %s, want its own 2 on work.a", r.Headers, r.Subject)
+	}
+	if p := page("WORK", api.MessagePageRequest{View: "view-w", Seq: 150}); p.Messages[0].Seq != 151 {
+		t.Fatalf("WORK jump to 150 starts at %d", p.Messages[0].Seq)
+	}
+	wat := wby[100].Time
+	if p := page("WORK", api.MessagePageRequest{View: "view-w", Time: &wat}); p.Messages[0].Seq != 100 {
+		t.Fatalf("WORK jump to the time of 100 starts at %d", p.Messages[0].Seq)
+	}
+	b := page("WORK", api.MessagePageRequest{View: "view-w", Filter: "work.b"})
+	for _, r := range b.Messages {
+		if r.Subject != "work.b" {
+			t.Fatalf("filter work.b listed %s", r.Subject)
+		}
+	}
+	if total := uint64(len(b.Messages)) + b.Pending; total != 122 { // odd seqs 7..249
+		t.Fatalf("work.b: %d messages", total)
+	}
+	if p := page("WORK", api.MessagePageRequest{View: "view-w", Seq: 10_000}); len(p.Messages) != 0 || p.Pending != 0 {
+		t.Fatalf("past the end: %+v", p)
+	}
+	call("DELETE", "/api/browsing/view-w", "")
+	nc.Flush()
+	if st, _ := work.Info(ctx); st.State.Msgs != queued {
+		t.Fatalf("WORK holds %d messages after browsing, want %d", st.State.Msgs, queued)
+	}
+	if n := workCreated.Load(); n != 0 || !slices.Equal(consumers("WORK"), []string{"processor"}) {
+		t.Fatalf("browsing WORK created %d consumers, consumers now %v", n, consumers("WORK"))
+	}
+	procAfter, _ := processor.Info(ctx)
+	if acks.Load() != acksBefore || procAfter.Delivered.Stream != procBefore.Delivered.Stream || procAfter.NumPending != procBefore.NumPending {
+		t.Fatalf("browsing WORK acked or moved the processor: %+v -> %+v", procBefore, procAfter)
+	}
+
+	// On an Interest stream a message the worker acks is gone at once: Browsing holds nothing.
+	interest, err := js.CreateStream(ctx, jetstream.StreamConfig{Name: "INTEREST", Subjects: []string{"interest.>"}, Retention: jetstream.InterestPolicy, AllowDirect: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	reader, err := interest.CreateConsumer(ctx, jetstream.ConsumerConfig{Durable: "reader", FilterSubject: "interest.a", AckPolicy: jetstream.AckExplicitPolicy})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for range 10 {
+		js.Publish(ctx, "interest.a", []byte("x"))
+	}
+	if p := page("INTEREST", api.MessagePageRequest{View: "view-i"}); len(p.Messages) != 10 || !p.Direct {
+		t.Fatalf("INTEREST page: %d rows, direct %v", len(p.Messages), p.Direct)
+	}
+	read3, _ := reader.Fetch(3)
+	for m := range read3.Messages() {
+		m.DoubleAck(ctx)
+	}
+	js.Publish(ctx, "interest.b", []byte("nobody wants this"))
+	if st, _ := interest.Info(ctx); st.State.Msgs != 7 {
+		t.Fatalf("INTEREST holds %d messages while browsed, want 7", st.State.Msgs)
+	}
+	call("DELETE", "/api/browsing/view-i", "")
+
+	// Direct Get needs allow_direct.
+	if _, err := js.CreateStream(ctx, jetstream.StreamConfig{Name: "NODIRECT", Subjects: []string{"nodirect"}, Retention: jetstream.WorkQueuePolicy}); err != nil {
+		t.Fatal(err)
+	}
+	if code, body := call("POST", "/api/streams/NODIRECT/messages", `{"view":"view-n"}`); code != 400 || !strings.Contains(body, "Allow direct get") {
+		t.Fatalf("NODIRECT: %d %s", code, body)
+	}
+}
+
+// TestBrowsingConsumerOnInterest is why Interest streams are listed with Direct
+// Get: a Browsing consumer on one holds messages every other consumer acked,
+// and keeps ones nobody else wants, until it reads them.
+func TestBrowsingConsumerOnInterest(t *testing.T) {
+	ns, err := natstest.Start(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(ns.Shutdown)
+	nc, err := nats.Connect(ns.ClientURL(), nats.UserInfo("app", "app"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(nc.Close)
+	js, _ := jetstream.New(nc)
+	ctx := context.Background()
+	st, err := js.CreateStream(ctx, jetstream.StreamConfig{Name: "I", Subjects: []string{"i.>"}, Retention: jetstream.InterestPolicy})
+	if err != nil {
+		t.Fatal(err)
+	}
+	stored := func() uint64 { i, _ := st.Info(ctx); return i.State.Msgs }
+	w, err := st.CreateConsumer(ctx, jetstream.ConsumerConfig{Durable: "w", FilterSubject: "i.a", AckPolicy: jetstream.AckExplicitPolicy})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for range 10 {
+		js.Publish(ctx, "i.a", []byte("x"))
+	}
+	ack := func(n int) {
+		b, _ := w.Fetch(n)
+		for m := range b.Messages() {
+			m.DoubleAck(ctx)
+		}
+	}
+	ack(3)
+	if n := stored(); n != 7 {
+		t.Fatalf("%d stored after w acked 3 of 10", n)
+	}
+
+	v := &view{id: "probe"}
+	if err := v.open(ctx, js, st, api.MessagePageRequest{}); err != nil {
+		t.Fatal(err)
+	}
+	v.msgs.Stop() // the consumer stays, not yet having read anything
+	ack(3)
+	js.Publish(ctx, "i.b", []byte("only the browser wants this"))
+	if n := stored(); n != 8 {
+		t.Fatalf("%d stored with a Browsing consumer, want 8: the 3 w acked and the i.b one held", n)
+	}
+	v.shut()
+	if n := stored(); n != 4 {
+		t.Fatalf("%d stored once the consumer is gone, want 4", n)
+	}
 }
