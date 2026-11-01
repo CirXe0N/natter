@@ -66,6 +66,19 @@ func main() {
 	if _, err := victim.SubscribeSync("orders.>"); err != nil {
 		log.Fatal(err)
 	}
+	// The Publish spec's responder, and a subscriber that never replies. They get
+	// their own client so the Connections spec still sees one subscription on orders-service.
+	svc, err := nats.Connect(ns.ClientURL(), nats.UserInfo("app", "app"), nats.Name("publish-spec"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer svc.Close()
+	if _, err := svc.SubscribeSync("e2e.silent"); err != nil {
+		log.Fatal(err)
+	}
+	if _, err := svc.Subscribe("e2e.echo", func(m *nats.Msg) { _ = m.Respond(append([]byte("echo:"), m.Data...)) }); err != nil {
+		log.Fatal(err)
+	}
 	ctxs := contexts.New(root, vault.Open(filepath.Join(root, "natter")))
 	defer ctxs.Close()
 
