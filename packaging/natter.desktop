@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Natter
+Comment=A UI for NATS™
+Exec=natter
+Icon=natter
+Terminal=false
+Categories=Development;
+StartupWMClass=natter

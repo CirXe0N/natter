@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test"
 
-test("Chromium reads the PWA manifest and its icons through the session", async ({ page }) => {
+test("Chromium reads the PWA manifest and its icons through the session", async ({ page, browserName }) => {
+  test.skip(browserName !== "chromium", "reads the manifest over CDP")
   await page.goto("/")
   await expect(page.getByRole("heading", { level: 1, name: "Overview" })).toBeVisible()
   const cdp = await page.context().newCDPSession(page)

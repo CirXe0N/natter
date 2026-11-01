@@ -1,0 +1,23 @@
+# deb and rpm of the desktop build. packaging/linux.sh runs it from the repo
+# root with VERSION set; nfpm expands it.
+name: natter
+arch: amd64
+version: ${VERSION}
+maintainer: CirXe0N
+description: Natter, a UI for NATS™, in a window of its own.
+homepage: https://github.com/CirXe0N/natter
+section: devel
+overrides:
+  deb:
+    depends: [libgtk-4-1, libwebkitgtk-6.0-4]
+  rpm:
+    depends: [gtk4, webkitgtk6.0]
+contents:
+  - src: build/linux/natter
+    dst: /usr/bin/natter
+  - src: packaging/natter.desktop
+    dst: /usr/share/applications/natter.desktop
+  - src: web/public/icon-512.png
+    dst: /usr/share/icons/hicolor/512x512/apps/natter.png
+  - src: THIRD_PARTY_LICENSES.txt
+    dst: /usr/share/doc/natter/THIRD_PARTY_LICENSES.txt

@@ -43,9 +43,40 @@ cosign verify-blob checksums.txt --bundle checksums.txt.sigstore.json \
 
 macOS and Windows warn about the unsigned binaries the first time they run. [Unsigned-binary warnings](desktop.md#unsigned-binary-warnings) says how to get past each warning.
 
+## Desktop builds
+
+The `desktop` jobs in the same workflow build the Wails desktop app (ticket 26) with `packaging/desktop.sh`, one native runner per OS because it needs cgo: DMG and zipped `.app` on macOS, installer and bare `.exe` on Windows, deb, rpm, AppImage and a tarball on Linux. On a tag, `desktop-publish` adds them to GoReleaser's draft release with `checksums-desktop.txt`. Pull requests build them too, as workflow artifacts.
+
+Wails is pinned to an exact version in `go.mod`, and `packaging/desktop.sh` runs the `wails3` CLI at the same version. Change both together. Only `-tags desktop` compiles Wails in. `TestDefaultBuildHasNoWails` fails if the plain build ever depends on it.
+
+`npm --prefix web run e2e:webkit` runs the end-to-end tests in WebKit, the engine the desktop app uses on macOS and Linux. The `e2e` workflow runs both engines. On distributions Playwright does not support, such as Arch, run the browser in its container and point the tests at it:
+
+```sh
+docker run -d --rm --name pw --network host --init mcr.microsoft.com/playwright:v1.64.1-noble \
+  npx -y playwright@1.64.1 run-server --port 3123 --host 127.0.0.1
+PW_TEST_CONNECT_WS_ENDPOINT=ws://127.0.0.1:3123/ npm --prefix web run e2e:webkit
+```
+
+### Update signing
+
+The app installs only update manifests signed with the release key. Until the key exists, desktop builds ship with updates off. To turn them on, once:
+
+```sh
+go run github.com/wailsapp/wails/v3/cmd/wails3@v3.1.0 updater genkey -out updater.key
+```
+
+- Store the contents of `updater.key` as the repository secret `UPDATER_SIGNING_KEY`, keep an offline backup, and delete the file. Without the key, apps already installed can't take another update.
+- Store the base64 of the raw public key as the repository variable `UPDATER_PUBLIC_KEY`. `genkey` prints it. The build bakes it in with `-X main.updateKey`.
+
+Each tagged release then gets an `update-manifest.json` that signs the zipped `.app`, the Windows `.exe` and the AppImage. Apps read `releases/latest/download/update-manifest.json`, so a draft reaches nobody until you publish it.
+
+### AUR
+
+`packaging/aur/PKGBUILD` is the `natter-bin` recipe. It installs the release's Linux tarball. For each release, set `pkgver`, put the tarball's checksum from `checksums-desktop.txt` in `sha256sums`, run `makepkg --printsrcinfo > .SRCINFO`, and push both files to the AUR repository.
+
 ## Third-party licences
 
-`scripts/licenses.sh` writes `THIRD_PARTY_LICENSES.txt` (every linked Go module and production npm package) before each build, and every archive contains it.
+`scripts/licenses.sh` writes `THIRD_PARTY_LICENSES.txt` (every linked Go module and production npm package) before each build, and every archive contains it. `packaging/desktop.sh` runs it with `GOFLAGS=-tags=desktop`, so the desktop packages list Wails and its dependencies too.
 
 ## macOS notarization
 

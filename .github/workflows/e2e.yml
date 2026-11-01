@@ -1,0 +1,31 @@
+name: e2e
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # Each engine gets its own runner: the specs change the one backend they share.
+  # WebKit is what the desktop build renders in on macOS and Linux.
+  e2e:
+    strategy:
+      fail-fast: false
+      matrix:
+        engine: [chromium, webkit]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: { go-version-file: go.mod }
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: npm, cache-dependency-path: web/package-lock.json }
+      - run: npm --prefix web ci
+      - run: npx --prefix web playwright install --with-deps ${{ matrix.engine }}
+      - run: npm --prefix web run ${{ matrix.engine == 'chromium' && 'e2e' || 'e2e:webkit' }}
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report-${{ matrix.engine }}
+          path: web/playwright-report/

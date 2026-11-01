@@ -20,5 +20,13 @@ export default defineConfig({
       use: { ...devices["Desktop Chrome"], storageState: "playwright/.auth/session.json" },
       dependencies: ["setup"],
     },
+    // The desktop build renders in WebKit on macOS and Linux. `npm run e2e:webkit`
+    // runs it on its own: the specs change the one backend they share, so each
+    // engine needs a fresh one.
+    {
+      name: "webkit",
+      use: { ...devices["Desktop Safari"], storageState: "playwright/.auth/session.json" },
+      dependencies: ["setup"],
+    },
   ],
 })
