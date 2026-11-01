@@ -105,7 +105,8 @@ export function toConfig(base: Config, v: Values): { config: Config; errors: { [
   return { config, errors }
 }
 
-const quote = (s: string) => (/^[\w.,:/@=-]+$/.test(s) ? s : `'${s.replaceAll("'", "'\\''")}'`)
+// shellQuote quotes s for a POSIX shell only when it needs it.
+export const shellQuote = (s: string) => (/^[\w.,:/@=-]+$/.test(s) ? s : `'${s.replaceAll("'", "'\\''")}'`)
 
 // cliFor is the `nats` command that makes the same change: the flags that
 // differ from `before`. For a new stream `before` is the blank form, for an
@@ -119,14 +120,14 @@ export function cliFor(config: Config, before?: Config): string {
     const now = config[f.key]
     const flag = `--${f.flag.name}`
     if (f.kind === "bool") parts.push(now ? flag : `--no-${f.flag.name}`)
-    else if (f.kind === "list") parts.push(`${flag} ${quote((now as string[]).join(","))}`)
+    else if (f.kind === "list") parts.push(`${flag} ${shellQuote((now as string[]).join(","))}`)
     else if (f.kind === "duration") parts.push(`${flag} ${now ? formatDuration(now as number) : "''"}`)
     else if (f.key === "retention") parts.push(`${flag} ${now === "workqueue" ? "work" : now}`)
-    else parts.push(`${flag} ${quote(String(now))}`)
+    else parts.push(`${flag} ${shellQuote(String(now))}`)
   }
   return edit ? `${parts.join(" ")} --force` : parts.join(" ")
 }
 
 export function purgeCli(name: string, p: { subject?: string; keep?: number; sequence?: number }) {
-  return [`nats stream purge ${name}`, p.subject && `--subject ${quote(p.subject)}`, p.keep && `--keep ${p.keep}`, p.sequence && `--seq ${p.sequence}`, "--force"].filter(Boolean).join(" ")
+  return [`nats stream purge ${name}`, p.subject && `--subject ${shellQuote(p.subject)}`, p.keep && `--keep ${p.keep}`, p.sequence && `--seq ${p.sequence}`, "--force"].filter(Boolean).join(" ")
 }

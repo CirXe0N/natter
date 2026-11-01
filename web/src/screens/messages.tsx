@@ -9,6 +9,7 @@ import { useParams } from "@tanstack/react-router"
 
 import { api } from "@/api"
 import { CopyCli } from "@/components/copy-cli"
+import { shellQuote } from "@/stream-config"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import type { MessagePage, MsgMeta } from "@/gen/api"
@@ -149,7 +150,7 @@ function MessageTable({ stream }: { stream: string }) {
           }}
         />
         <JumpTo onJump={(a) => setAnchor({ ...a, pin: true })} />
-        <CopyCli cmd={`nats stream view ${stream}${topRow && topRow.seq > 1 ? ` --id ${topRow.seq}` : ""}${filter ? ` --subject '${filter}'` : ""}`} />
+        <CopyCli cmd={`nats stream view ${stream}${topRow && topRow.seq > 1 ? ` --id ${topRow.seq}` : ""}${filter ? ` --subject ${shellQuote(filter)}` : ""}`} />
       </div>
       {q.error && <p className="text-destructive">{q.error.message}</p>}
       <div role="table" aria-label="Messages" aria-rowcount={count + 1} className="overflow-hidden rounded-xl border bg-card">
