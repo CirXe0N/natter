@@ -26,7 +26,7 @@ linux)
 	tar -czf "$out/natter-desktop_linux_amd64.tar.gz" -C build/linux natter natter.desktop natter.png THIRD_PARTY_LICENSES.txt
 	wails generate appimage -binary build/linux/natter -icon build/linux/natter.png \
 		-desktopfile build/linux/natter.desktop -outputdir build/appimage -builddir build/appimage
-	mv build/appimage/*.AppImage "$out/natter-desktop_linux_amd64.AppImage"
+	mv build/appimage/natter-x86_64.AppImage "$out/natter-desktop_linux_amd64.AppImage"
 	;;
 darwin)
 	app=build/mac/Natter.app
