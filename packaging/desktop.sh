@@ -50,7 +50,8 @@ windows)
 	LDEXTRA="-H windowsgui" build -o build/windows/natter.exe
 	cp build/windows/natter.exe "$out/natter-desktop_windows_amd64.exe"
 	makensis=$(command -v makensis || echo "/c/Program Files (x86)/NSIS/makensis.exe")
-	"$makensis" -DVERSION="$VERSION" -DEXE="$(cygpath -w build/windows/natter.exe)" -DLICENSES="$(cygpath -w THIRD_PARTY_LICENSES.txt)" \
-		-DOUT="$(cygpath -w "$out")\\natter-desktop_windows_amd64-setup.exe" packaging/natter.nsi
+	# Absolute paths: makensis resolves relative ones from the script's folder.
+	"$makensis" -DVERSION="$VERSION" -DEXE="$(cygpath -wa build/windows/natter.exe)" -DLICENSES="$(cygpath -wa THIRD_PARTY_LICENSES.txt)" \
+		-DOUT="$(cygpath -wa "$out")\\natter-desktop_windows_amd64-setup.exe" packaging/natter.nsi
 	;;
 esac

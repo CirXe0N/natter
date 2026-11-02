@@ -77,7 +77,7 @@ test("opening a 4 MB message shows 64 KB first, then the whole payload as a JSON
 })
 
 test("Prev and Next cross page boundaries and gaps", async ({ page }) => {
-  test.slow() // 250 Next clicks: 17 s on a fast machine, over 30 s on a CI runner
+  test.setTimeout(180_000) // 250 Next clicks: 17 s on a fast machine, about 100 s in WebKit on a CI runner
   await activate(page)
   await page.goto("/streams/EVENTS/messages")
   const heading = page.getByRole("dialog").getByRole("heading")
