@@ -17,7 +17,7 @@ natter           # serves the UI on localhost and prints a Launch token URL
 natter open      # opens it in an app window, starting it if needed
 ```
 
-Run `natter -h` for flags. See [docs/desktop.md](docs/desktop.md) for the desktop app.
+Run `natter -h` for flags. Full docs: https://cirxe0n.github.io/natter/docs/. See [docs/desktop.md](docs/desktop.md) for the desktop app.
 
 ## Develop
 
