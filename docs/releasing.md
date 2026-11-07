@@ -16,7 +16,7 @@ git push origin main vX.Y.Z
 
 The tag triggers the workflow. It builds the frontend again, builds all six binaries with `CGO_ENABLED=0`, and creates a **draft** GitHub Release with archives, `checksums.txt`, an SBOM per archive and a cosign signature of the checksums. Read the draft, then publish it.
 
-While the repository is private, tag builds skip the cosign signature. Keyless signing records the repository's name, the tag and the commit in Sigstore's public transparency log, permanently, which would reveal the private repository. The workflow reads the repository's visibility, so signing starts by itself once it is public. After the release commit, remove `web/dist` again on the next commit (`git rm -r --cached web/dist`, keep `.gitkeep`) so development diffs stay small.
+Tag builds sign only while the repository is public. Keyless signing records the repository's name, the tag and the commit in Sigstore's public transparency log, permanently, which would reveal a private repository. The workflow reads the repository's visibility, so making the repository private again turns signing off by itself. After the release commit, remove `web/dist` again on the next commit (`git rm -r --cached web/dist`, keep `.gitkeep`) so development diffs stay small.
 
 `go install github.com/CirXe0N/natter/cmd/natter@vX.Y.Z` then serves the full UI. The version shown in the footer comes from `-X main.version` in release archives and from the module version otherwise.
 
@@ -32,11 +32,20 @@ Use `--skip=sign` instead if `syft` is installed. Signing needs a CI identity an
 
 ## Verify a download
 
-`checksums.txt` is always there; the `.sigstore.json` signature only on releases made while the repository is public.
+Each checksum file has a cosign signature next to it, `<file>.sigstore.json`. v0.1.0 and v0.2.0 have none: they were released while the repository was private.
 
 ```sh
 sha256sum -c checksums.txt --ignore-missing
 cosign verify-blob checksums.txt --bundle checksums.txt.sigstore.json \
+  --certificate-identity-regexp 'https://github.com/CirXe0N/natter/\.github/workflows/release\.yml@refs/tags/v.*' \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
+```
+
+The desktop apps work the same way with `checksums-desktop.txt`:
+
+```sh
+sha256sum -c checksums-desktop.txt --ignore-missing
+cosign verify-blob checksums-desktop.txt --bundle checksums-desktop.txt.sigstore.json \
   --certificate-identity-regexp 'https://github.com/CirXe0N/natter/\.github/workflows/release\.yml@refs/tags/v.*' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
@@ -53,7 +62,7 @@ The `desktop` jobs in the same workflow build the Wails desktop app with `packag
 | Windows | installer and bare `.exe` |
 | Linux | deb, rpm, AppImage and a tarball |
 
-On a tag, `desktop-publish` adds them to GoReleaser's draft release with `checksums-desktop.txt`. Pull requests build them too, as workflow artifacts.
+On a tag, `desktop-publish` adds them to GoReleaser's draft release with `checksums-desktop.txt` and its cosign signature. Pull requests build them too, as workflow artifacts.
 
 Wails is pinned to an exact version in `go.mod`. The `wails3` CLI runs at the same version in `packaging/desktop.sh`, `release.yml` and the commands below. To move to a new Wails version, change every `v3.1.0` (`grep -rn wails/v3 go.mod packaging .github docs`), then run `go mod tidy`. Only `-tags desktop` compiles Wails in. `TestDefaultBuildHasNoWails` fails if the plain build ever depends on it.
 
