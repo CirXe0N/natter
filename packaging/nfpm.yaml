@@ -15,8 +15,8 @@ overrides:
 contents:
   - src: build/linux/natter
     dst: /usr/bin/natter
-  - src: packaging/natter.desktop
-    dst: /usr/share/applications/natter.desktop
+  - src: packaging/io.github.cirxe0n.natter.desktop
+    dst: /usr/share/applications/io.github.cirxe0n.natter.desktop
   - src: web/public/icon-512.png
     dst: /usr/share/icons/hicolor/512x512/apps/natter.png
   - src: THIRD_PARTY_LICENSES.txt

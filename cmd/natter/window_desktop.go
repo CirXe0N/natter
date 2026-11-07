@@ -25,6 +25,11 @@ var updateKey string
 
 const updateManifest = "https://github.com/CirXe0N/natter/releases/latest/download/update-manifest.json"
 
+// appID names Natter to the OS. On Wayland the window's app ID must match the
+// installed io.github.cirxe0n.natter.desktop, or the launcher entry and icon
+// stay unlinked from the running window.
+const appID = "io.github.cirxe0n.natter"
+
 func init() { windowApp = openWindow }
 
 // openWindow serves Natter on a loopback port and shows it in a Wails window. The webview loads Natter's own server, so the Launch
@@ -45,10 +50,10 @@ func openWindow(vaultKey string) error {
 		Description: "A UI for NATS™",
 		Icon:        web.Icon512,
 		SingleInstance: &application.SingleInstanceOptions{
-			UniqueID:               "io.github.cirxe0n.natter",
+			UniqueID:               appID,
 			OnSecondInstanceLaunch: func(application.SecondInstanceData) { show() },
 		},
-		Linux: application.LinuxOptions{ProgramName: "natter"},
+		Linux: application.LinuxOptions{ApplicationID: appID},
 	})
 
 	launchURL, errc, err := serveInBackground(func(open func(string) error) error {
@@ -94,6 +99,11 @@ func openWindow(vaultKey string) error {
 	tray := app.SystemTray.New()
 	tray.SetIcon(web.Icon192)
 	tray.SetTooltip("Natter")
+	if runtime.GOOS == "linux" {
+		// The tray item's title, which Wails would call "Wails". On macOS a
+		// label is text beside the icon, so it stays unset there.
+		tray.SetLabel("Natter")
+	}
 	tray.OnClick(show)
 	trayMenu := app.NewMenu()
 	trayMenu.Add("Open Natter").OnClick(func(*application.Context) { show() })

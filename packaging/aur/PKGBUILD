@@ -14,7 +14,7 @@ sha256sums=(SKIP)
 
 package() {
 	install -Dm755 natter "$pkgdir/usr/bin/natter"
-	install -Dm644 natter.desktop "$pkgdir/usr/share/applications/natter.desktop"
+	install -Dm644 io.github.cirxe0n.natter.desktop "$pkgdir/usr/share/applications/io.github.cirxe0n.natter.desktop"
 	install -Dm644 natter.png "$pkgdir/usr/share/icons/hicolor/512x512/apps/natter.png"
 	install -Dm644 THIRD_PARTY_LICENSES.txt "$pkgdir/usr/share/licenses/$pkgname/THIRD_PARTY_LICENSES.txt"
 }

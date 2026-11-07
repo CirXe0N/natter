@@ -6,4 +6,4 @@ Exec=natter
 Icon=natter
 Terminal=false
 Categories=Development;
-StartupWMClass=natter
+StartupWMClass=io.github.cirxe0n.natter

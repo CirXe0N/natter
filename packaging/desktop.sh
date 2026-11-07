@@ -21,11 +21,11 @@ linux)
 	mkdir -p build/linux
 	CGO_ENABLED=1 build -o build/linux/natter
 	for p in deb rpm; do nfpm package -f packaging/nfpm.yaml -p "$p" -t "$out/"; done
-	cp packaging/natter.desktop THIRD_PARTY_LICENSES.txt build/linux/
+	cp packaging/io.github.cirxe0n.natter.desktop THIRD_PARTY_LICENSES.txt build/linux/
 	cp web/public/icon-512.png build/linux/natter.png
-	tar -czf "$out/natter-desktop_linux_amd64.tar.gz" -C build/linux natter natter.desktop natter.png THIRD_PARTY_LICENSES.txt
+	tar -czf "$out/natter-desktop_linux_amd64.tar.gz" -C build/linux natter io.github.cirxe0n.natter.desktop natter.png THIRD_PARTY_LICENSES.txt
 	wails generate appimage -binary build/linux/natter -icon build/linux/natter.png \
-		-desktopfile build/linux/natter.desktop -outputdir build/appimage -builddir build/appimage
+		-desktopfile build/linux/io.github.cirxe0n.natter.desktop -outputdir build/appimage -builddir build/appimage
 	mv build/appimage/natter-x86_64.AppImage "$out/natter-desktop_linux_amd64.AppImage"
 	;;
 darwin)
