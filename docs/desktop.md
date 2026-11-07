@@ -20,6 +20,17 @@ On Linux it needs GTK 4 and WebKitGTK 6.0, which the packages pull in. The AppIm
 - **Ctrl+K / Cmd+K** opens the command palette, as in the browser. No menu claims it.
 - **NVIDIA on Linux.** WebKitGTK cannot draw through NVIDIA's DMA-BUF path, so on NVIDIA the app turns that renderer off (`WEBKIT_DISABLE_DMABUF_RENDERER=1`) before the window opens.
 
+Each install method brings its own launcher entry, so you get one Natter in your launcher:
+
+| OS | Install | Launcher entry |
+|---|---|---|
+| Linux | deb, rpm or AUR | `/usr/share/applications/io.github.cirxe0n.natter.desktop` |
+| Linux | AppImage | None until you integrate it with a tool such as AppImageLauncher |
+| macOS | DMG | `/Applications/Natter.app` |
+| Windows | Installer | Start Menu shortcut `Natter`, removed by the uninstaller |
+
+`natter install-desktop` does nothing when the desktop app is installed. The desktop app says so and exits 0. The plain `natter` binary says so when it finds the desktop app where its installer puts it by default. It does not look for an AppImage, or for a Windows install in a folder you chose, so in those cases install-desktop can still add a second entry.
+
 Running servers, `go install` and the commands below use the plain `natter` binary. The desktop build ignores `-bind`, `-port`, `-allowed-host`, `-dev` and `-redirect-file`, and takes `-vault-key`.
 
 ## Start it from your app launcher
@@ -34,9 +45,9 @@ This adds Natter to the app launcher. The entry runs `natter open`, so no termin
 |---|---|
 | Linux | `$XDG_DATA_HOME/applications/natter.desktop` (usually `~/.local/share/applications`) and its icon in `$XDG_DATA_HOME/natter/` |
 | macOS | `~/Applications/Natter.app` |
-| Windows | A Start Menu shortcut, `Natter`, and its icon in `%LOCALAPPDATA%\Natter\` |
+| Windows | A Start Menu shortcut, `Natter (browser)`, and its icon in `%LOCALAPPDATA%\Natter\` |
 
-The entry points at the binary where it is now. If you move the binary, run `natter install-desktop` again. `natter uninstall-desktop` removes the entry.
+The entry points at the binary where it is now. If you move the binary, run `natter install-desktop` again. `natter uninstall-desktop` removes only the entry `install-desktop` made, never the desktop app's own, and the desktop app's uninstaller does the same the other way round.
 
 `natter open` does the same from a shell. If Natter is already running, it opens a new window on that server. Otherwise it starts the server and keeps running until you stop it. The window is signed in, because `natter open` hands it the Launch token URL instead of printing it.
 

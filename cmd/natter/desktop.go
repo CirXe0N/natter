@@ -13,13 +13,48 @@ import (
 	"github.com/CirXe0N/natter/web"
 )
 
+// desktopAppPaths returns where the desktop app's installers put it, and the
+// file under each root that marks it: the XDG data dirs (deb, rpm, AUR),
+// /Applications (DMG), or the per-user NSIS folder. ~/Applications is left
+// out because install-desktop writes its own Natter.app there.
+// shortcut: an AppImage has no fixed place, and an NSIS install into a folder
+// other than the default is missed.
+func desktopAppPaths() (roots []string, marker string) {
+	switch runtime.GOOS {
+	case "windows":
+		if dir := os.Getenv("LOCALAPPDATA"); dir != "" {
+			roots = []string{filepath.Join(dir, "Programs", "Natter")}
+		}
+		return roots, "natter.exe"
+	case "darwin":
+		return []string{"/Applications"}, "Natter.app"
+	default:
+		dirs := os.Getenv("XDG_DATA_DIRS")
+		if dirs == "" {
+			dirs = "/usr/local/share:/usr/share"
+		}
+		return filepath.SplitList(dirs), filepath.Join("applications", "io.github.cirxe0n.natter.desktop")
+	}
+}
+
+// installedDesktopApp returns the first root/marker that exists, or "".
+func installedDesktopApp(roots []string, marker string) string {
+	for _, r := range roots {
+		p := filepath.Join(r, marker)
+		if _, err := os.Stat(p); r != "" && err == nil {
+			return p
+		}
+	}
+	return ""
+}
+
 // launcherPaths are what install-desktop writes, so uninstall removes the same.
 // macOS gets one .app directory; the others get an entry and an icon in a
 // folder of natter's own.
 func launcherPaths() (entry, icon string, err error) {
 	switch runtime.GOOS {
 	case "windows":
-		return filepath.Join(os.Getenv("APPDATA"), `Microsoft\Windows\Start Menu\Programs\Natter.lnk`),
+		return filepath.Join(os.Getenv("APPDATA"), `Microsoft\Windows\Start Menu\Programs\Natter (browser).lnk`),
 			filepath.Join(os.Getenv("LOCALAPPDATA"), "Natter", "natter.ico"), nil
 	case "darwin":
 		home, err := os.UserHomeDir()

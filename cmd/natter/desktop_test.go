@@ -72,3 +72,21 @@ func TestIconContainersWrapThePNG(t *testing.T) {
 		t.Errorf("ICNS = % x", icns[:16])
 	}
 }
+
+func TestInstalledDesktopAppIsFoundUnderTheGivenRoots(t *testing.T) {
+	empty, root := t.TempDir(), t.TempDir()
+	_, marker := desktopAppPaths()
+	if got := installedDesktopApp([]string{empty, root}, marker); got != "" {
+		t.Fatalf("found %q in empty roots", got)
+	}
+	want := filepath.Join(root, marker)
+	if err := os.MkdirAll(filepath.Dir(want), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(want, nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if got := installedDesktopApp([]string{empty, root}, marker); got != want {
+		t.Errorf("installedDesktopApp = %q, want %q", got, want)
+	}
+}

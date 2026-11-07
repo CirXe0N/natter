@@ -215,6 +215,14 @@ func desktop(install bool) error {
 	if !install {
 		return uninstallDesktop()
 	}
+	if windowApp != nil {
+		fmt.Println("This is the desktop app. It has its own launcher entry, so there is nothing to add.")
+		return nil
+	}
+	if found := installedDesktopApp(desktopAppPaths()); found != "" {
+		fmt.Println("The Natter desktop app is installed at", found, "and has its own launcher entry. Not adding a second one.")
+		return nil
+	}
 	exe, err := os.Executable()
 	if err != nil {
 		return err
