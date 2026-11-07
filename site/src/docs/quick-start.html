@@ -1,0 +1,33 @@
+<!-- description: Start Natter, connect to a NATS server and find your way around in a few minutes. -->
+<p class="intro">From an installed app to browsing your first stream. You need a NATS server to connect to; if you don't have one, the first step starts one locally.</p>
+
+<h2>1. Have a NATS server</h2>
+<p>Skip this if you already have one. Otherwise run a local server with JetStream and the monitoring port, for example with Docker:</p>
+<pre><code>docker run --rm -p 4222:4222 -p 8222:8222 nats:latest -js -m 8222</code></pre>
+<p>That gives you a client URL of <code>nats://127.0.0.1:4222</code> and a monitoring URL of <code>http://127.0.0.1:8222</code>.</p>
+
+<h2>2. Open Natter</h2>
+<p>Start <strong>Natter</strong> from your app launcher, Start Menu or Applications folder. The desktop app opens in its own window, already signed in. Closing the window leaves Natter running in the tray; open it again from the tray icon or the launcher. <a href="{{ROOT}}docs/desktop/">More about the desktop app</a>.</p>
+<div class="callout">
+  <p class="callout-title">Using the command-line binary instead</p>
+  <p>Run <code>natter open</code>. It starts Natter and opens it in a Chrome, Edge, Brave or Chromium app window (your default browser if you have none), already signed in. Plain <code>natter</code> starts the server and prints a sign-in URL with a <a href="{{ROOT}}docs/security/#launch-token">Launch token</a>; open it once and your browser has a session. It listens on port 4280, or a free port if that one is taken. <code>natter install-desktop</code> adds a launcher entry that runs <code>natter open</code>.</p>
+</div>
+
+<h2>3. Connect a Context</h2>
+<p>Open the Context switcher at the top of the sidebar (it says <strong>No Context</strong> until you pick one). Every context you made with <code>nats context add</code> is already in it: pick one to connect. <strong>Manage Contexts…</strong> at the bottom of the switcher opens the Contexts page.</p>
+<p>To add a new one, choose <strong>New Context</strong>, give it a name and the server URL (<code>nats://127.0.0.1:4222</code>), and add a secret if the server needs one. <a href="{{ROOT}}docs/contexts/">More about Contexts</a>.</p>
+<figure>
+  <img src="{{ROOT}}assets/screens/contexts.webp" width="1440" height="900" alt="The Contexts page listing natscli and Natter contexts with their capabilities." loading="lazy" />
+  <figcaption>Contexts from the nats CLI and from Natter, with what each connection can do.</figcaption>
+</figure>
+
+<h2>4. Look around</h2>
+<ul>
+  <li><strong>Overview</strong> shows message rates, servers, the busiest streams and consumers with lag. Server-wide data needs <a href="{{ROOT}}docs/overview/#server-wide-data">system access or a Monitoring URL</a>.</li>
+  <li><strong>Streams</strong> lists your JetStream streams. Open one to see its config, consumers and messages.</li>
+  <li><strong>Message browser</strong> lets you scroll and open the messages of any stream.</li>
+  <li>Press <kbd>⌘K</kbd> (<kbd>Ctrl</kbd> <kbd>K</kbd> on Linux and Windows) to jump anywhere.</li>
+</ul>
+
+<h2>5. Lock production</h2>
+<p>Before you connect to anything that matters, turn on <a href="{{ROOT}}docs/read-only/">Read-only mode</a> for that Context. Natter then refuses every change and every send while it is active.</p>

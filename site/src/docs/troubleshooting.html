@@ -1,0 +1,35 @@
+<!-- description: Fixes for common problems when installing, starting and connecting Natter. -->
+<p class="intro">Common problems, and what to do about them.</p>
+
+<h2>macOS or Windows won't open Natter</h2>
+<p>The desktop app and the release binaries aren't signed by Apple or Microsoft yet. See <a href="{{ROOT}}docs/install/#first-run-warnings">First-run warnings</a>.</p>
+
+<h2>The browser says "invalid Launch token"</h2>
+<p>This is for the command-line binary; the desktop app signs itself in. The token changes every time Natter starts. Use the URL from the run that's going now, or simply run <code>natter open</code>, which signs the window in for you.</p>
+
+<h2>The window closed but Natter is still running</h2>
+<p>That's the desktop app: closing the window hides it and keeps Natter in the tray. Click the tray icon or choose <strong>Open Natter</strong> to bring it back, or <strong>Quit Natter</strong> to stop it. Starting Natter again also shows the window that's already open.</p>
+
+<h2>The desktop window is blank or flickers on Linux</h2>
+<p>The app needs GTK 4 and WebKitGTK 6.0. On NVIDIA graphics it already turns off WebKitGTK's DMA-BUF renderer; if the window still doesn't draw, try starting it with <code>WEBKIT_DISABLE_DMABUF_RENDERER=1</code> set yourself, and check that the AppImage can find the libraries.</p>
+
+<h2>Port 4280 is already in use</h2>
+<p>This is for the command-line binary; the desktop app uses a free port by itself. Natter picks a free port by itself and prints the URL it ended up on. To choose one, use <code>-port</code>. If Natter itself is already running, <code>natter open</code> finds it and opens another window on it.</p>
+
+<h2>"No system access" or empty server data</h2>
+<p>Overview's Health and Servers, and the Connections screen, need System credentials or a Monitoring URL on the Context. Add a Monitoring URL such as <code>http://127.0.0.1:8222</code> when you edit the Context. See <a href="{{ROOT}}docs/contexts/#server-wide-data">Server-wide data</a>.</p>
+
+<h2>"Monitoring URL unreachable"</h2>
+<p>The server's monitoring port didn't answer at that address. Check the server was started with monitoring on (<code>-m 8222</code>), and that the port is reachable from where Natter runs.</p>
+
+<h2>"No JetStream"</h2>
+<p>JetStream didn't answer for this account: the server runs without it (<code>-js</code>), or the account has no JetStream. Streams, consumers and the Message browser need it.</p>
+
+<h2>A Context says the Vault is locked</h2>
+<p>Its secret is in the Vault and the Vault isn't unlocked. Type the passphrase on the Contexts page, or start Natter with <code>-vault-key</code>. If the Vault's key was only in the OS keyring and the keyring doesn't have it any more, the secrets in it can't be recovered: <a href="{{ROOT}}docs/vault/">add a backup passphrase</a> while you still can.</p>
+
+<h2>Could not connect</h2>
+<p>The Context's card shows the server's error, such as <em>authorization violation</em>. Check the URL and the secret by editing the Context. If the secret is a reference (<code>env://</code>, <code>op://</code>, <code>nsc://</code>), make sure it resolves in the environment Natter was started from.</p>
+
+<h2>A button is greyed out</h2>
+<p>The reason is written next to it. Usually the Context is in <a href="{{ROOT}}docs/read-only/">Read-only mode</a>.</p>

@@ -1,0 +1,56 @@
+<!-- description: Connect Natter to NATS with Contexts: use natscli contexts, create and edit your own, store secrets safely, and unlock server-wide data. -->
+<p class="intro">A Context is one NATS deployment's server URLs plus the credentials to reach it, the same idea as a <code>nats</code> CLI context. Exactly one Context is active at a time.</p>
+
+<h2>Where Contexts come from</h2>
+<p>Natter lists Contexts from two folders, side by side:</p>
+<table>
+  <thead><tr><th>Badge</th><th>Folder</th><th>Who else sees it</th></tr></thead>
+  <tbody>
+    <tr><td>nats CLI Context</td><td><code>~/.config/nats/context</code></td><td>The <code>nats</code> CLI. Natter writes these files only when you ask it to.</td></tr>
+    <tr><td>Natter Context</td><td><code>~/.config/natter/nats/context</code></td><td>Only Natter. Its secret can live in the <a href="{{ROOT}}docs/vault/">Vault</a>.</td></tr>
+  </tbody>
+</table>
+<p>If you set <code>XDG_CONFIG_HOME</code>, both folders move with it, on every system.</p>
+
+<h2>Switch Contexts</h2>
+<p>Use the Context switcher at the top of the sidebar, the <strong>Connect</strong> button on a card on the Contexts page, or <kbd>⌘K</kbd> and type the Context's name. Natter remembers the active Context across restarts.</p>
+
+<h2>Create a Context</h2>
+<p>On the Contexts page choose <strong>New Context</strong> (or the dashed <strong>Add Context</strong> card). The form has four parts:</p>
+<ul>
+  <li><strong>Connection</strong>: the name, a description, and the server URLs (several separated by commas).</li>
+  <li><strong>Authentication</strong>: the kind of secret (none, password, token, creds file or NKey seed), where it is stored, and the user if there is one.</li>
+  <li><strong>Natter settings</strong>: the <a href="#monitoring-url">Monitoring URL</a> and <a href="{{ROOT}}docs/read-only/">Read-only mode</a>.</li>
+  <li><strong>Save in</strong>: Natter's folder, or the nats CLI folder so <code>nats</code> can use it too.</li>
+</ul>
+
+<h3>Where a secret is stored</h3>
+<table>
+  <thead><tr><th>Stored in</th><th>What the Context file holds</th></tr></thead>
+  <tbody>
+    <tr><td>Vault</td><td>A reference to an entry in Natter's encrypted <a href="{{ROOT}}docs/vault/">Vault</a>. Only for Natter Contexts: the <code>nats</code> CLI can't read the Vault.</td></tr>
+    <tr><td><code>env://</code></td><td>The name of an environment variable, such as <code>env://NATS_PASSWORD</code>.</td></tr>
+    <tr><td>1Password</td><td>An <code>op://vault/item/field</code> reference, read with the 1Password CLI.</td></tr>
+    <tr><td>nsc</td><td>An <code>nsc://operator/account/user</code> reference, for creds files only.</td></tr>
+  </tbody>
+</table>
+<p>References are resolved each time Natter connects, the same way the <code>nats</code> CLI resolves them. Natter never writes a secret into a file in plain text.</p>
+
+<h2>Edit or remove a Context</h2>
+<p>Each card has <strong>Edit</strong> and a remove button. Editing changes only the fields on the form; every other setting in the file (TLS, JetStream domain, inbox prefix…) is kept. The name can't be changed. When you edit the active Context, Natter reconnects with the new settings.</p>
+<p>Your current secret is kept unless you choose <strong>Change secret</strong>. Replacing a secret that was in the Vault deletes the old one from the Vault.</p>
+<p>Removing deletes the Context's file, and for a Natter Context its secret in the Vault too. You can't remove the Context you are connected to: switch to another one first.</p>
+
+<h2>Plaintext secrets</h2>
+<p>A natscli context that holds a password, token or key file in plain text gets a <strong>Plaintext secret</strong> badge: anyone who can read the file can use it. Choose <strong>Move into Vault</strong> on its card and Natter makes a Natter Context with the secret in the Vault. The original file stays as it is until you choose to delete it.</p>
+
+<h2 id="server-wide-data">Server-wide data</h2>
+<p>Some screens (the server table on Overview, Connections, server health) need more than an ordinary user can see. A Context gets that in one of two ways:</p>
+<ul>
+  <li><strong>System credentials</strong>: connect as a user in the system account. The card then shows a <strong>System credentials</strong> badge.</li>
+  <li><strong id="monitoring-url">A Monitoring URL</strong>: the address of a server's HTTP monitoring port, such as <code>http://127.0.0.1:8222</code>. Natter uses it read-only.</li>
+</ul>
+<p>Without either, the card says <strong>No system access</strong>, and those screens explain what's missing.</p>
+
+<h2>Capabilities</h2>
+<p>When Natter connects it checks what the connection can do, and the active card shows it: <strong>JetStream</strong> or <strong>No JetStream</strong>, <strong>System credentials</strong>, <strong>Monitoring URL</strong> (or <strong>Monitoring URL unreachable</strong>).</p>

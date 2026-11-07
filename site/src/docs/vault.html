@@ -1,0 +1,28 @@
+<!-- description: How Natter's Vault encrypts Context secrets, how it unlocks, and how to keep a backup. -->
+<p class="intro">The Vault is Natter's own encrypted store for the secrets of Natter Contexts. The Context file holds only a reference to the Vault entry, never the secret itself.</p>
+
+<h2>What's in it</h2>
+<p>All Vault secrets live in one file, <code>~/.config/natter/vault.age</code>, encrypted with <a href="https://age-encryption.org/">age</a> to a post-quantum key: the <strong>Vault key</strong>. Natter holds that key in memory only while it runs. Every read and write decrypts the file again.</p>
+
+<h2>How the Vault is created</h2>
+<p>You don't have to create it yourself. The first time you store a secret in the Vault (a new Context, an edited secret, or <strong>Move into Vault</strong>), Natter creates the Vault and keeps its key in your <strong>OS keyring</strong>: macOS Keychain, Windows Credential Manager, or the Secret Service on Linux. From then on it unlocks by itself when Natter starts.</p>
+<p>The keyring holds only the Vault key, never your secrets.</p>
+<div class="callout warn">
+  <p class="callout-title">Add a backup passphrase</p>
+  <p>While the keyring holds the only copy of the key, losing the keyring entry (a new machine, a reinstalled OS, a reset keyring) loses the secrets in the Vault. The Contexts page shows a warning until you choose <strong>Add a backup passphrase</strong>. Natter also won't let you turn the keyring off until there is one.</p>
+</div>
+<p>On a system without a working keyring (headless Linux, WSL, some containers), create the Vault on the Contexts page with a passphrase instead. You can also choose <strong>Create it now with a passphrase</strong> there before you store anything.</p>
+
+<h2>Ways to unlock</h2>
+<table>
+  <thead><tr><th>Method</th><th>How</th></tr></thead>
+  <tbody>
+    <tr><td>OS keyring</td><td>Unlocks at startup. Toggle it on the Contexts page with <strong>OS keyring: on/off</strong>.</td></tr>
+    <tr><td>Passphrase</td><td>Type it on the Contexts page after a restart. Stored as a copy of the Vault key wrapped with your passphrase, in <code>vault.key.age</code>.</td></tr>
+    <tr><td>Key file</td><td>Start Natter with <code>-vault-key natter.key</code>, an age identity you created with <code>age-keygen -pq -o natter.key</code>.</td></tr>
+  </tbody>
+</table>
+<p>Changing the passphrase or moving the key in or out of the keyring never re-encrypts your secrets: only the copy of the key changes.</p>
+
+<h2>A locked Vault</h2>
+<p>If the Vault is locked, Contexts whose secret is in it can't connect, and say so straight away instead of waiting. Unlock it on the Contexts page and Natter reconnects.</p>

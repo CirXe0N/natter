@@ -1,0 +1,43 @@
+name: pages
+# Builds site/ and publishes it to GitHub Pages. Pages makes the site public even
+# when the repository is private. It runs when a release is published, so the
+# download links and version follow the latest release, and by hand.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 } # fallback: the latest v* tag sets the version if GitHub's API doesn't answer
+      - uses: actions/setup-node@v4
+        with: { node-version: 24 }
+      - run: node site/build.mjs
+        env:
+          SITE_BASE: /${{ github.event.repository.name }}/
+          GITHUB_TOKEN: ${{ github.token }} # reads the latest release; sets the version on the page
+      - uses: actions/upload-pages-artifact@v3
+        with: { path: site/dist }
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4

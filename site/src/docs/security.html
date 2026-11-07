@@ -1,0 +1,36 @@
+<!-- description: How Natter keeps your NATS deployment and its credentials safe: localhost only, the Launch token, Read-only mode, side-effect-free browsing and no plaintext secrets. -->
+<p class="intro">Natter can see and change everything a Context's credentials allow, so it is built to keep that power on your machine and in your hands.</p>
+
+<h2>Your browser never talks to NATS</h2>
+<p>Natter's own server talks to NATS. Your browser talks only to Natter, over a small API and one live connection. Credentials never reach the browser.</p>
+
+<h2>Localhost only</h2>
+<p>Natter listens on <code>127.0.0.1</code> by default. Every request must name an allowed host, and anything that changes state, and the live connection, must come from Natter's own origin. That stops other websites, and DNS-rebinding tricks, from driving it through your browser. To listen on another address you have to say so with <code>-bind</code> and list the hostnames with <code>-allowed-host</code>.</p>
+
+<h2 id="launch-token">The Launch token</h2>
+<p>Each run of Natter makes a random <strong>Launch token</strong>. A browser presents it once, in the sign-in URL, and gets a session cookie (HTTP-only, same-site strict). Without it, a browser gets nothing.</p>
+<ul>
+  <li>The desktop app hands it straight to its own window and never prints it.</li>
+  <li><code>natter</code> prints the sign-in URL in your terminal.</li>
+  <li><code>natter open</code> hands it straight to a browser app window and never prints it.</li>
+  <li>On a shared machine, other users can see a browser's command line (not the desktop app's). <code>natter open -redirect-file</code> passes a file only you can read instead.</li>
+</ul>
+
+<h2>Read-only mode</h2>
+<p>Lock any Context and Natter's server refuses every change and every send while it is active, requests included. See <a href="{{ROOT}}docs/read-only/">Read-only mode</a>.</p>
+
+<h2 id="browsing">Browsing changes nothing</h2>
+<p>Looking at messages uses no durable consumers, sends no acks and moves no consumer's position. The only trace is the short-lived consumer it creates and deletes, which is labelled <strong>Natter browsing</strong>. On work-queue and interest streams Natter uses Direct Get instead, because there even a reader could change what is kept.</p>
+
+<h2>No plaintext secrets</h2>
+<ul>
+  <li>Natter never writes a secret in plain text. It stores secrets in the encrypted <a href="{{ROOT}}docs/vault/">Vault</a>, or as references to environment variables, 1Password or nsc.</li>
+  <li>It flags natscli contexts that hold plaintext secrets, and moves them into the Vault for you.</li>
+  <li>The OS keyring holds only the Vault key, never the secrets.</li>
+</ul>
+
+<h2>Payloads are only ever text</h2>
+<p>Message payloads are shown as text, a JSON tree or hex, never rendered as a web page, and downloads are served so a browser can't run them. A malicious message can't run code in Natter.</p>
+
+<h2>Verify what you run</h2>
+<p>Every release lists checksums and an SBOM per archive. See <a href="{{ROOT}}docs/install/#verify-the-download">Verify the download</a>.</p>

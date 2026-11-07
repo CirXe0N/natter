@@ -1,0 +1,27 @@
+<!-- description: The Overview screen and the Connections screen: rates, servers, storage, busiest streams, lagging consumers and connected clients. -->
+<p class="intro">Overview answers "is everything healthy?" at a glance. Connections answers "who is connected, and who is slow?".</p>
+
+<h2>Overview</h2>
+<figure>
+  <img src="{{ROOT}}assets/screens/overview.webp" width="1440" height="900" alt="The Overview screen." loading="lazy" />
+</figure>
+<p>A bar at the top jumps between four sections and shows each one's status, so you can see what needs attention without scrolling:</p>
+<ul>
+  <li><strong>Health</strong>: messages and bytes in and out per second, connections, slow consumers and JetStream storage, with a short live chart for each. Versions that differ across servers are flagged.</li>
+  <li><strong>Servers</strong>: every server with its health, version, cluster, connections, CPU, memory and uptime.</li>
+  <li><strong>Busiest streams</strong>: the top five streams by message count, linking to the full list.</li>
+  <li><strong>Consumers with lag</strong>: the consumers furthest behind across all streams, with a lag bar.</li>
+</ul>
+<p>The figures update live. The right of the bar says where they come from (System credentials or the Monitoring URL) and when they were taken.</p>
+
+<h2 id="server-wide-data">Server-wide data</h2>
+<p>Health, Servers and Connections need either <strong>System credentials</strong> or a <strong>Monitoring URL</strong> on the Context. Without them, those parts say what's missing; stream and consumer data still shows. See <a href="{{ROOT}}docs/contexts/#server-wide-data">Server-wide data</a>.</p>
+
+<h2>Connections</h2>
+<p>The Connections screen lists every client connected to every server, with its name, account, user, server, round-trip time, pending bytes, messages in and out, and subscription count. You can:</p>
+<ul>
+  <li>Switch between <strong>open</strong> connections and recently <strong>closed</strong> ones, with the reason they closed.</li>
+  <li>Sort by any column, and filter by name, account, user or a subscribed subject.</li>
+  <li>Open a connection to see its subscriptions.</li>
+  <li><strong>Kick</strong> a connection, after a confirmation. This needs System credentials, and is blocked in <a href="{{ROOT}}docs/read-only/">Read-only mode</a>.</li>
+</ul>

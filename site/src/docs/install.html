@@ -1,0 +1,59 @@
+<!-- description: Install the Natter desktop app on Linux, macOS or Windows, or download the single command-line binary. Verify the download and get past first-run warnings. -->
+<p class="intro">Natter is a desktop app for Linux, macOS and Windows: a native window with a tray icon and an installer. For terminals and servers there is also a single command-line binary, <code>natter</code>. Both have the web UI built in, and there's nothing else to install.</p>
+
+<h2>Install the desktop app</h2>
+<p>Each <a href="https://github.com/CirXe0N/natter/releases/tag/v{{VERSION}}">release</a> has the desktop app as an installer per system:</p>
+<table>
+  <thead><tr><th>System</th><th>Download</th></tr></thead>
+  <tbody>
+    <tr><td>macOS (Apple silicon and Intel)</td><td><a href="{{REPO}}/releases/latest/download/natter-desktop_darwin_universal.dmg"><code>natter-desktop_darwin_universal.dmg</code></a>. Drag Natter to Applications.</td></tr>
+    <tr><td>Windows x86-64</td><td><a href="{{REPO}}/releases/latest/download/natter-desktop_windows_amd64-setup.exe"><code>natter-desktop_windows_amd64-setup.exe</code></a>. Installs for your user only, no admin rights needed.</td></tr>
+    <tr><td>Linux x86-64</td><td>The <code>natter</code> deb or rpm package from the release page, <a href="{{REPO}}/releases/latest/download/natter-desktop_linux_amd64.AppImage"><code>natter-desktop_linux_amd64.AppImage</code></a>, or <code>natter-bin</code> from the AUR.</td></tr>
+  </tbody>
+</table>
+<p>On Linux the app needs GTK 4 and WebKitGTK 6.0. The deb, rpm and AUR packages pull them in; the AppImage expects them on the system. <a href="{{ROOT}}docs/desktop/">More about the desktop app</a>.</p>
+
+<h2 id="command-line-binary">Download the command-line binary</h2>
+<p>For a server, a script, or a machine without a desktop, each release also has one archive per system. Each holds the <code>natter</code> binary (<code>natter.exe</code> on Windows) and <code>THIRD_PARTY_LICENSES.txt</code>. It serves the same UI on localhost and opens it in a browser.</p>
+<table>
+  <thead><tr><th>System</th><th>Archive</th></tr></thead>
+  <tbody>
+    <tr><td>Linux x86-64</td><td><a href="https://github.com/CirXe0N/natter/releases/download/v{{VERSION}}/natter_{{VERSION}}_linux_amd64.tar.gz"><code>natter_{{VERSION}}_linux_amd64.tar.gz</code></a></td></tr>
+    <tr><td>Linux ARM64</td><td><a href="https://github.com/CirXe0N/natter/releases/download/v{{VERSION}}/natter_{{VERSION}}_linux_arm64.tar.gz"><code>natter_{{VERSION}}_linux_arm64.tar.gz</code></a></td></tr>
+    <tr><td>macOS Apple silicon</td><td><a href="https://github.com/CirXe0N/natter/releases/download/v{{VERSION}}/natter_{{VERSION}}_darwin_arm64.tar.gz"><code>natter_{{VERSION}}_darwin_arm64.tar.gz</code></a></td></tr>
+    <tr><td>macOS Intel</td><td><a href="https://github.com/CirXe0N/natter/releases/download/v{{VERSION}}/natter_{{VERSION}}_darwin_amd64.tar.gz"><code>natter_{{VERSION}}_darwin_amd64.tar.gz</code></a></td></tr>
+    <tr><td>Windows x86-64</td><td><a href="https://github.com/CirXe0N/natter/releases/download/v{{VERSION}}/natter_{{VERSION}}_windows_amd64.zip"><code>natter_{{VERSION}}_windows_amd64.zip</code></a></td></tr>
+    <tr><td>Windows ARM64</td><td><a href="https://github.com/CirXe0N/natter/releases/download/v{{VERSION}}/natter_{{VERSION}}_windows_arm64.zip"><code>natter_{{VERSION}}_windows_arm64.zip</code></a></td></tr>
+  </tbody>
+</table>
+<p>Unpack it and put the binary somewhere on your <code>PATH</code>, for example on Linux or macOS:</p>
+<pre><code>tar xzf natter_{{VERSION}}_linux_amd64.tar.gz
+install -m 755 natter ~/.local/bin/</code></pre>
+
+<h2>Verify the download</h2>
+<p>Every release has a <code>checksums.txt</code> for the command-line archives and a <code>checksums-desktop.txt</code> for the desktop installers. Download the one that matches next to your file and check:</p>
+<pre><code>sha256sum -c checksums-desktop.txt --ignore-missing</code></pre>
+<p>On macOS use <code>shasum -a 256 -c …</code>. Each command-line archive also has an SBOM (<code>.sbom.json</code>) listing exactly what is inside.</p>
+
+<h2>Install from source</h2>
+<p>With Go 1.26 or newer, <code>go install</code> builds the command-line binary with the UI included:</p>
+<pre><code>go install github.com/CirXe0N/natter/cmd/natter@v{{VERSION}}</code></pre>
+<p>A binary you build yourself was never downloaded, so it gets no first-run warning. <code>go install</code> doesn't build the desktop window; use the installers for that.</p>
+
+<h2 id="first-run-warnings">First-run warnings on macOS and Windows</h2>
+<p>The desktop app and the release binaries aren't signed by Apple or Microsoft yet, so both systems warn the first time you run a downloaded copy. Verify the checksum first, then:</p>
+<h3>macOS</h3>
+<p>macOS says Apple could not check Natter for malicious software. Try to open it once, then open <strong>System Settings → Privacy &amp; Security</strong>, find the message about Natter and choose <strong>Open Anyway</strong>.</p>
+<p>For the command-line binary you can instead remove the quarantine flag your browser added, then run it again:</p>
+<pre><code>xattr -d com.apple.quarantine ./natter</code></pre>
+<p>A launcher entry made by <code>natter install-desktop</code> is created on your Mac, not downloaded, so it has no flag.</p>
+<h3>Windows</h3>
+<p>Running the installer or <code>natter.exe</code> from Explorer shows <strong>Windows protected your PC</strong>. Choose <strong>More info</strong>, then <strong>Run anyway</strong>. Or clear the downloaded-file mark first, in PowerShell:</p>
+<pre><code>Unblock-File .\natter.exe</code></pre>
+<div class="callout warn">
+  <p class="callout-title">Smart App Control</p>
+  <p>On Windows 11, Smart App Control can block unsigned programs without offering <strong>Run anyway</strong>. Natter then only runs with Smart App Control turned off, in <strong>Windows Security → App &amp; browser control</strong>.</p>
+</div>
+
+<h2>Next</h2>
+<p>Head to the <a href="{{ROOT}}docs/quick-start/">Quick start</a>.</p>

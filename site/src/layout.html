@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en" data-page="{{PAGE}}">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{TITLE}}</title>
+    <meta name="description" content="{{DESCRIPTION}}" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#0b0c0f" />
+    <meta property="og:title" content="{{TITLE}}" />
+    <meta property="og:description" content="{{DESCRIPTION}}" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="{{ROOT}}assets/screens/overview.webp" />
+    <link rel="icon" href="{{ROOT}}assets/icon.svg" type="image/svg+xml" />
+    <link rel="preload" href="{{ROOT}}assets/fonts/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href="{{ROOT}}assets/styles.css" />
+    <script src="{{ROOT}}assets/site.js" defer></script>
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+    {{HEADER}}
+    <main id="main">{{BODY}}</main>
+    {{FOOTER}}
+  </body>
+</html>

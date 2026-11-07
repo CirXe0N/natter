@@ -11,3 +11,4 @@ node_modules/
 /dist/
 /build/
 /THIRD_PARTY_LICENSES.txt
+/site/dist/
