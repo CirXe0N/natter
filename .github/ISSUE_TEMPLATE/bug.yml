@@ -1,0 +1,54 @@
+name: Bug report
+description: Natter does something wrong
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what Natter did instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Connect to a Context with …
+        2. Open …
+        3. …
+  - type: input
+    id: version
+    attributes:
+      label: Natter version
+      description: Shown at the bottom of the sidebar.
+      placeholder: v0.1.0
+    validations:
+      required: true
+  - type: dropdown
+    id: build
+    attributes:
+      label: How you run Natter
+      options:
+        - Release binary (natter or natter open)
+        - go install
+        - Desktop app (DMG, installer, deb, rpm, AppImage or AUR)
+        - Built from source
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: OS and browser
+      placeholder: Arch Linux, Hyprland, Chromium 142
+  - type: input
+    id: nats
+    attributes:
+      label: NATS™ server version
+      placeholder: "2.12.1, single server, JetStream on"
+  - type: textarea
+    id: logs
+    attributes:
+      label: Terminal output
+      description: What Natter printed. Remove secrets, tokens and the Launch token URL first.
+      render: text
