@@ -88,6 +88,8 @@ jobs:
         with: { pattern: desktop-*, path: dist/desktop, merge-multiple: true }
       - name: Signed update manifest
         if: env.UPDATER_SIGNING_KEY != ''
+        env:
+          CGO_ENABLED: "0" # the wails3 CLI otherwise links GTK 4 and WebKitGTK, which this runner lacks
         run: |
           v=${GITHUB_REF_NAME#v}
           key="$RUNNER_TEMP/updater.key"
