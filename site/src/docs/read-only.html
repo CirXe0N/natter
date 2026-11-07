@@ -1,0 +1,30 @@
+<!-- description: Read-only mode locks a Context so Natter refuses every change and every send while it is active. -->
+<p class="intro">Read-only mode is a per-Context lock. While a locked Context is active, Natter refuses every action that changes server state or data. Use it for anything that matters.</p>
+
+<h2>Turn it on</h2>
+<ul>
+  <li>Click the <strong>Writable</strong> chip on the Context's card on the Contexts page; it turns into an amber <strong>Read-only</strong> chip.</li>
+  <li>Or use the same chip at the right of the top bar for the active Context.</li>
+  <li>Or set it in the Context's <strong>Natter settings</strong> when you create or edit it.</li>
+</ul>
+<p>When it's on, the top bar turns amber, so you always know.</p>
+
+<h2>What it blocks</h2>
+<ul>
+  <li>Creating, editing, purging and deleting streams.</li>
+  <li>Creating, editing, pausing, resuming and deleting consumers.</li>
+  <li>Deleting messages.</li>
+  <li>Publishing, and sending requests: Natter can't know what a service does with a request.</li>
+  <li>Kicking a connection.</li>
+  <li>Writing or deleting a <code>nats</code> CLI context file.</li>
+</ul>
+<p>Blocked buttons stay visible and focusable, with the reason next to them, so nothing silently disappears.</p>
+
+<h2>What still works</h2>
+<ul>
+  <li>Everything that only reads: Overview, Connections, streams, consumers, the Message browser and the Live tail.</li>
+  <li>Browsing messages: its short-lived consumers change nothing. See <a href="{{ROOT}}docs/security/#browsing">Browsing</a>.</li>
+  <li>Saving and editing Example messages, which live in Natter's own files.</li>
+  <li>Managing Natter's own Contexts and the Vault.</li>
+</ul>
+<p>The lock is enforced by Natter's server, not just hidden in the UI, so a request from anywhere else is refused too.</p>

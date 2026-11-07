@@ -1,0 +1,35 @@
+<!-- description: Natter's desktop app: one window, a tray icon, single instance, updates, and what differs from the command-line binary. -->
+<p class="intro">The desktop app is Natter in a window of its own, with a tray icon and an installer. It runs the same server and the same UI as the command-line binary, so everything else in these docs applies to both.</p>
+
+<h2>Get it</h2>
+<p>Download the installer for your system from the <a href="{{ROOT}}docs/install/">Install</a> page, open Natter from your app launcher, and connect a <a href="{{ROOT}}docs/contexts/">Context</a>. There's no terminal and no token to copy.</p>
+
+<h2>How the window behaves</h2>
+<ul>
+  <li><strong>One window.</strong> Starting Natter again shows the window that's already open, instead of starting a second server.</li>
+  <li><strong>Closing hides it.</strong> Natter keeps running in the tray, so live updates and your connection stay up. Click the tray icon, or choose <strong>Open Natter</strong>, to bring the window back.</li>
+  <li><strong>Quit from the tray.</strong> Choose <strong>Quit Natter</strong> in the tray menu, or press <kbd>⌘Q</kbd> on macOS.</li>
+  <li><strong>Signed in for you.</strong> The app starts Natter's normal server on a free loopback port and opens the window with the <a href="{{ROOT}}docs/security/#launch-token">Launch token</a> already handed over. The token is never printed or put on a command line.</li>
+  <li><kbd>⌘K</kbd> (<kbd>Ctrl</kbd> <kbd>K</kbd> on Linux and Windows) opens the command palette, as in a browser.</li>
+</ul>
+
+<h2 id="updates">Updates</h2>
+<p>The macOS app, the Windows install and the Linux AppImage check for updates once a day, and when you choose <strong>Check for Updates…</strong> in the tray menu. They install only updates signed with Natter's release key. A deb, rpm or AUR install is updated by your package manager instead.</p>
+
+<h2>Linux notes</h2>
+<ul>
+  <li>The app needs GTK 4 and WebKitGTK 6.0. The deb, rpm and AUR packages pull them in; the AppImage expects them on the system.</li>
+  <li>On NVIDIA graphics, WebKitGTK can't draw through the DMA-BUF path, so the app turns that renderer off (<code>WEBKIT_DISABLE_DMABUF_RENDERER=1</code>) before the window opens.</li>
+</ul>
+
+<h2>Desktop app or command-line binary</h2>
+<table>
+  <thead><tr><th></th><th>Desktop app</th><th>Command-line <code>natter</code></th></tr></thead>
+  <tbody>
+    <tr><td>Window</td><td>Its own native window, with a tray icon</td><td>A browser tab or a Chrome, Edge, Brave or Chromium app window (<code>natter open</code>)</td></tr>
+    <tr><td>Sign-in</td><td>Automatic</td><td>Launch token URL, or <code>natter open</code></td></tr>
+    <tr><td>Port and address</td><td>A free loopback port</td><td><code>-port</code>, <code>-bind</code>, <code>-allowed-host</code></td></tr>
+    <tr><td>Flags</td><td>Takes <code>-vault-key</code>. Ignores <code>-bind</code>, <code>-port</code>, <code>-allowed-host</code>, <code>-dev</code> and <code>-redirect-file</code></td><td>All of them, see <a href="{{ROOT}}docs/command-line/">Command line</a></td></tr>
+    <tr><td>Best for</td><td>Your own machine</td><td>Servers, scripts, <code>go install</code></td></tr>
+  </tbody>
+</table>

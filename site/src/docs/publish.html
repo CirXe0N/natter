@@ -1,0 +1,46 @@
+<!-- description: Publish messages and send requests from Natter, with saved examples, placeholders, headers and repeat counts. -->
+<p class="intro">Publish / Request sends a message to a subject, or sends a request and shows the reply. Save what you send as Example messages and send them again whenever you need.</p>
+
+<figure>
+  <img src="{{ROOT}}assets/screens/publish.webp" width="1440" height="900" alt="The Publish / Request screen with an example message using placeholders." loading="lazy" />
+</figure>
+
+<h2>Send a message</h2>
+<ol>
+  <li>Choose <strong>Publish</strong> or <strong>Request</strong>.</li>
+  <li>Type the subject.</li>
+  <li>Write the payload. If it's JSON, Natter checks it and can <strong>Prettify</strong> it. The size is shown against the server's <code>max_payload</code>, and a message that's too large is refused before it is sent.</li>
+  <li>Add headers on the <strong>Headers</strong> tab if you need them.</li>
+  <li>Press <strong>Publish</strong> or <strong>Send</strong>, or <kbd>Ctrl</kbd>/<kbd>⌘</kbd> <kbd>Enter</kbd>.</li>
+</ol>
+<p>The copy button next to the subject gives the matching <code>nats pub</code> or <code>nats req</code> command.</p>
+
+<h2>Requests and replies</h2>
+<p>A request shows its reply payload on the <strong>Response</strong> tab. The other outcomes read differently so you can tell them apart: <strong>no responders</strong> (nothing is subscribed to the subject), <strong>timed out</strong> after the timeout you set, or refused by the server. The <strong>History</strong> tab lists what you sent with the active Context while Natter is open in this tab.</p>
+
+<h2>Send many</h2>
+<p>On the <strong>Repeat</strong> tab, set a <strong>count</strong> to send the message that many times, publishes and requests alike, and the request <strong>timeout</strong> in milliseconds. The result says how many were sent.</p>
+
+<h2 id="placeholders">Placeholders</h2>
+<p>A placeholder in the subject, a header value or the payload is replaced with a fresh value on every send. They use the same names as the <code>nats</code> CLI's templates, so the command Natter shows does the same.</p>
+<table>
+  <thead><tr><th>Placeholder</th><th>Becomes</th></tr></thead>
+  <tbody>
+    <tr><td><code>{{Count}}</code>, <code>{{Cnt}}</code></td><td>The number of this message within the send: 1, 2, 3…</td></tr>
+    <tr><td><code>{{ID}}</code></td><td>A unique ID (a NUID).</td></tr>
+    <tr><td><code>{{TimeStamp}}</code></td><td>The time as RFC 3339, such as <code>2026-11-01T21:44:29Z</code>.</td></tr>
+    <tr><td><code>{{Time}}</code></td><td>The time of day, such as <code>9:44PM</code>.</td></tr>
+    <tr><td><code>{{Unix}}</code>, <code>{{UnixNano}}</code></td><td>Unix time in seconds, or nanoseconds.</td></tr>
+    <tr><td><code>{{Random 10 20}}</code></td><td>A random string of letters and digits, 10 to 20 characters long.</td></tr>
+  </tbody>
+</table>
+<p>The chips under the editor insert them at the cursor. <strong>Preview next send</strong> shows the payload exactly as it would go out, rendered by the server. A broken placeholder is flagged before you send.</p>
+
+<h2 id="examples">Example messages</h2>
+<p>An Example message is a saved message (subject, headers, payload, and whether it's a publish or a request) that belongs to one Context. Open <strong>Examples</strong> to search and load them, grouped in folders.</p>
+<ul>
+  <li><strong>Save</strong> keeps your changes; the save-as button makes a new one.</li>
+  <li><strong>Copy to…</strong> copies examples to other Contexts, and <strong>Import from Context…</strong> brings them in. When a name already exists you choose to keep both, replace, or skip.</li>
+  <li>Recent examples appear as chips under the subject for one-click loading.</li>
+</ul>
+<p>Examples are stored in Natter's own files, so you can save and edit them even in <a href="{{ROOT}}docs/read-only/">Read-only mode</a>, though not send them.</p>

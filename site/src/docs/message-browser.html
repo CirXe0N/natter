@@ -1,0 +1,40 @@
+<!-- description: Browse the messages of any JetStream stream: filter, jump to a sequence or time, open a message, and save or delete it, without side effects. -->
+<p class="intro">The Message browser scrolls through a stream's messages, from a handful to hundreds of thousands, and opens any one of them. Looking changes nothing.</p>
+
+<figure>
+  <img src="{{ROOT}}assets/screens/messages.webp" width="1440" height="900" alt="The Message browser listing the messages of a stream." loading="lazy" />
+</figure>
+
+<h2>Pick a stream</h2>
+<p>Choose the stream in the page header. The choice is part of the address (<code>/messages?stream=ORDERS</code>), so you can reload or bookmark it. A stream's own <strong>Messages</strong> tab shows the same browser.</p>
+
+<h2>The table</h2>
+<p>Each row is one message: its sequence, when the server received it (UTC), subject, size, number of headers, and a preview of small payloads. Large and binary payloads say so instead: they load only when you open the message. Gaps in the sequence (deleted messages) are simply skipped.</p>
+<p>Scroll freely. Rows load in pages of 100 as you go, and at most 5,000 rows of metadata are kept in memory. On very long streams the scrollbar is scaled to fit, while the mouse wheel and keys still move row by row. The footer says which rows you're seeing.</p>
+
+<h2>Filter and jump</h2>
+<ul>
+  <li><strong>Subject filter</strong>: type a subject, with <code>*</code> and <code>&gt;</code> wildcards, and press <kbd>Enter</kbd>. The count updates to the matching messages.</li>
+  <li><strong>Jump to seq</strong>: type a sequence number and press <kbd>Enter</kbd>.</li>
+  <li><strong>Jump to time…</strong>: pick a date and time (UTC) to start from the first message after it.</li>
+</ul>
+<p>The copy button at the end of the toolbar gives the <code>nats stream view</code> command for what you're looking at.</p>
+
+<h2>Open a message</h2>
+<figure>
+  <img src="{{ROOT}}assets/screens/message.webp" width="1440" height="900" alt="An open message showing its subject, headers and payload." loading="lazy" />
+</figure>
+<p>Click a row. The message opens in a panel with its subject, stream, sequence, time and size, then its headers and payload.</p>
+<ul>
+  <li>Step to the previous or next message with <kbd>↑</kbd> / <kbd>↓</kbd> (or <kbd>k</kbd> / <kbd>j</kbd>), across pages and gaps. <kbd>Esc</kbd> closes it.</li>
+  <li>View the payload as <strong>Text</strong>, <strong>JSON</strong> (a folding tree) or <strong>Hex</strong>. A large payload shows its first 64 KB; choose <strong>Load full</strong> for the rest, or <strong>Download</strong> it.</li>
+  <li><strong>Save as example</strong> keeps it as an <a href="{{ROOT}}docs/publish/#examples">Example message</a> in the folder "from messages", ready to send again. This works for text payloads up to 512 KiB.</li>
+  <li><strong>Delete…</strong> removes it from the stream, optionally overwriting its data on disk (<strong>Erase</strong>). Blocked in <a href="{{ROOT}}docs/read-only/">Read-only mode</a>.</li>
+</ul>
+
+<h2 id="side-effects">No side effects</h2>
+<p>Natter reads messages through one short-lived, ordered consumer per open table. It acks nothing, moves no other consumer, and is deleted when you leave. It shows up on the Consumers screen labelled <strong>Natter browsing</strong> while it exists.</p>
+<div class="callout">
+  <p class="callout-title">Work-queue and interest streams</p>
+  <p>On these streams even a browsing consumer could change what is kept, so Natter lists their messages with Direct Get instead. That transfers every listed payload, so large messages load more slowly. The table says when this happens.</p>
+</div>

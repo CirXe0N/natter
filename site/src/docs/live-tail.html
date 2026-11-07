@@ -1,0 +1,22 @@
+<!-- description: Watch messages on a subject as they are published, rate-capped so a busy subject can't freeze the window. -->
+<p class="intro">Live tail shows messages on a subject as they're published, like <code>nats sub</code>, but with a cap so a busy subject can't flood the window. It tells you exactly what it didn't show.</p>
+
+<figure>
+  <img src="{{ROOT}}assets/screens/tail.webp" width="1440" height="900" alt="The Live tail screen streaming order events on orders.>." loading="lazy" />
+</figure>
+
+<h2>Start tailing</h2>
+<p>Type a subject in the filter, with <code>*</code> and <code>&gt;</code> wildcards (<code>orders.&gt;</code>), and press <kbd>Enter</kbd>. New messages appear at the top: time, subject and payload. Click one to see its headers and payload in the side panel. Natter keeps up to 64 MB of payloads and headers per tail; past that the oldest rows keep only their summary.</p>
+
+<h2>Controls</h2>
+<ul>
+  <li><strong>Pause</strong> stops the tail; <strong>Resume</strong> starts it again. Messages published while it was paused aren't shown, and Natter tells you how many you missed.</li>
+  <li><strong>Clear</strong> empties the list.</li>
+  <li><strong>Show rows containing…</strong> filters the rows already received by any text.</li>
+  <li>The copy button gives the matching <code>nats sub</code> command.</li>
+</ul>
+<p>The status dot is green while live, amber when paused, and red when something went wrong.</p>
+
+<h2>Limits</h2>
+<p>The tail shows at most <strong>1,000 messages a second</strong> and keeps the newest <strong>10,000</strong>. The meter shows the current rate. If messages arrive faster, the badge counts how many were dropped by the rate cap, and separately how many the client's pending limit dropped. A disconnect is noted in the list.</p>
+<p>Live tail only reads, so it works in <a href="{{ROOT}}docs/read-only/">Read-only mode</a>.</p>

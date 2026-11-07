@@ -1,0 +1,28 @@
+<!-- description: What Natter is, what it can do, and where to start. -->
+<p class="intro">Natter is a desktop app for NATS™ and JetStream that runs on your own machine. It shows you what your deployment is doing (servers, connections, streams, consumers and messages) and lets you act on it, with the matching <code>nats</code> command one click away.</p>
+
+<figure>
+  <img src="{{ROOT}}assets/screens/overview.webp" width="1440" height="900" alt="Natter's Overview screen with live rates, servers, busiest streams and consumers with lag." />
+  <figcaption>The Overview: live rates, server health, the busiest streams and the consumers falling behind.</figcaption>
+</figure>
+
+<h2>How it works</h2>
+<p>When you start Natter, it serves its UI on <code>127.0.0.1</code> and shows it in a window of its own (<a href="{{ROOT}}docs/desktop/">the desktop app</a>), or in a browser if you use the command-line binary. The window only ever talks to Natter, never to NATS directly, and Natter only accepts windows and browsers signed in with its <a href="{{ROOT}}docs/security/#launch-token">Launch token</a>.</p>
+<p>It connects through a <strong>Context</strong>: a server URL plus the credentials to reach it, exactly like a <code>nats</code> CLI context. Natter reads the contexts you already made with <code>nats context add</code>, and can keep its own. One Context is active at a time; switch from the sidebar or with <kbd>⌘K</kbd>.</p>
+
+<h2>What you can do</h2>
+<div class="cards">
+  <a href="{{ROOT}}docs/overview/">Overview &amp; Connections<span>Rates, servers, storage, and every client connected.</span></a>
+  <a href="{{ROOT}}docs/streams/">Streams<span>Create, edit, purge and delete JetStream streams.</span></a>
+  <a href="{{ROOT}}docs/consumers/">Consumers<span>See lag across every stream; manage every option.</span></a>
+  <a href="{{ROOT}}docs/message-browser/">Message browser<span>Scroll, filter and open messages without side effects.</span></a>
+  <a href="{{ROOT}}docs/publish/">Publish / Request<span>Send test messages and requests; save them as examples.</span></a>
+  <a href="{{ROOT}}docs/live-tail/">Live tail<span>Watch a subject live, rate-capped.</span></a>
+</div>
+
+<h2>Where to start</h2>
+<ol>
+  <li><a href="{{ROOT}}docs/install/">Install the desktop app</a> for your system.</li>
+  <li>Follow the <a href="{{ROOT}}docs/quick-start/">Quick start</a> to open it and connect to a server.</li>
+  <li>Read about <a href="{{ROOT}}docs/read-only/">Read-only mode</a> before you point it at production.</li>
+</ol>

@@ -1,0 +1,45 @@
+<!-- description: List, inspect, create, edit, purge and delete JetStream streams in Natter. -->
+<p class="intro">The Streams screen lists every JetStream stream in the active Context's account. Open one to see its state, config, consumers and messages.</p>
+
+<figure>
+  <img src="{{ROOT}}assets/screens/streams.webp" width="1440" height="900" alt="The Streams screen listing streams with subjects, storage, messages and size." loading="lazy" />
+</figure>
+
+<h2>Find a stream</h2>
+<p>Type a subject in the filter, such as <code>orders.&gt;</code> or <code>orders.*.new</code>, to see only the streams that store it. Each row shows the stream's subjects, storage, replicas, message count, size, consumers and last activity, with a health dot.</p>
+
+<h2>A stream's page</h2>
+<p>A stream has four tabs:</p>
+<ul>
+  <li><strong>Overview</strong>: messages, size, first and last sequence and time, deleted messages, subjects, consumers, storage, largest message allowed, replicas, sources and mirrors, and a tree of its subjects with counts.</li>
+  <li><strong>Config</strong>: the stream's full configuration.</li>
+  <li><strong>Consumers</strong>: its consumers and their lag. Manage them from <a href="{{ROOT}}docs/consumers/">Consumers</a>.</li>
+  <li><strong>Messages</strong>: the <a href="{{ROOT}}docs/message-browser/">Message browser</a> for this stream.</li>
+</ul>
+
+<h2>Create a stream</h2>
+<p>Choose <strong>New stream</strong> on the Streams screen. The form covers the settings you use most:</p>
+<table>
+  <thead><tr><th>Setting</th><th>Notes</th></tr></thead>
+  <tbody>
+    <tr><td>Name, description, subjects</td><td>One subject per line; <code>*</code> and <code>&gt;</code> wildcards are allowed.</td></tr>
+    <tr><td>Storage, retention</td><td>File or memory; limits, interest or work queue. Fixed once created.</td></tr>
+    <tr><td>When full, discard</td><td>Old or new messages.</td></tr>
+    <tr><td>Replicas</td><td>1, 3 or 5. More than one needs a cluster.</td></tr>
+    <tr><td>Max messages, bytes, age, message size, messages per subject, consumers</td><td>Empty means unlimited (or the server's default).</td></tr>
+    <tr><td>Duplicate window</td><td>How long repeated <code>Nats-Msg-Id</code> headers are dropped.</td></tr>
+    <tr><td>Allow direct get, allow roll-ups, deny delete, deny purge</td><td>On or off.</td></tr>
+  </tbody>
+</table>
+<p>Durations take values like <code>30s</code>, <code>15m</code>, <code>24h</code> or <code>7d</code>. Anything the server refuses is shown on the field it's about. Below the form is the <code>nats stream add</code> command that does the same.</p>
+
+<h2>Edit, purge and delete</h2>
+<p>The stream's header has <strong>Edit</strong>, <strong>Purge…</strong> and <strong>Delete…</strong>. Editing keeps any setting the form doesn't show (sources, mirrors, placement…) as it is.</p>
+<p><strong>Purge</strong> removes messages but keeps the stream and its consumers. Choose what to remove:</p>
+<ul>
+  <li>every message;</li>
+  <li>messages on one subject;</li>
+  <li>everything except the newest <em>N</em>;</li>
+  <li>everything before a sequence.</li>
+</ul>
+<p><strong>Delete</strong> removes the stream, its messages and its consumers. Both ask you to type the stream's name first, and both show the <code>nats</code> command.</p>

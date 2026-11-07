@@ -1,0 +1,43 @@
+<!-- description: Watch consumer lag across every stream, and create, edit, pause, resume and delete JetStream consumers with every option. -->
+<p class="intro">The Consumers screen answers "is anything falling behind?". It lists every consumer of every stream, most lag first, and it's where you create and manage them.</p>
+
+<figure>
+  <img src="{{ROOT}}assets/screens/consumers-list.webp" width="1440" height="500" alt="The Consumers screen listing consumers across streams with lag bars." loading="lazy" />
+</figure>
+
+<h2>The list</h2>
+<p>Each row shows the consumer and its stream, its filter subjects, ack policy, pending messages (the lag) with a bar, messages awaiting ack, redeliveries, waiting pulls and when it was last active. Badges mark paused, ephemeral and push consumers.</p>
+<ul>
+  <li>Filter by consumer, stream or subject.</li>
+  <li><strong>Show Natter's browsing consumers</strong> includes the short-lived consumers Natter's own Message browser uses. They're hidden by default and always labelled.</li>
+</ul>
+<p>A stream's <strong>Consumers</strong> tab shows the same table for that stream only.</p>
+
+<h2>A consumer's page</h2>
+<figure>
+  <img src="{{ROOT}}assets/screens/consumer.webp" width="1440" height="900" alt="A consumer's page with its stats and configuration." loading="lazy" />
+</figure>
+<p>Open a consumer to see its pending, ack pending, redelivered and waiting counts, delivered and ack-floor sequences, when it was created and last active, and its full configuration. From here you can:</p>
+<ul>
+  <li><strong>Pause</strong> it for 5 minutes, an hour or a day, and <strong>Resume</strong> it.</li>
+  <li><strong>Edit</strong> it.</li>
+  <li><strong>Delete</strong> it, after typing its name. It forgets its position, and every client using it loses it.</li>
+</ul>
+
+<h2>Create a consumer</h2>
+<p>Choose <strong>New consumer</strong> on the Consumers screen, pick the stream, and fill in what you need. Defaults match <code>nats consumer add --defaults</code>: durable, pull, explicit ack, from the first message.</p>
+<table>
+  <thead><tr><th>Section</th><th>Options</th></tr></thead>
+  <tbody>
+    <tr><td>Consumer</td><td>Name, durable or ephemeral, description, metadata (<code>key=value</code> lines).</td></tr>
+    <tr><td>Delivery</td><td>Pull or push, filter subjects, where to start (first, new, last, last per subject, a sequence or a time), replay instantly or at original timing, headers only, sample frequency.</td></tr>
+    <tr><td>Acknowledgement</td><td>Ack policy (explicit, all, none), ack wait, max deliveries, backoff delays, max ack pending.</td></tr>
+    <tr><td>Pull options</td><td>Max waiting pulls, max batch, max expires, max bytes per pull, priority groups (overflow, pinned client, prioritized) and the pinned TTL.</td></tr>
+    <tr><td>Push options</td><td>Deliver subject, deliver group, idle heartbeat, flow control, rate limit.</td></tr>
+    <tr><td>Storage</td><td>Replicas (empty inherits the stream's), inactive threshold, memory storage.</td></tr>
+  </tbody>
+</table>
+<p>Only the options for the type you picked are shown. The <strong>JSON</strong> view shows exactly what Natter will send, and below the form is the matching <code>nats consumer add</code> command. A name that's already taken is refused, so creating never silently changes an existing consumer.</p>
+
+<h2>Edit a consumer</h2>
+<p>Some settings can't change after a consumer exists. The form marks them <strong>fixed after create</strong>: type, where it starts, ack and replay policy, idle heartbeat, flow control, max waiting pulls and memory storage. Everything else can change, and the command shown becomes <code>nats consumer edit</code>.</p>

@@ -1,0 +1,42 @@
+<!-- description: Natter's commands, flags and the files it keeps. -->
+<p class="intro">The command-line binary, <code>natter</code>, has a few commands. Run <code>natter -h</code> for this list. The <a href="{{ROOT}}docs/desktop/">desktop app</a> starts from your launcher and ignores <code>-bind</code>, <code>-port</code>, <code>-allowed-host</code>, <code>-dev</code> and <code>-redirect-file</code>; it takes <code>-vault-key</code>.</p>
+
+<h2>Commands</h2>
+<table>
+  <thead><tr><th>Command</th><th>What it does</th></tr></thead>
+  <tbody>
+    <tr><td><code>natter</code></td><td>Serves Natter and prints its sign-in URL with the Launch token.</td></tr>
+    <tr><td><code>natter open</code></td><td>Opens Natter in a browser app window, starting it if it isn't running. The window is signed in; no token is printed.</td></tr>
+    <tr><td><code>natter install-desktop</code></td><td>Adds the command-line binary to the app launcher. The entry runs <code>natter open</code>. The desktop app's installers add their own entry.</td></tr>
+    <tr><td><code>natter uninstall-desktop</code></td><td>Removes the launcher entry again.</td></tr>
+  </tbody>
+</table>
+
+<h2>Flags</h2>
+<table>
+  <thead><tr><th>Flag</th><th>Default</th><th>Meaning</th></tr></thead>
+  <tbody>
+    <tr><td><code>-port</code></td><td><code>4280</code></td><td>Port to listen on. If it's taken, a free one is used.</td></tr>
+    <tr><td><code>-bind</code></td><td><code>127.0.0.1</code></td><td>Address to listen on.</td></tr>
+    <tr><td><code>-allowed-host</code></td><td></td><td>A hostname the browser may use besides <code>localhost</code>. Repeatable. Required when <code>-bind</code> isn't a loopback address.</td></tr>
+    <tr><td><code>-vault-key</code></td><td></td><td>An age identity file that unlocks the <a href="{{ROOT}}docs/vault/">Vault</a>. Create one with <code>age-keygen -pq -o natter.key</code>.</td></tr>
+    <tr><td><code>-redirect-file</code></td><td></td><td>With <code>open</code>: give the browser a file that redirects to the sign-in URL, so the token isn't on the browser's command line.</td></tr>
+    <tr><td><code>-dev</code></td><td></td><td>For working on Natter itself: trust the Vite dev server at <code>http://localhost:5173</code>.</td></tr>
+  </tbody>
+</table>
+<p><code>natter open</code> takes the same flags as <code>natter</code>; they apply only when it has to start the server.</p>
+
+<h2>Files</h2>
+<p>Natter keeps its state in <code>~/.config/natter/</code> (or <code>$XDG_CONFIG_HOME/natter/</code>) on every system:</p>
+<table>
+  <thead><tr><th>Path</th><th>Holds</th></tr></thead>
+  <tbody>
+    <tr><td><code>nats/context/*.json</code></td><td>Natter Contexts.</td></tr>
+    <tr><td><code>contexts.json</code></td><td>Each Context's Monitoring URL and Read-only setting.</td></tr>
+    <tr><td><code>active-context</code></td><td>Which Context to reconnect to at startup.</td></tr>
+    <tr><td><code>examples.json</code></td><td>Example messages.</td></tr>
+    <tr><td><code>vault.age</code></td><td>The encrypted Vault.</td></tr>
+    <tr><td><code>vault.key.age</code></td><td>The Vault key wrapped with your passphrase, if you set one.</td></tr>
+  </tbody>
+</table>
+<p>natscli's own contexts stay in <code>~/.config/nats/context/</code>.</p>
