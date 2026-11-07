@@ -2,7 +2,7 @@
 
 A local console for [NATS](https://nats.io): browse streams, consumers, messages and KV, publish, and live tail. One binary, no account, nothing leaves your machine.
 
-[Documentation](https://cirxe0n.github.io/natter/docs/)
+For full documentation, see the [Natter docs](https://cirxe0n.github.io/natter/docs/).
 
 ## Install
 
