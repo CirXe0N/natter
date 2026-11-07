@@ -19,8 +19,10 @@ emit() { # name version dir
 }
 go list -deps -f '{{with .Module}}{{if not .Main}}{{.Path}} {{.Version}} {{.Dir}}{{end}}{{end}}' ./cmd/natter |
   sort -u | while read -r path ver dir; do emit "$path" "$ver" "$dir"; done
-npm --prefix web ls --omit=dev --all --parseable --long 2>/dev/null | tail -n +2 |
-  while IFS=: read -r dir _; do
+# One path per line. Not --long: its ":" fields clash with Windows drive letters.
+npm --prefix web ls --omit=dev --all --parseable 2>/dev/null | tail -n +2 |
+  while read -r dir; do
+    command -v cygpath >/dev/null && dir=$(cygpath -u "$dir")
     emit "$(sed -n 's/.*"name": *"\([^"]*\)".*/\1/p' "$dir/package.json" | head -1)" \
          "$(sed -n 's/.*"version": *"\([^"]*\)".*/\1/p' "$dir/package.json" | head -1)" "$dir"
   done

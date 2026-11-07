@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test"
 
-test("Streams lists the account's streams, filters by subject, and opens one", async ({ page, context }) => {
-  await context.grantPermissions(["clipboard-read", "clipboard-write"])
+test("Streams lists the account's streams, filters by subject, and opens one", async ({ page, context, browserName }) => {
+  if (browserName === "chromium") await context.grantPermissions(["clipboard-read", "clipboard-write"])
   await page.request.put("/api/contexts/active", { data: { source: "cli", name: "app" } })
   await page.goto("/streams")
 
@@ -17,7 +17,9 @@ test("Streams lists the account's streams, filters by subject, and opens one", a
   await expect(table.getByRole("row")).toHaveCount(2) // header plus ORDERS
   const copy = page.getByRole("button", { name: "Copy as CLI: nats stream ls -a --subject 'orders.eu.*'" })
   await copy.click()
-  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("nats stream ls -a --subject 'orders.eu.*'")
+  await expect(copy.getByRole("status")).toHaveText("Copied")
+  // WebKit lets only a user's paste read the clipboard back.
+  if (browserName === "chromium") expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("nats stream ls -a --subject 'orders.eu.*'")
 
   await orders.getByRole("link", { name: "ORDERS" }).click()
   await expect(page).toHaveURL(/\/streams\/ORDERS$/)

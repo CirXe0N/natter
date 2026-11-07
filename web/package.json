@@ -8,7 +8,8 @@
     "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.node.json",
     "lint": "npm run typecheck && node scripts/check-styles.js",
     "test": "node --test 'src/**/*.test.ts'",
-    "e2e": "vite build && playwright test"
+    "e2e": "vite build && playwright test --project=chromium",
+    "e2e:webkit": "vite build && playwright test --project=webkit"
   },
   "dependencies": {
     "@base-ui/react": "1.9.0",

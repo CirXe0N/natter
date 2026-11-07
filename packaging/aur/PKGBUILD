@@ -1,0 +1,20 @@
+# AUR recipe for the desktop build. Set pkgver and the checksum from the
+# release's checksums, then publish it as natter-bin (docs/releasing.md).
+pkgname=natter-bin
+pkgver=0.0.0
+pkgrel=1
+pkgdesc="A UI for NATS™, in a window of its own"
+arch=(x86_64)
+url="https://github.com/CirXe0N/natter"
+depends=(gtk4 webkitgtk-6.0)
+provides=(natter)
+conflicts=(natter)
+source=("$url/releases/download/v$pkgver/natter-desktop_linux_amd64.tar.gz")
+sha256sums=(SKIP)
+
+package() {
+	install -Dm755 natter "$pkgdir/usr/bin/natter"
+	install -Dm644 io.github.cirxe0n.natter.desktop "$pkgdir/usr/share/applications/io.github.cirxe0n.natter.desktop"
+	install -Dm644 natter.png "$pkgdir/usr/share/icons/hicolor/512x512/apps/natter.png"
+	install -Dm644 THIRD_PARTY_LICENSES.txt "$pkgdir/usr/share/licenses/$pkgname/THIRD_PARTY_LICENSES.txt"
+}

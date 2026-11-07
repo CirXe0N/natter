@@ -38,3 +38,70 @@ jobs:
           MACOS_NOTARY_ISSUER_ID: ${{ secrets.MACOS_NOTARY_ISSUER_ID }}
           MACOS_NOTARY_KEY_ID: ${{ secrets.MACOS_NOTARY_KEY_ID }}
           MACOS_NOTARY_KEY: ${{ secrets.MACOS_NOTARY_KEY }}
+
+  # The desktop build needs cgo, so each OS builds on its own runner.
+  desktop:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run: { shell: bash }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: { go-version-file: go.mod }
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: npm, cache-dependency-path: web/package-lock.json }
+      - name: GTK4 and WebKitGTK 6.0
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libgtk-4-dev libwebkitgtk-6.0-dev libfuse2t64
+      - name: NSIS
+        if: runner.os == 'Windows'
+        run: command -v makensis || test -x "/c/Program Files (x86)/NSIS/makensis.exe" || choco install nsis -y --no-progress
+      - run: npm --prefix web ci && npm --prefix web run build
+      - name: Build and package
+        run: |
+          if [[ $GITHUB_REF == refs/tags/v* ]]; then export VERSION=${GITHUB_REF_NAME#v} LDVERSION=${GITHUB_REF_NAME#v}; fi
+          packaging/desktop.sh
+        env:
+          UPDATE_KEY: ${{ vars.UPDATER_PUBLIC_KEY }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ runner.os }}
+          path: dist/desktop/
+
+  desktop-publish:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [goreleaser, desktop]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write # upload to the draft release GoReleaser made
+    env:
+      UPDATER_SIGNING_KEY: ${{ secrets.UPDATER_SIGNING_KEY }} # job level: a step's if can't see its own env
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: { go-version-file: go.mod }
+      - uses: actions/download-artifact@v4
+        with: { pattern: desktop-*, path: dist/desktop, merge-multiple: true }
+      - name: Signed update manifest
+        if: env.UPDATER_SIGNING_KEY != ''
+        run: |
+          v=${GITHUB_REF_NAME#v}
+          key="$RUNNER_TEMP/updater.key"
+          printf '%s\n' "$UPDATER_SIGNING_KEY" >"$key"
+          go run github.com/wailsapp/wails/v3/cmd/wails3@v3.1.0 updater manifest -version "$v" -key "$key" \
+            -url-prefix "https://github.com/$GITHUB_REPOSITORY/releases/download/$GITHUB_REF_NAME/" \
+            -output dist/desktop/update-manifest.json \
+            dist/desktop/natter-desktop_darwin_universal.zip \
+            dist/desktop/natter-desktop_windows_amd64.exe \
+            dist/desktop/natter-desktop_linux_amd64.AppImage
+          rm "$key"
+      - name: Upload
+        run: |
+          (cd dist/desktop && sha256sum * >checksums-desktop.txt)
+          gh release upload "$GITHUB_REF_NAME" dist/desktop/* --clobber
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

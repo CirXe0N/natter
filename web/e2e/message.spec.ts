@@ -62,7 +62,9 @@ test("opening a 4 MB message shows 64 KB first, then the whole payload as a JSON
   await drawer.getByRole("link", { name: "Download" }).click()
   const d = await download
   expect(d.suggestedFilename()).toBe("BLOBS-1.bin")
-  expect(statSync(await d.path()).size).toBe(size)
+  const saved = test.info().outputPath(d.suggestedFilename()) // saveAs also works with a remote browser
+  await d.saveAs(saved)
+  expect(statSync(saved).size).toBe(size)
 
   // Next and Prev; a binary payload opens as hex.
   await drawer.getByRole("button", { name: "Next message" }).click()
@@ -75,6 +77,7 @@ test("opening a 4 MB message shows 64 KB first, then the whole payload as a JSON
 })
 
 test("Prev and Next cross page boundaries and gaps", async ({ page }) => {
+  test.setTimeout(180_000) // 250 Next clicks: 17 s on a fast machine, about 100 s in WebKit on a CI runner
   await activate(page)
   await page.goto("/streams/EVENTS/messages")
   const heading = page.getByRole("dialog").getByRole("heading")

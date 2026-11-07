@@ -74,6 +74,13 @@ func main() {
 	portSet := *dev // the Vite proxy targets the default port, so never fall back
 	flag.Visit(func(f *flag.Flag) { portSet = portSet || f.Name == "port" })
 
+	if windowApp != nil {
+		if err := windowApp(*vaultKey); err != nil {
+			fail(err)
+		}
+		return
+	}
+
 	var open func(launchURL string) error
 	if cmd == "open" {
 		detachConsole()
@@ -98,6 +105,27 @@ func main() {
 func fail(err error) {
 	fmt.Fprintln(os.Stderr, "natter:", err)
 	os.Exit(1)
+}
+
+// windowApp runs Natter in a window of its own. Only the desktop build sets
+// it, and then plain natter and natter open both use it.
+var windowApp func(vaultKey string) error
+
+// serveInBackground starts serve in a goroutine and waits until it hands
+// open the Launch token URL. errc then reports when the server stops. The URL
+// is never printed or put on a command line.
+func serveInBackground(serve func(open func(launchURL string) error) error) (launchURL string, errc <-chan error, err error) {
+	urlc := make(chan string, 1)
+	done := make(chan error, 1)
+	go func() {
+		done <- serve(func(u string) error { urlc <- u; return nil })
+	}()
+	select {
+	case u := <-urlc:
+		return u, done, nil
+	case err := <-done:
+		return "", nil, err
+	}
 }
 
 // run serves Natter. With open set, it hands open the Launch token URL

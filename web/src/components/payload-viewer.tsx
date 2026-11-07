@@ -158,8 +158,9 @@ function VirtualRows({ count, row, label }: { count: number; row: (i: number) =>
       aria-label={label}
       className="h-full overflow-y-auto"
       onScroll={(e) => {
-        const scrollTop = e.currentTarget.scrollTop
-        const t = follow(at.current, scrollTop, vh, height)
+        const { scrollTop, clientHeight } = e.currentTarget
+        // clientHeight, not vh: a scroll can land before the ResizeObserver first sets vh.
+        const t = follow(at.current, scrollTop, clientHeight, height)
         at.current = { scrollTop, top: t }
         setTop(t)
       }}
