@@ -17,7 +17,7 @@ test("Key-Value sits in the sidebar's JetStream group, after Message browser", a
   await expect(page).toHaveURL(/\/kv\/new$/)
 })
 
-test("create a bucket from Key-Value, see a bad name refused on its field, then open it", async ({ page }) => {
+test("create a bucket from Key-Value, see a bad name refused on its field, find it in the list and open it", async ({ page }) => {
   await page.request.put("/api/contexts/active", { data: { source: "cli", name: "app" } })
   try {
     await page.goto("/overview")
@@ -36,10 +36,7 @@ test("create a bucket from Key-Value, see a bad name refused on its field, then 
     await page.getByLabel("History", { exact: true }).fill("5")
     await page.getByLabel("TTL", { exact: true }).fill("1h")
     await page.getByRole("button", { name: "Create bucket" }).click()
-    await expect(page).toHaveURL(/\/kv\/scratch_kv$/)
-    await expect(page.getByText("This bucket has no keys.")).toBeVisible()
-
-    await page.getByRole("link", { name: "All buckets" }).click()
+    await expect(page).toHaveURL(/\/kv$/) // back to the bucket list, which shows it
     const row = page.getByRole("region", { name: "Buckets" }).getByRole("row").filter({ hasText: "scratch_kv" })
     await expect(row.getByRole("cell").nth(1)).toHaveText("5") // History
     await row.getByRole("link", { name: "scratch_kv" }).click()

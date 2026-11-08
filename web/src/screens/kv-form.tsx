@@ -19,9 +19,9 @@ export function NewBucketScreen() {
   const [local, setLocal] = useState<{ [key: string]: string }>({})
   const save = useMutation({
     mutationFn: (cfg: Config) => api.createBucket(cfg),
-    onSuccess: async (b) => {
+    onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ["kv", "buckets"] })
-      await navigate({ to: "/kv/$bucket", params: { bucket: b.bucket } })
+      await navigate({ to: "/kv" })
     },
   })
   const field = save.error instanceof ApiError ? save.error.field : undefined
