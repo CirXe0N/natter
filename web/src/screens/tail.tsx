@@ -9,6 +9,7 @@ import { CircleAlert, Funnel, X } from "lucide-react"
 import { api } from "@/api"
 import { Badge } from "@/components/badge"
 import { CopyCli } from "@/components/copy-cli"
+import { FilterField } from "@/components/filter-field"
 import { ScreenHeader } from "@/components/screen-header"
 import { Button } from "@/components/ui/button"
 import { refKey, useActiveContext } from "@/contexts"
@@ -67,15 +68,7 @@ function SubjectForm({ value, onApply }: { value: string; onApply: (subject: str
         onApply(draft.trim())
       }}
     >
-      <input
-        aria-label="Subject filter"
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        placeholder="orders.>"
-        autoComplete="off"
-        spellCheck={false}
-        className="h-7 w-48 rounded-md border bg-background px-2 font-mono placeholder:text-fg-faint focus-visible:border-primary/60"
-      />
+      <FilterField label="Subject filter" mono value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="orders.>" autoComplete="off" spellCheck={false} className="w-48" />
       {(draft.trim() !== value || !value) && (
         <Button type="submit" variant="ghost" size="sm" disabled={!draft.trim()}>
           Tail
@@ -131,11 +124,7 @@ function TailView({ filter, form }: { filter: string; form: ReactNode }) {
           <Button variant="ghost" size="sm" onClick={() => setRing((r) => ({ ...r, entries: [] }))}>
             Clear
           </Button>
-          <label className="flex h-7 items-center gap-1.5 rounded-md border bg-background px-2 focus-within:border-primary/60">
-            <Funnel size={12} aria-hidden className="text-fg-faint" />
-            <span className="sr-only">Show rows containing</span>
-            <input value={show} onChange={(e) => setShow(e.target.value)} placeholder="Show rows containing…" className="w-40 bg-transparent placeholder:text-fg-faint" />
-          </label>
+          <FilterField label="Show rows containing" icon={Funnel} value={show} onChange={(e) => setShow(e.target.value)} placeholder="Show rows containing…" className="w-48" />
           <span className="flex-1" />
           {stats && <Meter t={stats} />}
           <CopyCli cmd={`nats sub ${shellQuote(filter)}`} compact />

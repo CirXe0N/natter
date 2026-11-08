@@ -4,13 +4,13 @@
 import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { Link, useNavigate } from "@tanstack/react-router"
-import { Plus, Search } from "lucide-react"
+import { Funnel, Plus } from "lucide-react"
 
 import { api } from "@/api"
 import { Badge } from "@/components/badge"
 import { BlockedButton } from "@/components/blocked-button"
+import { FilterField } from "@/components/filter-field"
 import { ScreenHeader } from "@/components/screen-header"
-import { Input } from "@/components/ui/input"
 import { useActiveContext, useBlockedReason } from "@/contexts"
 import { count, LagBar, useAllConsumers } from "@/screens/overview"
 import { Ago, useRefresh } from "@/screens/streams"
@@ -50,10 +50,7 @@ export function ConsumersScreen() {
         ) : (
           <>
             <div className="flex flex-wrap items-center gap-3">
-              <div className="relative w-72">
-                <Search size={13} aria-hidden className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-fg-faint" />
-                <Input aria-label="Filter consumers" placeholder="Filter by stream, consumer or subject" value={q} onChange={(e) => setQ(e.target.value)} className="h-8 pl-8 text-xs md:text-xs" />
-              </div>
+              <FilterField label="Filter consumers" icon={Funnel} placeholder="Filter by stream, consumer or subject" value={q} onChange={(e) => setQ(e.target.value)} className="w-72" />
               <label className="flex items-center gap-2 text-xs text-muted-foreground">
                 <input type="checkbox" checked={natter} onChange={(e) => setNatter(e.target.checked)} />
                 Show Natter's browsing consumers

@@ -15,6 +15,7 @@ import { cn } from "cn"
 import { api } from "@/api"
 import { Badge } from "@/components/badge"
 import { CopyCli } from "@/components/copy-cli"
+import { FilterField } from "@/components/filter-field"
 import { ScreenHeader } from "@/components/screen-header"
 import { shellQuote } from "@/stream-config"
 import { Button } from "@/components/ui/button"
@@ -447,17 +448,16 @@ function SubjectFilter({ value, onApply }: { value: string; onApply: (filter: st
         onApply(draft.trim())
       }}
     >
-      <Funnel size={13} aria-hidden className="shrink-0 text-fg-faint" />
-      <label htmlFor="messages-subject" className="sr-only">
-        Subject
-      </label>
-      <input
-        id="messages-subject"
+      <FilterField
+        label="Subject"
+        icon={Funnel}
+        mono
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
         placeholder="Subject filter, e.g. orders.paid, orders.*, orders.>"
+        autoComplete="off"
         spellCheck={false}
-        className="h-7 w-80 rounded-md bg-transparent px-1 font-mono placeholder:font-sans placeholder:text-fg-faint"
+        className="w-80"
       />
       {draft.trim() !== value && (
         <Button type="submit" variant="outline" size="sm">
@@ -487,45 +487,36 @@ function JumpTo({ onJump }: { onJump: (to: { seq?: number; time?: string }) => v
   const [seq, setSeq] = useState("")
   const [time, setTime] = useState("")
   const [byTime, setByTime] = useState(false)
-  const pill = "flex h-7 items-center gap-1.5 rounded-md border pl-2"
   return (
     <>
       <form
-        className={pill}
         onSubmit={(e) => {
           e.preventDefault()
           const n = Number(seq.replace(/[,_\s]/g, ""))
           if (n >= 1) onJump({ seq: Math.floor(n) })
         }}
       >
-        <Hash size={12} aria-hidden className="text-fg-faint" />
-        <label htmlFor="jump-seq" className="sr-only">
-          Sequence
-        </label>
-        <input id="jump-seq" inputMode="numeric" value={seq} onChange={(e) => setSeq(e.target.value)} placeholder="Jump to seq" className="h-full w-24 bg-transparent font-mono placeholder:font-sans placeholder:text-fg-faint" />
-        <Button type="submit" variant="ghost" size="icon-xs" aria-label="Jump to sequence">
-          <ArrowRight aria-hidden />
-        </Button>
+        <FilterField label="Sequence" icon={Hash} mono inputMode="numeric" value={seq} onChange={(e) => setSeq(e.target.value)} placeholder="Jump to seq" className="w-38">
+          <Button type="submit" variant="ghost" size="icon-xs" aria-label="Jump to sequence">
+            <ArrowRight aria-hidden />
+          </Button>
+        </FilterField>
       </form>
       {byTime ? (
         <form
-          className={pill}
           onSubmit={(e) => {
             e.preventDefault()
             if (time) onJump({ time: new Date(`${time}Z`).toISOString() })
           }}
         >
-          <Clock size={12} aria-hidden className="text-fg-faint" />
-          <label htmlFor="jump-time" className="sr-only">
-            Time (UTC)
-          </label>
-          <input id="jump-time" type="datetime-local" step={1} autoFocus value={time} onChange={(e) => setTime(e.target.value)} className="h-full bg-transparent font-mono" />
-          <Button type="submit" variant="ghost" size="icon-xs" aria-label="Jump to time">
-            <ArrowRight aria-hidden />
-          </Button>
-          <Button type="button" variant="ghost" size="icon-xs" aria-label="Close time jump" onClick={() => setByTime(false)}>
-            <X aria-hidden />
-          </Button>
+          <FilterField label="Time (UTC)" icon={Clock} mono type="datetime-local" step={1} autoFocus value={time} onChange={(e) => setTime(e.target.value)} className="w-72">
+            <Button type="submit" variant="ghost" size="icon-xs" aria-label="Jump to time">
+              <ArrowRight aria-hidden />
+            </Button>
+            <Button type="button" variant="ghost" size="icon-xs" aria-label="Close time jump" onClick={() => setByTime(false)}>
+              <X aria-hidden />
+            </Button>
+          </FilterField>
         </form>
       ) : (
         <Button type="button" variant="outline" size="sm" onClick={() => setByTime(true)}>

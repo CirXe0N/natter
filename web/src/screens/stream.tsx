@@ -3,14 +3,14 @@
 import { useState, type ReactNode } from "react"
 import { keepPreviousData, useQuery } from "@tanstack/react-query"
 import { Link, Outlet, useParams } from "@tanstack/react-router"
-import { ChevronDown, ChevronRight } from "lucide-react"
+import { ChevronDown, ChevronRight, Funnel } from "lucide-react"
 
 import { api } from "@/api"
 import { CopyCli } from "@/components/copy-cli"
+import { FilterField } from "@/components/filter-field"
 import { shellQuote } from "@/stream-config"
 import { ScreenHeader } from "@/components/screen-header"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import type { StreamDetail } from "@/gen/api"
 import { bytes, count } from "@/screens/overview"
 import { Ago, HealthDot, KindBadge, useRefresh } from "@/screens/streams"
@@ -240,7 +240,7 @@ function Subjects({ s }: { s: StreamDetail }) {
   const tree = subs.data ? subjectTree(subs.data.subjects) : []
   return (
     <Section id="subjects-heading" title="Subjects">
-      <div className="flex flex-wrap items-center gap-2 border-b px-4 py-2.5">
+      <div className="flex flex-wrap items-center gap-2 border-b px-4 py-2 text-xs">
         <form
           className="flex items-center gap-2"
           onSubmit={(e) => {
@@ -248,11 +248,8 @@ function Subjects({ s }: { s: StreamDetail }) {
             setFilter(draft.trim() || ">")
           }}
         >
-          <label htmlFor="subject-filter" className="text-xs text-muted-foreground">
-            Filter
-          </label>
-          <Input id="subject-filter" value={draft} onChange={(e) => setDraft(e.target.value)} className="w-64 font-mono" />
-          <Button type="submit" variant="outline">
+          <FilterField label="Filter" icon={Funnel} mono value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Filter by subject, e.g. orders.>" autoComplete="off" spellCheck={false} className="w-64" />
+          <Button type="submit" variant="outline" size="sm">
             Show
           </Button>
         </form>

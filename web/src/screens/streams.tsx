@@ -3,14 +3,15 @@
 import { useState } from "react"
 import { keepPreviousData, useQuery } from "@tanstack/react-query"
 import { Link, useNavigate, useSearch } from "@tanstack/react-router"
+import { Funnel } from "lucide-react"
 
 import { api } from "@/api"
 import { Badge } from "@/components/badge"
 import { CopyCli } from "@/components/copy-cli"
+import { FilterField } from "@/components/filter-field"
 import { shellQuote } from "@/stream-config"
 import { ScreenHeader } from "@/components/screen-header"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import type { StreamHealth, StreamKind, StreamSummary } from "@/gen/api"
 import { usePaused } from "@/live"
 import { bytes, count, uptime } from "@/screens/overview"
@@ -60,21 +61,18 @@ function SubjectFilter({ value }: { value: string }) {
   return (
     <form
       role="search"
-      className="flex max-w-lg items-center gap-2"
+      className="flex items-center gap-2"
       onSubmit={(e) => {
         e.preventDefault()
         apply(draft.trim())
       }}
     >
-      <label htmlFor="stream-subject" className="shrink-0 text-xs text-muted-foreground">
-        Subject
-      </label>
-      <Input id="stream-subject" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="orders.> or orders.*.new" className="font-mono" />
-      <Button type="submit" variant="outline">
+      <FilterField label="Subject" icon={Funnel} mono value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Filter by subject, e.g. orders.> or orders.*.new" autoComplete="off" spellCheck={false} className="w-80" />
+      <Button type="submit" variant="outline" size="sm">
         Filter
       </Button>
       {value && (
-        <Button type="button" variant="ghost" onClick={() => apply("")}>
+        <Button type="button" variant="ghost" size="sm" onClick={() => apply("")}>
           Clear
         </Button>
       )}

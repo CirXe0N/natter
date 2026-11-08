@@ -5,15 +5,15 @@
 import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Link, useNavigate, useSearch } from "@tanstack/react-router"
-import { ArrowDown, ArrowUp, X } from "lucide-react"
+import { ArrowDown, ArrowUp, Funnel, X } from "lucide-react"
 
 import { api } from "@/api"
 import { BlockedButton } from "@/components/blocked-button"
+import { FilterField } from "@/components/filter-field"
 import { NotAvailable, sourceLabel } from "@/components/not-available"
 import { ScreenHeader } from "@/components/screen-header"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
 import { useActiveContext, useBlockedReason } from "@/contexts"
 import type { Connection, ConnectionState } from "@/gen/api"
 import { shellQuote } from "@/stream-config"
@@ -103,7 +103,7 @@ export function ConnectionsScreen() {
                     </Button>
                   ))}
                 </div>
-                <Input aria-label="Filter by account, user, name or subject" placeholder="Filter by account, user, name or subject" className="max-w-xs" value={filter} onChange={(e) => setFilter(e.target.value)} />
+                <FilterField label="Filter by account, user, name or subject" icon={Funnel} placeholder="Filter by account, user, name or subject" value={filter} onChange={(e) => setFilter(e.target.value)} className="w-80" />
                 <span role="status" className="text-xs text-muted-foreground">
                   {rows.length === data.connections.length ? `${rows.length} Connections` : `${rows.length} of ${data.connections.length} Connections`}
                 </span>
