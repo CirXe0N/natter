@@ -1,4 +1,4 @@
-// KV mutations: New bucket in the Key-Value header, Put key in the bucket header, Delete and Purge on an open key.
+// KV mutations: New bucket in the Key-Value header, Put key, Edit and Delete in the bucket header, Delete and Purge on an open key.
 // Purge drops the key's history, so it asks first; delete leaves a marker and does not.
 import { useId, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useBlockedReason } from "@/contexts";
+import { Confirm } from "@/screens/stream-actions";
 
 export function NewBucketButton() {
   const navigate = useNavigate();
@@ -25,6 +26,47 @@ export function NewBucketButton() {
     <BlockedButton reason={blocked} onClick={() => void navigate({ to: "/kv/new" })}>
       New bucket
     </BlockedButton>
+  );
+}
+
+// BucketActions are the bucket header's Edit and Delete, as on a stream. Delete asks for the bucket name first.
+export function BucketActions({ bucket }: { bucket: string }) {
+  const navigate = useNavigate();
+  const qc = useQueryClient();
+  const blocked = useBlockedReason();
+  const reason = useId();
+  const [open, setOpen] = useState(false);
+  const del = useMutation({
+    mutationFn: () => api.deleteBucket(bucket),
+    onSuccess: async () => {
+      await navigate({ to: "/kv" });
+      await qc.invalidateQueries({ queryKey: ["kv", "buckets"] });
+    },
+  });
+  const block = { disabled: !!blocked, focusableWhenDisabled: true, "aria-describedby": blocked ? reason : undefined } as const;
+  return (
+    <>
+      <Button variant="outline" {...block} onClick={() => void navigate({ to: "/kv/$bucket/edit", params: { bucket } })}>
+        Edit
+      </Button>
+      <Button variant="destructive" {...block} onClick={() => setOpen(true)}>
+        Delete…
+      </Button>
+      {blocked && (
+        <span id={reason} className="text-xs text-muted-foreground">
+          {blocked}
+        </span>
+      )}
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete {bucket}</DialogTitle>
+            <DialogDescription>Deletes the bucket, every key in it and their history.</DialogDescription>
+          </DialogHeader>
+          <Confirm name={bucket} verb="Delete bucket" danger="This cannot be undone." pending={del.isPending} error={del.error?.message} onConfirm={() => del.mutate()} />
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 

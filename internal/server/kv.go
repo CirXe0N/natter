@@ -23,10 +23,13 @@ import (
 func init() {
 	routes = append(routes,
 		route{pattern: "GET /api/kv", handle: (*server).listBuckets},
+		route{pattern: "GET /api/kv/{bucket}", handle: (*server).bucketConfig},
 		route{pattern: "GET /api/kv/{bucket}/keys/{key...}", handle: (*server).kvValue},
 		route{pattern: "GET /api/kv/{bucket}/history/{key...}", handle: (*server).kvHistory},
-		// No allowReadOnly on these three: Read-only mode refuses them.
+		// No allowReadOnly on these: Read-only mode refuses them.
 		route{pattern: "POST /api/kv", handle: (*server).createBucket},
+		route{pattern: "PUT /api/kv/{bucket}", handle: (*server).updateBucket},
+		route{pattern: "DELETE /api/kv/{bucket}", handle: (*server).deleteBucket},
 		route{pattern: "PUT /api/kv/{bucket}/keys/{key...}", handle: (*server).kvPut},
 		route{pattern: "DELETE /api/kv/{bucket}/keys/{key...}", handle: (*server).kvDelete},
 	)
@@ -59,18 +62,15 @@ func bucketRow(st jetstream.KeyValueStatus) api.KVBucket {
 	}
 }
 
-// createBucket makes a bucket from nats.go's KeyValueConfig JSON, ttl in
-// nanoseconds. A refusal names the config key it is about, as for streams.
+// createBucket makes a bucket from nats.go's KeyValueConfig JSON. A refusal
+// names the config key it is about, as for streams.
 func (s *server) createBucket(w http.ResponseWriter, r *http.Request) {
 	a := s.jetStream(w)
 	if a == nil {
 		return
 	}
-	var cfg jetstream.KeyValueConfig
-	dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxBody))
-	dec.DisallowUnknownFields()
-	if err := dec.Decode(&cfg); err != nil {
-		writeFieldError(w, fmt.Errorf("The bucket config is not valid JSON: %w", err), "")
+	cfg, ok := decodeBucket(w, r)
+	if !ok {
 		return
 	}
 	// The server takes a create with an existing bucket's exact config as a no-op, so check first.
@@ -86,13 +86,92 @@ func (s *server) createBucket(w http.ResponseWriter, r *http.Request) {
 	case errors.Is(err, jetstream.ErrInvalidBucketName):
 		writeFieldError(w, errors.New("A bucket name is letters, numbers, - and _."), "bucket")
 		return
-	case errors.Is(err, jetstream.ErrHistoryTooLarge):
-		writeFieldError(w, errors.New("A bucket keeps at most 64 revisions per key."), "history")
-		return
 	case err != nil:
-		writeHintedError(w, err, bucketHints)
+		writeBucketError(w, err)
 		return
 	}
+	writeBucketRow(w, r, kv)
+}
+
+// bucketConfig sends the bucket's config in the shape create and update take, for the edit form.
+func (s *server) bucketConfig(w http.ResponseWriter, r *http.Request) {
+	_, kv := s.bucket(w, r)
+	if kv == nil {
+		return
+	}
+	st, err := kv.Status(r.Context())
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, st.Config())
+}
+
+// updateBucket replaces the bucket's config. The server refuses to change its storage.
+func (s *server) updateBucket(w http.ResponseWriter, r *http.Request) {
+	a := s.jetStream(w)
+	if a == nil {
+		return
+	}
+	cfg, ok := decodeBucket(w, r)
+	if !ok {
+		return
+	}
+	if cfg.Bucket != r.PathValue("bucket") {
+		writeFieldError(w, errors.New("A bucket cannot be renamed."), "bucket")
+		return
+	}
+	kv, err := a.JS.UpdateKeyValue(r.Context(), cfg)
+	switch {
+	case errors.Is(err, jetstream.ErrBucketNotFound):
+		writeKVError(w, a, r, err)
+		return
+	case err != nil:
+		writeBucketError(w, err)
+		return
+	}
+	writeBucketRow(w, r, kv)
+}
+
+// deleteBucket removes the bucket and every value in it, once the body repeats its name.
+func (s *server) deleteBucket(w http.ResponseWriter, r *http.Request) {
+	var body api.StreamDelete
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxBody)).Decode(&body); err != nil {
+		http.Error(w, "The delete request is not valid JSON.", http.StatusBadRequest)
+		return
+	}
+	a := s.jetStream(w)
+	if a == nil || !confirmed(w, body.Confirm, r.PathValue("bucket")) {
+		return
+	}
+	if err := a.JS.DeleteKeyValue(r.Context(), r.PathValue("bucket")); err != nil {
+		writeKVError(w, a, r, err)
+		return
+	}
+	writeJSON(w, struct{}{})
+}
+
+// decodeBucket reads nats.go's KeyValueConfig JSON, ttl in nanoseconds,
+// refusing unknown keys so a typo cannot be silently dropped.
+func decodeBucket(w http.ResponseWriter, r *http.Request) (cfg jetstream.KeyValueConfig, ok bool) {
+	dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxBody))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&cfg); err != nil {
+		writeFieldError(w, fmt.Errorf("The bucket config is not valid JSON: %w", err), "")
+		return cfg, false
+	}
+	return cfg, true
+}
+
+func writeBucketError(w http.ResponseWriter, err error) {
+	if errors.Is(err, jetstream.ErrHistoryTooLarge) {
+		writeFieldError(w, errors.New("A bucket keeps at most 64 revisions per key."), "history")
+		return
+	}
+	writeHintedError(w, err, bucketHints)
+}
+
+func writeBucketRow(w http.ResponseWriter, r *http.Request, kv jetstream.KeyValue) {
 	st, err := kv.Status(r.Context())
 	if err != nil {
 		writeError(w, err)

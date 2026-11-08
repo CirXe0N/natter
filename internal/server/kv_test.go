@@ -173,7 +173,7 @@ func TestKV(t *testing.T) {
 	}
 
 	// Put, delete and purge are refused under Read-only mode and work without it.
-	for _, m := range []string{"PUT /api/kv/config/keys/m", "DELETE /api/kv/config/keys/m", "POST /api/kv"} {
+	for _, m := range []string{"PUT /api/kv/config/keys/m", "DELETE /api/kv/config/keys/m", "POST /api/kv", "PUT /api/kv/config", "DELETE /api/kv/config"} {
 		meth, path, _ := strings.Cut(m, " ")
 		code, body = call(meth, path, "x")
 		want(m+" under Read-only", code, body, 403, "")
@@ -234,4 +234,46 @@ func TestKV(t *testing.T) {
 	want("a server refusal", code, body, 400, `"field":"num_replicas"`)
 	code, body = call("POST", "/api/kv", `{"bucket":"typo","histroy":5}`)
 	want("an unknown key", code, body, 400, "histroy")
+
+	// Edit reads the bucket's config, changes it and puts it back.
+	code, body = call("GET", "/api/kv/fresh", "")
+	var cfg map[string]any
+	if err := json.Unmarshal([]byte(body), &cfg); code != 200 || err != nil {
+		t.Fatalf("config: %d %s", code, body)
+	}
+	if cfg["bucket"] != "fresh" || cfg["history"] != 5.0 || cfg["ttl"] != 6e10 || cfg["description"] != "for tests" {
+		t.Errorf("config %v", cfg)
+	}
+	put := func(change map[string]any) (int, string) {
+		c := maps.Clone(cfg)
+		maps.Copy(c, change)
+		b, _ := json.Marshal(c)
+		return call("PUT", "/api/kv/fresh", string(b))
+	}
+	code, body = put(map[string]any{"history": 7, "description": "changed"})
+	want("update", code, body, 200, `"history":7`)
+	if st, _ := js.KeyValue(ctx, "fresh"); st == nil {
+		t.Error("updated bucket is gone")
+	} else if s, _ := st.Status(ctx); s.History() != 7 || s.Config().Description != "changed" || s.Config().MaxValueSize != 1024 {
+		t.Errorf("after update %+v", s.Config())
+	}
+	code, body = put(map[string]any{"storage": "memory"})
+	want("a fixed field", code, body, 400, `"field":"storage"`)
+	code, body = put(map[string]any{"bucket": "renamed"})
+	want("a rename", code, body, 400, `"field":"bucket"`)
+	code, body = call("PUT", "/api/kv/nope", `{"bucket":"nope"}`)
+	want("update a missing bucket", code, body, 404, "no bucket named nope")
+	code, body = call("GET", "/api/kv/nope", "")
+	want("config of a missing bucket", code, body, 404, "no bucket named nope")
+
+	// Delete asks for the name, as stream delete does.
+	code, body = call("DELETE", "/api/kv/fresh", `{"confirm":"fres"}`)
+	want("delete without the name", code, body, 400, "Type the name")
+	code, body = call("DELETE", "/api/kv/fresh", `{"confirm":"fresh"}`)
+	want("delete", code, body, 200, "")
+	if _, err := js.KeyValue(ctx, "fresh"); !errors.Is(err, jetstream.ErrBucketNotFound) {
+		t.Errorf("after delete: %v", err)
+	}
+	code, body = call("DELETE", "/api/kv/fresh", `{"confirm":"fresh"}`)
+	want("delete a missing bucket", code, body, 404, "no bucket named fresh")
 }

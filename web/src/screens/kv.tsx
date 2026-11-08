@@ -16,7 +16,7 @@ import { TopicKV, type KVEntry, type KVOp } from "@/gen/api"
 import { subscribe, usePaused } from "@/live"
 import { bytes, count } from "@/screens/overview"
 import { Ago, useRefresh } from "@/screens/streams"
-import { KeyActions, NewBucketButton, PutKey } from "@/screens/kv-actions"
+import { BucketActions, KeyActions, NewBucketButton, PutKey } from "@/screens/kv-actions"
 
 const th = "px-3 py-2 text-left text-[11px] font-medium text-muted-foreground"
 const td = "h-(--row-h) px-3"
@@ -127,6 +127,7 @@ function Bucket({ bucket }: { bucket: string }) {
           All buckets
         </Link>
         <PutKey bucket={bucket} />
+        <BucketActions bucket={bucket} />
       </ScreenHeader>
       <div className={`grid gap-5 px-8 pb-8 ${open ? "grid-cols-[minmax(0,1fr)_minmax(22rem,32rem)]" : ""}`}>
         <div className="min-w-0 space-y-4">

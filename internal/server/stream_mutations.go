@@ -81,7 +81,7 @@ func (s *server) writeSummary(w http.ResponseWriter, st *jsm.Stream) {
 // The UI asks for it, and the API asks too so a stray request cannot wipe data.
 func confirmed(w http.ResponseWriter, got, name string) bool {
 	if got != name {
-		http.Error(w, "Type the stream name in confirm to do this.", http.StatusBadRequest)
+		http.Error(w, "Type the name in confirm to do this.", http.StatusBadRequest)
 		return false
 	}
 	return true

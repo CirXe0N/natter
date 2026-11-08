@@ -9,7 +9,18 @@ const blank = () => toValues(bucketDefaults, bucketFields)
 test("a new bucket starts with one revision per key, file storage and one replica", () => {
   const { config, errors } = toBucket({ ...blank(), bucket: "sessions" })
   assert.deepEqual(errors, {})
-  assert.deepEqual(config, { bucket: "sessions", description: "", history: 1, ttl: 0, max_value_size: 0, max_bytes: 0, storage: "file", num_replicas: 1, compression: false })
+  assert.deepEqual(config, { bucket: "sessions", description: "", history: 1, ttl: 0, max_value_size: -1, max_bytes: -1, storage: "file", num_replicas: 1, compression: false })
+})
+
+test("an edit lays the form over the bucket's config, keeping keys the form does not show", () => {
+  // As GET /api/kv/{bucket} sends it: no limit is -1, and file storage is left out.
+  const current = { bucket: "sessions", history: 5, ttl: 36e11, max_value_size: -1, max_bytes: -1, num_replicas: 1, metadata: { team: "web" } }
+  const base = { ...bucketDefaults, ...current }
+  const v = toValues(base, bucketFields)
+  assert.deepEqual([v.max_value_size, v.max_bytes, v.ttl, v.storage], ["", "", "1h", "file"])
+  const { config, errors } = toBucket({ ...v, history: "7" }, base)
+  assert.deepEqual(errors, {})
+  assert.deepEqual([config.history, config.metadata, config.max_bytes], [7, { team: "web" }, -1])
 })
 
 test("the name must be letters, numbers, - and _, as NATS requires", () => {

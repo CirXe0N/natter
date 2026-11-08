@@ -15,7 +15,7 @@ import { EditStream, NewStreamScreen } from "@/screens/stream-form"
 import { MessageBrowserScreen, StreamMessages } from "@/screens/messages"
 import { PublishScreen } from "@/screens/publish"
 import { BucketScreen, KVScreen } from "@/screens/kv"
-import { NewBucketScreen } from "@/screens/kv-form"
+import { EditBucketScreen, NewBucketScreen } from "@/screens/kv-form"
 import { TailScreen } from "@/screens/tail"
 
 // Each screen is one route here. staticData.title names it in the top bar,
@@ -45,6 +45,7 @@ const routeTree = root.addChildren([
   createRoute({ ...screen, path: "/contexts/new", staticData: { title: "New Context" }, component: NewContextScreen }),
   createRoute({ ...screen, path: "/contexts/$source/$name/edit", staticData: { title: "Edit Context" }, component: EditContextScreen }),
   createRoute({ ...screen, path: "/kv/$bucket", staticData: { title: "Key-Value" }, component: BucketScreen }),
+  createRoute({ ...screen, path: "/kv/$bucket/edit", staticData: { title: "Edit bucket" }, component: EditBucketScreen }),
   stream.addChildren([
     createRoute({ getParentRoute: () => stream, path: "/", staticData: { title: "Stream" }, component: StreamOverview }),
     createRoute({ getParentRoute: () => stream, path: "config", staticData: { title: "Stream" }, component: StreamConfig }),
