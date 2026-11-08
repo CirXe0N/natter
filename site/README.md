@@ -21,7 +21,11 @@ python3 -m http.server -d site/dist 8099  # preview at http://127.0.0.1:8099
   `<!-- description: … -->` comment, no `<h1>`) and add it to `nav` in
   `build.mjs`. Every `<h2>` lands in "On this page".
 - **Screenshots** in `src/assets/screens/` are real captures of the app
-  against `internal/e2eserver`, at 2× and saved as WebP.
+  against `internal/e2eserver`, at 2× and saved as WebP. `node site/capture.mjs`
+  rebuilds `web`, starts the server with demo order traffic and recaptures
+  them all; name some (`node site/capture.mjs tail publish`) to redo only
+  those. It needs Go, ImageMagick and `npm ci` plus `npx playwright install
+  chromium` in `web`.
 
 ## Publish
 
