@@ -32,6 +32,28 @@ const appID = "io.github.cirxe0n.natter"
 
 func init() { windowApp = openWindow }
 
+// noContextMenuJS hides the webview's own right-click menu (Back, Reload,
+// Inspect) everywhere but in text fields, which keep Cut, Copy and Paste.
+// DefaultContextMenuDisabled is no use: only Windows reads it, and there it
+// also kills the menu in text fields.
+//
+// Wails runs WebviewWindowOptions.JS after each page load on Linux and macOS,
+// but on Windows only for HTML windows, so openWindow also runs the script on
+// every Windows navigation. That event fires for same-document navigations
+// too, so the flag keeps one document from collecting several listeners.
+const noContextMenuJS = `if (!window.__natterNoContextMenu) {
+  window.__natterNoContextMenu = true;
+  const textInput = /^(text|search|email|url|tel|password|number)$/;
+  document.addEventListener('contextmenu', (e) => {
+    const t = e.target;
+    const inTextField = t instanceof Element && (
+      t.closest('textarea') !== null ||
+      t.isContentEditable ||
+      (t.closest('input') !== null && textInput.test(t.closest('input').type)));
+    if (!inTextField) e.preventDefault();
+  }, true);
+}`
+
 // openWindow serves Natter on a loopback port and shows it in a Wails window. The webview loads Natter's own server, so the Launch
 // token, Host and Origin checks stay on, and Wails' asset server serves
 // nothing.
@@ -76,6 +98,10 @@ func openWindow(vaultKey string) error {
 		Height:    800,
 		MinWidth:  720,
 		MinHeight: 480,
+		JS:        noContextMenuJS,
+	})
+	win.OnWindowEvent(events.Windows.WebViewNavigationCompleted, func(*application.WindowEvent) {
+		win.ExecJS(noContextMenuJS)
 	})
 	// Closing hides the window, so the server, its live updates and the
 	// webview stay up until Quit. Natter comes back from the tray or the launcher.
