@@ -84,24 +84,29 @@ function BucketForm({ base, editing }: { base: Config; editing?: boolean }) {
       {bucketFields.map((f) => (
         <FieldRow key={f.key} f={f} value={values[f.key]} disabled={editing && f.fixed} error={problems[f.key]} onChange={(v) => setValues({ ...values, [f.key]: v })} />
       ))}
-      {general && (
-        <p role="alert" className="text-xs text-destructive">
-          {general}
-        </p>
-      )}
-      <div className="flex flex-wrap items-center gap-3 pt-2">
-        {editing ? (
-          <Link to="/kv/$bucket" params={{ bucket: name }} className={buttonVariants({ variant: "outline" })}>
-            Cancel
-          </Link>
-        ) : (
-          <Link to="/kv" className={buttonVariants({ variant: "outline" })}>
-            Cancel
-          </Link>
-        )}
-        <BlockedButton type="submit" reason={blocked} disabled={save.isPending}>
-          {editing ? "Save changes" : "Create bucket"}
-        </BlockedButton>
+      {/* Under the fields, not the labels: the same columns as FieldRow. */}
+      <div className="grid grid-cols-[14rem_1fr] gap-4 pt-2">
+        <div className="col-start-2 space-y-3">
+          {general && (
+            <p role="alert" className="text-xs text-destructive">
+              {general}
+            </p>
+          )}
+          <div className="flex flex-wrap items-center gap-3">
+            <BlockedButton type="submit" reason={blocked} disabled={save.isPending}>
+              {editing ? "Save changes" : "Create bucket"}
+            </BlockedButton>
+            {editing ? (
+              <Link to="/kv/$bucket" params={{ bucket: name }} className={buttonVariants({ variant: "outline" })}>
+                Cancel
+              </Link>
+            ) : (
+              <Link to="/kv" className={buttonVariants({ variant: "outline" })}>
+                Cancel
+              </Link>
+            )}
+          </div>
+        </div>
       </div>
     </form>
   )
