@@ -6,7 +6,6 @@ import { useNavigate } from "@tanstack/react-router";
 
 import { api } from "@/api";
 import { BlockedButton } from "@/components/blocked-button";
-import { CopyCli } from "@/components/copy-cli";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -18,7 +17,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useBlockedReason } from "@/contexts";
-import { shellQuote } from "@/stream-config";
 
 export function NewBucketButton() {
   const navigate = useNavigate();
@@ -82,9 +80,6 @@ export function PutKey({ bucket, name }: { bucket: string; name?: string }) {
                 className="rounded-md border bg-background p-2 font-mono text-xs"
               />
             </label>
-            <CopyCli
-              cmd={`nats kv put ${shellQuote(bucket)} ${shellQuote(key || "<key>")} ${shellQuote(value)}`}
-            />
             {put.error && (
               <p role="alert" className="text-xs text-destructive">
                 {put.error.message}
@@ -146,9 +141,6 @@ export function KeyActions({ bucket, name }: { bucket: string; name: string }) {
           {blocked}
         </span>
       )}
-      <CopyCli
-        cmd={`nats kv del ${shellQuote(bucket)} ${shellQuote(name)} --force`}
-      />
       {del.error && (
         <p role="alert" className="w-full text-xs text-destructive">
           {del.error.message}
@@ -163,9 +155,6 @@ export function KeyActions({ bucket, name }: { bucket: string; name: string }) {
               undone.
             </DialogDescription>
           </DialogHeader>
-          <CopyCli
-            cmd={`nats kv purge ${shellQuote(bucket)} ${shellQuote(name)} --force`}
-          />
           {purge.error && (
             <p role="alert" className="text-xs text-destructive">
               {purge.error.message}

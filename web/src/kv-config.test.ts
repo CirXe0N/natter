@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
 
-import { bucketCli, bucketDefaults, bucketFields, toBucket } from "./kv-config.ts"
+import { bucketDefaults, bucketFields, toBucket } from "./kv-config.ts"
 import { toValues } from "./stream-config.ts"
 
 const blank = () => toValues(bucketDefaults, bucketFields)
@@ -25,8 +25,8 @@ test("history keeps 1 to 64 revisions", () => {
   assert.equal(toBucket({ ...blank(), bucket: "b", history: "x" }).errors.history, "Enter a whole number.")
 })
 
-test("the CLI command is nats kv add with only the flags that differ from its defaults", () => {
-  assert.equal(bucketCli(toBucket(blank()).config), "nats kv add NAME")
-  const { config } = toBucket({ ...blank(), bucket: "sessions", description: "web sessions", history: "5", ttl: "1h", max_value_size: "1024", max_bytes: "1048576", storage: "memory", num_replicas: "3", compression: true })
-  assert.equal(bucketCli(config), "nats kv add sessions --description 'web sessions' --history 5 --ttl 1h --max-value-size 1024 --max-bucket-size 1048576 --storage memory --replicas 3 --compress")
+test("filled fields become the bucket config, with sizes and TTL in their units", () => {
+  const { config, errors } = toBucket({ ...blank(), bucket: "sessions", description: "web sessions", history: "5", ttl: "1h", max_value_size: "1024", max_bytes: "1048576", storage: "memory", num_replicas: "3", compression: true })
+  assert.deepEqual(errors, {})
+  assert.deepEqual(config, { bucket: "sessions", description: "web sessions", history: 5, ttl: 36e11, max_value_size: 1024, max_bytes: 1048576, storage: "memory", num_replicas: 3, compression: true })
 })

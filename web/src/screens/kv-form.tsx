@@ -5,10 +5,9 @@ import { Link, useNavigate } from "@tanstack/react-router"
 
 import { ApiError, api } from "@/api"
 import { BlockedButton } from "@/components/blocked-button"
-import { CopyCli } from "@/components/copy-cli"
 import { ScreenHeader } from "@/components/screen-header"
 import { useBlockedReason } from "@/contexts"
-import { bucketCli, bucketDefaults, bucketFields, toBucket } from "@/kv-config"
+import { bucketDefaults, bucketFields, toBucket } from "@/kv-config"
 import { FieldRow } from "@/screens/stream-form"
 import { toValues, type Config, type Values } from "@/stream-config"
 
@@ -59,7 +58,6 @@ export function NewBucketScreen() {
             <BlockedButton type="submit" reason={blocked} disabled={save.isPending}>
               Create bucket
             </BlockedButton>
-            <CopyCli cmd={bucketCli(toBucket(values).config)} />
           </div>
         </form>
       </div>

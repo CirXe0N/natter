@@ -12,7 +12,6 @@ test("put, delete and purge a key, and Read-only blocks all three", async ({ pag
   const dialog = page.getByRole("dialog", { name: /Put a value in sessions/ })
   await dialog.getByLabel("Key", { exact: true }).fill("e2e.note")
   await dialog.getByLabel("Value").fill("hello")
-  await expect(dialog.getByRole("button", { name: /Copy as CLI: nats kv put sessions e2e\.note hello/ })).toBeVisible()
   await dialog.getByRole("button", { name: "Put", exact: true }).click()
   await key("e2e.note").click() // appears without a reload
   const detail = page.getByRole("region", { name: "Key e2e.note" })
@@ -44,7 +43,6 @@ test("put, delete and purge a key, and Read-only blocks all three", async ({ pag
   await key("e2e.note").click()
   await detail.getByRole("button", { name: "Purge…" }).click()
   const confirm = page.getByRole("dialog", { name: "Purge e2e.note" })
-  await expect(confirm.getByRole("button", { name: /Copy as CLI: nats kv purge sessions e2e\.note --force/ })).toBeVisible()
   await confirm.getByRole("button", { name: "Purge key" }).click()
   await expect(key("e2e.note")).toHaveCount(0)
 })

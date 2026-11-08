@@ -25,7 +25,6 @@ test("create a bucket from Key-Value, see a bad name refused on its field, then 
     await page.getByRole("button", { name: "New bucket" }).click()
     await expect(page).toHaveURL(/\/kv\/new$/)
     await expect(page.getByRole("heading", { level: 1, name: "New bucket" })).toBeVisible()
-    await expect(page.getByRole("button", { name: "Copy as CLI: nats kv add NAME" })).toBeVisible()
 
     const name = page.getByLabel("Name", { exact: true })
     await name.fill("scratch.kv")
@@ -36,7 +35,6 @@ test("create a bucket from Key-Value, see a bad name refused on its field, then 
     await name.fill("scratch_kv")
     await page.getByLabel("History", { exact: true }).fill("5")
     await page.getByLabel("TTL", { exact: true }).fill("1h")
-    await expect(page.getByRole("button", { name: "Copy as CLI: nats kv add scratch_kv --history 5 --ttl 1h" })).toBeVisible()
     await page.getByRole("button", { name: "Create bucket" }).click()
     await expect(page).toHaveURL(/\/kv\/scratch_kv$/)
     await expect(page.getByText("This bucket has no keys.")).toBeVisible()

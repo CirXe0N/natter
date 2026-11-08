@@ -25,7 +25,6 @@ test("a bucket's keys update live, filter by prefix, and open with value and his
 
   await page.getByLabel("Key prefix").fill("user.")
   await expect(keys.getByRole("row")).toHaveCount(2) // header plus user.1
-  await expect(page.getByRole("button", { name: /Copy as CLI: nats kv watch sessions 'user\.>'/ })).toBeVisible()
 
   await row("user.1").getByRole("button").click()
   const detail = page.getByRole("region", { name: "Key user.1" })
@@ -39,7 +38,7 @@ test("a bucket's keys update live, filter by prefix, and open with value and his
   await expect(revisions).toHaveCount(3)
   await revisions.last().getByRole("button").click() // the oldest
   await expect(detail.getByRole("list", { name: "Payload as text" })).toHaveText("v1")
-  await expect(detail.getByRole("button", { name: /Copy as CLI: nats kv get sessions user\.1 --revision \d+/ })).toBeVisible()
+  await expect(page.getByRole("button", { name: /Copy as CLI/ })).toHaveCount(0) // Key-Value screens show no nats commands
 })
 
 test("Key-Value browses under Read-only mode", async ({ page }) => {

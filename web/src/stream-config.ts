@@ -115,14 +115,8 @@ export const shellQuote = (s: string) => (/^[\w.,:/@=-]+$/.test(s) ? s : `'${s.r
 export function cliFor(config: Config, before?: Config): string {
   const edit = before !== undefined
   const base = before ?? toConfig({}, toValues(defaults)).config
-  const parts = [edit ? `nats stream edit ${config.name}` : `nats stream add ${config.name || "NAME"}`, ...flagsFor(fields, config, base, edit)]
-  return edit ? `${parts.join(" ")} --force` : parts.join(" ")
-}
-
-// flagsFor is the natscli flags for the fields of table whose value differs from base.
-export function flagsFor(table: readonly Field[], config: Config, base: Config, edit = false): string[] {
-  const parts: string[] = []
-  for (const f of table) {
+  const parts = [edit ? `nats stream edit ${config.name}` : `nats stream add ${config.name || "NAME"}`]
+  for (const f of fields) {
     if (!f.flag || (edit && !f.flag.edit) || JSON.stringify(config[f.key]) === JSON.stringify(base[f.key])) continue
     const now = config[f.key]
     const flag = `--${f.flag.name}`
@@ -132,7 +126,7 @@ export function flagsFor(table: readonly Field[], config: Config, base: Config, 
     else if (f.key === "retention") parts.push(`${flag} ${now === "workqueue" ? "work" : now}`)
     else parts.push(`${flag} ${shellQuote(String(now))}`)
   }
-  return parts
+  return edit ? `${parts.join(" ")} --force` : parts.join(" ")
 }
 
 export function purgeCli(name: string, p: { subject?: string; keep?: number; sequence?: number }) {
