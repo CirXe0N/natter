@@ -35,8 +35,7 @@ test("lists Connections, sorts, filters, shows subscriptions, and kicks after a 
 
   await panel.getByRole("button", { name: "Kick…" }).click()
   const dialog = page.getByRole("dialog")
-  await expect(dialog).toContainText("--context sys request '$SYS.REQ.SERVER.")
-  await expect(dialog).toContainText(`.KICK' '{"cid":`)
+  await expect(dialog).toContainText("The server closes this Connection")
   await dialog.getByRole("button", { name: "Cancel" }).click()
   await expect(dialog).toBeHidden()
 

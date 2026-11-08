@@ -12,7 +12,6 @@ test("tails a wildcard filter under Read-only mode, opens a row, filters, and pa
     await page.getByRole("button", { name: "Tail", exact: true }).click()
     await expect(page).toHaveURL(/\/tail\?subject=e2e\.tail\./)
     await expect(page.getByRole("button", { name: "Tail", exact: true })).toHaveCount(0) // shows again only when the filter is edited
-    await expect(page.getByRole("button", { name: "Copy as CLI: nats sub 'e2e.tail.>'" })).toBeVisible()
 
     const rows = page.getByRole("list", { name: "Tailed messages" }).getByRole("listitem")
     await expect(rows.first()).toContainText(/e2e\.tail\.\d/)

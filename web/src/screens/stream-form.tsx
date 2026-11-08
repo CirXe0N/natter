@@ -4,14 +4,13 @@ import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { Link, useNavigate } from "@tanstack/react-router"
 
 import { ApiError, api } from "@/api"
-import { CopyCli } from "@/components/copy-cli"
 import { ScreenHeader } from "@/components/screen-header"
 import { BlockedButton } from "@/components/blocked-button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { useBlockedReason } from "@/contexts"
-import { cliFor, defaults, fields, toConfig, toValues, type Config, type Field, type Values } from "@/stream-config"
+import { defaults, fields, toConfig, toValues, type Config, type Field, type Values } from "@/stream-config"
 import { useStream } from "@/screens/stream"
 
 export function NewStreamScreen() {
@@ -42,7 +41,6 @@ function StreamForm({ base, editing }: { base: Config; editing?: boolean }) {
   const blocked = useBlockedReason()
   const [values, setValues] = useState<Values>(() => toValues(base))
   const [local, setLocal] = useState<{ [key: string]: string }>({})
-  const { config } = toConfig(base, values)
   const name = String(base.name ?? "")
 
   const save = useMutation({
@@ -79,7 +77,6 @@ function StreamForm({ base, editing }: { base: Config; editing?: boolean }) {
         <BlockedButton type="submit" reason={blocked} disabled={save.isPending}>
           {editing ? "Save changes" : "Create stream"}
         </BlockedButton>
-        <CopyCli cmd={cliFor(config, editing ? base : undefined)} />
       </div>
     </form>
   )

@@ -6,7 +6,6 @@ import { Link, useNavigate, useParams } from "@tanstack/react-router"
 
 import { api } from "@/api"
 import { Badge } from "@/components/badge"
-import { CopyCli } from "@/components/copy-cli"
 import { Pause, Pencil, Play, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -59,9 +58,6 @@ export function StreamConsumers() {
   const now = Date.now() / 1000
   return (
     <>
-      <div>
-        <CopyCli cmd={`nats consumer ls ${stream}`} />
-      </div>
       {rows.length === 0 && offline.length === 0 ? (
         <p className="text-muted-foreground">This stream has no consumers.</p>
       ) : (
@@ -217,7 +213,6 @@ export function ConsumerDetail() {
               <p className="mt-0.5 text-xs text-muted-foreground">{summary.join(" · ")}</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <CopyCli cmd={`nats consumer info ${stream} ${d.name}`} compact />
               {d.paused ? (
                 <Button variant="outline" size="sm" {...block} disabled={block.disabled || resume.isPending} onClick={() => resume.mutate()}>
                   <Play aria-hidden />
@@ -292,9 +287,7 @@ export function ConsumerDetail() {
                   : "Every client using it loses it."}
               </DialogDescription>
             </DialogHeader>
-            <Confirm name={d.name} verb="Delete consumer" danger="This cannot be undone." pending={remove.isPending} error={remove.error?.message} onConfirm={() => remove.mutate()}>
-              <CopyCli cmd={`nats consumer rm ${stream} ${d.name} --force`} />
-            </Confirm>
+            <Confirm name={d.name} verb="Delete consumer" danger="This cannot be undone." pending={remove.isPending} error={remove.error?.message} onConfirm={() => remove.mutate()} />
           </DialogContent>
         </Dialog>
       </div>

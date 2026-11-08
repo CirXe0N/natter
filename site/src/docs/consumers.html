@@ -37,7 +37,7 @@
     <tr><td>Storage</td><td>Replicas (empty inherits the stream's), inactive threshold, memory storage.</td></tr>
   </tbody>
 </table>
-<p>Only the options for the type you picked are shown. The <strong>JSON</strong> view shows exactly what Natter will send, and below the form is the matching <code>nats consumer add</code> command. A name that's already taken is refused, so creating never silently changes an existing consumer.</p>
+<p>Only the options for the type you picked are shown. The <strong>JSON</strong> view shows exactly what Natter will send. A name that's already taken is refused, so creating never silently changes an existing consumer.</p>
 
 <h2>Edit a consumer</h2>
-<p>Some settings can't change after a consumer exists. The form marks them <strong>fixed after create</strong>: type, where it starts, ack and replay policy, idle heartbeat, flow control, max waiting pulls and memory storage. Everything else can change, and the command shown becomes <code>nats consumer edit</code>.</p>
+<p>Some settings can't change after a consumer exists. The form marks them <strong>fixed after create</strong>: type, where it starts, ack and replay policy, idle heartbeat, flow control, max waiting pulls and memory storage. Everything else can change.</p>

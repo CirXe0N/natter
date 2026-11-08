@@ -6,12 +6,10 @@ import { useNavigate } from "@tanstack/react-router"
 
 import { api } from "@/api"
 import { BlockedButton } from "@/components/blocked-button"
-import { CopyCli } from "@/components/copy-cli"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { useBlockedReason } from "@/contexts"
-import { purgeCli } from "@/stream-config"
 
 export function NewStreamButton() {
   const navigate = useNavigate()
@@ -160,7 +158,6 @@ function PurgeForm({ name, done }: { name: string; done: () => void }) {
             />
           )}
         </fieldset>
-        <CopyCli cmd={purgeCli(name, p)} />
       </Confirm>
     </>
   )
@@ -184,9 +181,7 @@ function DeleteForm({ name }: { name: string }) {
         <DialogTitle>Delete {name}</DialogTitle>
         <DialogDescription>Deletes the stream, its messages and its consumers.</DialogDescription>
       </DialogHeader>
-      <Confirm name={name} verb="Delete stream" danger="This cannot be undone." pending={del.isPending} error={del.error?.message} onConfirm={() => del.mutate()}>
-        <CopyCli cmd={`nats stream rm ${name} --force`} />
-      </Confirm>
+      <Confirm name={name} verb="Delete stream" danger="This cannot be undone." pending={del.isPending} error={del.error?.message} onConfirm={() => del.mutate()} />
     </>
   )
 }

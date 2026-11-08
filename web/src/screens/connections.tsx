@@ -16,7 +16,6 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { useActiveContext, useBlockedReason } from "@/contexts"
 import type { Connection, ConnectionState } from "@/gen/api"
-import { shellQuote } from "@/stream-config"
 import { useRefresh } from "@/screens/streams"
 import { bytes, count } from "@/screens/overview"
 
@@ -280,7 +279,6 @@ function useKickBlocked() {
 
 function KickAction({ c }: { c: Connection }) {
   const [open, setOpen] = useState(false)
-  const { data: active } = useActiveContext()
   const blocked = useKickBlocked()
   const qc = useQueryClient()
   const kick = useMutation({
@@ -290,8 +288,6 @@ function KickAction({ c }: { c: Connection }) {
       return qc.invalidateQueries({ queryKey: ["connections"] })
     },
   })
-  const ctx = active?.context?.source === "cli" ? ` --context ${shellQuote(active.context.name)}` : ""
-  const cli = `nats${ctx} request ${shellQuote(`$SYS.REQ.SERVER.${c.server}.KICK`)} ${shellQuote(JSON.stringify({ cid: c.cid }))}`
   return (
     <div className="flex flex-wrap items-center gap-2 border-t pt-3">
       <BlockedButton reason={blocked} size="sm" variant="destructive" onClick={() => setOpen(true)}>
@@ -305,10 +301,6 @@ function KickAction({ c }: { c: Connection }) {
               The server closes this Connection (cid {c.cid} on {c.serverName}). The client can connect again, and Kick does not ban it.
             </DialogDescription>
           </DialogHeader>
-          <div>
-            <p className="mb-1 text-xs text-muted-foreground">The same with the nats CLI, using System credentials:</p>
-            <pre className="overflow-x-auto rounded-md border bg-muted p-2 font-mono text-xs whitespace-pre-wrap break-all">{cli}</pre>
-          </div>
           {kick.isError && <p role="alert" className="text-xs text-destructive">{kick.error.message}</p>}
           <DialogFooter>
             <Button variant="outline" disabled={kick.isPending} onClick={() => setOpen(false)}>

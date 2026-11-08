@@ -36,7 +36,7 @@ export function ContextsScreen() {
         {contexts.isError && <p className="text-destructive">{contexts.error.message}</p>}
         {contexts.data?.length === 0 && (
           <p className="mb-3 text-sm text-muted-foreground">
-            No Contexts yet. Add one here, or with <code className="font-mono text-foreground">nats context add</code>.
+            No Contexts yet. Add one here.
           </p>
         )}
         {contexts.data && (

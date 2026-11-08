@@ -663,14 +663,6 @@ html[data-page="docs"] .site-nav a[data-nav="docs"] {
     opacity: 0;
   }
 }
-.cli p:first-child {
-  color: var(--fg);
-  white-space: normal;
-}
-.cli .copied {
-  margin-top: 0.6rem;
-  color: var(--green);
-}
 .ctx p {
   display: flex;
   align-items: center;

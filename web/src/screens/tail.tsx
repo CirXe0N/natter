@@ -8,7 +8,6 @@ import { CircleAlert, Funnel, X } from "lucide-react"
 
 import { api } from "@/api"
 import { Badge } from "@/components/badge"
-import { CopyCli } from "@/components/copy-cli"
 import { FilterField, FilterForm } from "@/components/filter-field"
 import { ScreenHeader } from "@/components/screen-header"
 import { Button } from "@/components/ui/button"
@@ -16,7 +15,6 @@ import { refKey, useActiveContext } from "@/contexts"
 import { TopicTailPrefix, type Tail, type TailRow } from "@/gen/api"
 import { announce, PauseLive, subscribe, usePaused } from "@/live"
 import { bytes } from "@/screens/overview"
-import { shellQuote } from "@/stream-config"
 import { add, emptyRing, type Entry } from "@/tail-ring"
 
 const ROW = 24
@@ -127,7 +125,6 @@ function TailView({ filter, form }: { filter: string; form: ReactNode }) {
           <FilterForm label="Show rows containing" icon={Funnel} value={show} onApply={setShow} placeholder="Show rows containing…" className="w-48" />
           <span className="flex-1" />
           {stats && <Meter t={stats} />}
-          <CopyCli cmd={`nats sub ${shellQuote(filter)}`} compact />
         </Toolbar>
         {problem && (
           <p role="alert" className="flex items-center gap-2 border-b border-destructive/20 bg-destructive/5 px-3 py-2 text-xs text-destructive">

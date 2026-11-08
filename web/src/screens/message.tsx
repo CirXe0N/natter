@@ -1,5 +1,5 @@
 // The drawer that opens a message from the message browser: its subject and
-// headers, its payload, newer and older with the arrow keys, Copy as CLI, Save
+// headers, its payload, newer and older with the arrow keys, Save
 // as example, and Delete.
 import { useLayoutEffect, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
@@ -7,7 +7,6 @@ import { ChevronDown, ChevronUp, Save, Trash2, X } from "lucide-react"
 
 import { api } from "@/api"
 import { BlockedButton } from "@/components/blocked-button"
-import { CopyCli } from "@/components/copy-cli"
 import { examplesKey } from "@/components/examples-picker"
 import { PayloadViewer } from "@/components/payload-viewer"
 import { Button } from "@/components/ui/button"
@@ -81,7 +80,6 @@ function Message({ stream, seq, prev, next, onClose, onDeleted }: Props & { seq:
         </Button>
       </DialogHeader>
       <div className="flex flex-wrap items-center gap-2 border-b px-5 py-2.5">
-        <CopyCli cmd={`nats stream get ${stream} ${seq}`} />
         <span className="flex-1" />
         {m && <SaveAsExample stream={stream} m={m} headers={headers} />}
         <BlockedButton variant="outline" size="sm" reason={blocked} disabled={!m} onClick={() => setConfirm(true)} className="border-destructive/30 text-destructive hover:bg-destructive/10">
@@ -192,7 +190,6 @@ function DeleteMessage({ stream, seq, onDeleted }: { stream: string; seq: number
           Erase: also overwrite the message's data on disk. Slower, for data that must not be recoverable.
         </span>
       </label>
-      {erase && <CopyCli cmd={`nats stream rmm ${stream} ${seq} --force`} />}
       {del.error && (
         <p role="alert" className="text-xs text-destructive">
           {del.error.message}

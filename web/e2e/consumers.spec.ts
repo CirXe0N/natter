@@ -35,7 +35,6 @@ test("a stream's Consumers tab only lists them; a consumer opens under Consumers
   await page.keyboard.press("Escape")
   await expect(dialog).toHaveCount(0)
   await detail.getByRole("button", { name: "Delete…" }).click()
-  await expect(dialog.getByRole("button", { name: /nats consumer rm ORDERS shipping --force/ })).toBeVisible()
   await dialog.getByLabel(/Type shipping to confirm/).fill("shipping")
   await dialog.getByRole("button", { name: "Delete consumer" }).click()
   await expect(page).toHaveURL(/\/consumers$/)
@@ -89,7 +88,6 @@ test("create a consumer with the form, edit it, and see server refusals on their
   await form.getByLabel("Backoff").fill("1s, 5s")
   await form.getByLabel("Metadata").fill("team=ops")
   await expect(form.getByRole("group", { name: "Ack policy" }).getByRole("button", { name: "Explicit" })).toHaveAttribute("aria-pressed", "true")
-  await expect(form.getByRole("button", { name: /nats consumer add ORDERS audit-e2e --pull --ack explicit/ })).toBeVisible()
 
   // Push swaps the pull options for the push ones.
   await form.getByRole("group", { name: "Type" }).getByRole("button", { name: "Push" }).click()
@@ -112,7 +110,6 @@ test("create a consumer with the form, edit it, and see server refusals on their
   await expect(edit.getByRole("group", { name: "Ack policy" }).getByRole("button", { name: "All" })).toBeDisabled()
   await expect(edit.getByLabel("Backoff")).toHaveValue("1s, 5s")
   await edit.getByLabel("Max deliveries").fill("9")
-  await expect(edit.getByRole("button", { name: "Copy as CLI: nats consumer edit ORDERS audit-e2e --max-deliver 9 --force" })).toBeVisible()
   await edit.getByRole("button", { name: "Save changes" }).click()
   await expect(page).toHaveURL(/\/consumers\/ORDERS\/audit-e2e$/)
   await expect(page.getByRole("definition").filter({ hasText: /^9$/ })).toBeVisible()

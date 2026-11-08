@@ -6,9 +6,7 @@ import { Funnel } from "lucide-react"
 
 import { api } from "@/api"
 import { Badge } from "@/components/badge"
-import { CopyCli } from "@/components/copy-cli"
 import { FilterForm } from "@/components/filter-field"
-import { shellQuote } from "@/stream-config"
 import { ScreenHeader } from "@/components/screen-header"
 import type { StreamHealth, StreamKind, StreamSummary } from "@/gen/api"
 import { usePaused } from "@/live"
@@ -34,7 +32,6 @@ export function StreamsScreen() {
   return (
     <>
       <ScreenHeader title="Streams">
-        <CopyCli cmd={`nats stream ls -a${subject ? ` --subject ${shellQuote(subject)}` : ""}`} />
         <NewStreamButton />
       </ScreenHeader>
       <div className="space-y-4 px-8 pb-8">
