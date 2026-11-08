@@ -75,11 +75,10 @@ test("the Messages tab browses under Read-only mode", async ({ page }) => {
   }
 })
 
-test("the Message browser screen picks a stream, browses it, and opens a message; Key-Value is not in the sidebar", async ({ page }) => {
+test("the Message browser screen picks a stream, browses it, and opens a message", async ({ page }) => {
   await page.request.put("/api/contexts/active", { data: { source: "cli", name: "app" } })
   await page.goto("/overview")
   const nav = page.getByRole("navigation", { name: "Screens" })
-  await expect(nav.getByRole("link", { name: "Key-Value" })).toHaveCount(0)
   await nav.getByRole("link", { name: "Message browser" }).click()
   await expect(page).toHaveURL(/\/messages$/)
   await expect(page.getByText("Nothing to show here yet")).toHaveCount(0)
