@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/json"
 	"errors"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -46,6 +47,9 @@ func TestKV(t *testing.T) {
 	if _, err := kv.PutString(ctx, "dir/x", "slash"); err != nil {
 		t.Fatal(err)
 	}
+	if _, err := kv.Put(ctx, "empty", nil); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := js.CreateStream(ctx, jetstream.StreamConfig{Name: "ORDERS", Subjects: []string{"orders.>"}}); err != nil {
 		t.Fatal(err)
 	}
@@ -58,9 +62,13 @@ func TestKV(t *testing.T) {
 	t.Cleanup(m.Close)
 	h := New(Config{Token: "tok", Port: 1, UI: fstest.MapFS{}, Contexts: m})
 	var session *http.Cookie
-	call := func(method, target, body string) (int, string) {
+	var got http.Header // the last response's headers
+	call := func(method, target, body string, header ...http.Header) (int, string) {
 		r := httptest.NewRequest(method, target, strings.NewReader(body))
 		r.Host = "localhost"
+		for _, hd := range header {
+			maps.Copy(r.Header, hd)
+		}
 		if session != nil {
 			r.AddCookie(session)
 		}
@@ -69,6 +77,7 @@ func TestKV(t *testing.T) {
 		if c := w.Result().Cookies(); len(c) > 0 {
 			session = c[0]
 		}
+		got = w.Result().Header
 		return w.Code, w.Body.String()
 	}
 	call("GET", "/launch?token=tok", "")
@@ -92,26 +101,30 @@ func TestKV(t *testing.T) {
 	if err := json.Unmarshal([]byte(body), &buckets); code != 200 || err != nil {
 		t.Fatalf("buckets: %d %s", code, body)
 	}
-	if len(buckets) != 1 || buckets[0] != (api.KVBucket{Bucket: "config", Values: 4, History: 5, Bytes: buckets[0].Bytes, Storage: "file", Replicas: 1}) || buckets[0].Bytes == 0 {
+	if len(buckets) != 1 || buckets[0] != (api.KVBucket{Bucket: "config", Values: 5, History: 5, Bytes: buckets[0].Bytes, Storage: "file", Replicas: 1}) || buckets[0].Bytes == 0 {
 		t.Errorf("buckets %+v, want only config, not ORDERS", buckets)
 	}
 
+	// The payload viewer always asks for a value's first bytes and learns its size from Content-Range.
+	exact := func(what string, code int, body string, wantCode int, wantBody, wantRange string) {
+		t.Helper()
+		if code != wantCode || body != wantBody || got.Get("Content-Range") != wantRange {
+			t.Errorf("%s: %d %q Content-Range %q, want %d %q %q", what, code, body, got.Get("Content-Range"), wantCode, wantBody, wantRange)
+		}
+	}
+	preview := http.Header{"Range": {"bytes=0-65535"}}
 	code, body = call("GET", "/api/kv/config/keys/dir/x", "")
-	want("value of a key with a slash", code, body, 200, "slash")
+	exact("the latest value", code, body, 200, "slash", "")
+	code, body = call("GET", "/api/kv/config/keys/dir/x", "", preview)
+	exact("a preview of the latest value", code, body, 206, "slash", "bytes 0-4/5")
+	code, body = call("GET", "/api/kv/config/keys/app.a?revision="+strconv.FormatUint(r1, 10), "", http.Header{"Range": {"bytes=0-1"}})
+	exact("the first bytes of an old revision", code, body, 206, "on", "bytes 0-1/3")
+	code, body = call("GET", "/api/kv/config/keys/empty", "", preview)
+	exact("a preview of an empty value", code, body, 200, "", "")
 	code, body = call("GET", "/api/kv/config/keys/dir%2Fx", "")
 	want("value of a key with an escaped slash, as the browser sends it", code, body, 200, "slash")
 	code, body = call("GET", "/api/kv/config/keys/app.a?revision="+strconv.FormatUint(r1, 10), "")
 	want("an old revision", code, body, 200, "one")
-	// The payload viewer asks for a value's first bytes and learns its size from Content-Range.
-	ranged := httptest.NewRequest("GET", "/api/kv/config/keys/app.a?revision="+strconv.FormatUint(r1, 10), nil)
-	ranged.Host = "localhost"
-	ranged.AddCookie(session)
-	ranged.Header.Set("Range", "bytes=0-1")
-	w := httptest.NewRecorder()
-	h.ServeHTTP(w, ranged)
-	if w.Code != http.StatusPartialContent || w.Body.String() != "on" || w.Header().Get("Content-Range") != "bytes 0-1/3" {
-		t.Errorf("ranged value: %d %q %q", w.Code, w.Body.String(), w.Header().Get("Content-Range"))
-	}
 	code, body = call("GET", "/api/kv/config/keys/app.a", "")
 	want("a deleted key", code, body, 404, "no value for app.a")
 	code, body = call("GET", "/api/kv/config/keys/nope", "")
@@ -147,7 +160,7 @@ func TestKV(t *testing.T) {
 	if err := wsjson.Read(ctx, c, &f); err != nil {
 		t.Fatal(err)
 	}
-	if f.Topic != "kv:config" || f.KV == nil || !f.KV.Full || len(f.KV.Keys) != 1 || f.KV.Keys[0].Key != "dir/x" {
+	if f.Topic != "kv:config" || f.KV == nil || !f.KV.Full || len(f.KV.Keys) != 2 || f.KV.Keys[0].Key != "dir/x" || f.KV.Keys[1].Key != "empty" {
 		t.Errorf("first kv frame %+v", f)
 	}
 
