@@ -32,7 +32,7 @@ body:
       options:
         - Release binary (natter or natter open)
         - go install
-        - Desktop app (DMG, installer, deb, rpm, AppImage or AUR)
+        - Desktop app (DMG, installer, deb, rpm or AppImage)
         - Built from source
     validations:
       required: true

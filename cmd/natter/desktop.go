@@ -14,7 +14,7 @@ import (
 )
 
 // desktopAppPaths returns where the desktop app's installers put it, and the
-// file under each root that marks it: the XDG data dirs (deb, rpm, AUR),
+// file under each root that marks it: the XDG data dirs (deb, rpm),
 // /Applications (DMG), or the per-user NSIS folder. ~/Applications is left
 // out because install-desktop writes its own Natter.app there.
 // shortcut: an AppImage has no fixed place, and an NSIS install into a folder
