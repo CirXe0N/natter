@@ -39,15 +39,28 @@ const DEBOUNCE_MS = 300
 export function FilterForm({ value, onApply, debounce, ...field }: Omit<Props, "value" | "onChange" | "children"> & { value: string; onApply: (value: string) => void; debounce?: boolean }) {
   const [draft, setDraft] = useState(value)
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined)
+  const input = useRef<HTMLInputElement>(null)
+  // The value this box last applied. A different value came from outside (a
+  // link, Back), so the box shows it instead of its own stale text.
+  const applied = useRef(value)
+  useEffect(() => {
+    if (value !== applied.current) {
+      applied.current = value
+      clearTimeout(timer.current)
+      setDraft(value)
+    }
+  }, [value])
   useEffect(() => () => clearTimeout(timer.current), [])
   const apply = (v: string) => {
     clearTimeout(timer.current)
-    onApply(v.trim())
+    applied.current = v.trim()
+    onApply(applied.current)
   }
   return (
     <div role="search" className="flex items-center gap-2">
       <FilterField
         {...field}
+        ref={input}
         value={draft}
         onChange={(e) => {
           const v = e.target.value
@@ -71,6 +84,7 @@ export function FilterForm({ value, onApply, debounce, ...field }: Omit<Props, "
           onClick={() => {
             setDraft("")
             apply("")
+            input.current?.focus() // the button is about to unmount
           }}
         >
           Clear

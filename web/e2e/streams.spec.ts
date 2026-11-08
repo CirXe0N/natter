@@ -20,6 +20,18 @@ test("Streams lists the account's streams, filters by subject, and opens one", a
   // WebKit lets only a user's paste read the clipboard back.
   if (browserName === "chromium") expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("nats stream ls -a --subject 'orders.eu.*'")
 
+  // A filter changed from outside (here the sidebar's plain /streams) shows in the box.
+  await page.getByRole("navigation", { name: "Screens" }).getByRole("link", { name: "Streams" }).click()
+  await expect(page).not.toHaveURL(/subject=/)
+  await expect(page.getByLabel("Subject")).toHaveValue("")
+  // Clear hands focus back to the box rather than dropping it on the page.
+  await page.getByLabel("Subject").fill("orders.eu.*")
+  await page.getByRole("button", { name: "Clear filter" }).click()
+  await expect(page.getByLabel("Subject")).toBeFocused()
+  await expect(page.getByLabel("Subject")).toHaveValue("")
+  await page.getByLabel("Subject").fill("orders.eu.*")
+  await expect(table.getByRole("row")).toHaveCount(2)
+
   await orders.getByRole("link", { name: "ORDERS" }).click()
   await expect(page).toHaveURL(/\/streams\/ORDERS$/)
   await expect(page.getByRole("heading", { level: 1 })).toContainText("ORDERS")
