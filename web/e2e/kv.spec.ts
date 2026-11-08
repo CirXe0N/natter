@@ -33,6 +33,8 @@ test("a bucket's keys update live, filter by prefix, and open with value and his
   await expect(detail.getByRole("button", { name: "JSON" })).toHaveAttribute("aria-pressed", "true")
   await expect(detail.getByRole("list", { name: "Payload as JSON" }).getByRole("listitem")).toHaveText(["{2}", "user: 1", "cart: 3"])
   await expect(detail.getByText("19 B")).toBeVisible()
+  // A small value's viewer is as tall as its three rows, not a fixed box.
+  await expect.poll(async () => (await detail.getByRole("list", { name: "Payload as JSON" }).boundingBox())?.height).toBe(60)
   const revisions = detail.getByRole("list", { name: "Revisions" }).getByRole("listitem")
   await expect(revisions).toHaveCount(3)
   await revisions.last().getByRole("button").click() // the oldest

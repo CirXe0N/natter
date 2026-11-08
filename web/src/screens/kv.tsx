@@ -216,7 +216,7 @@ function KeyDetail({ bucket, name, entry, onClose }: { bucket: string; name: str
         {shown === undefined ? (
           <p className="text-xs text-muted-foreground">This key has been deleted. Its history is below.</p>
         ) : (
-          <div className="flex h-96 flex-col">
+          <div className="flex max-h-96 flex-col">
             <PayloadViewer key={shown} url={api.kvValueUrl(bucket, name, shown)} />
           </div>
         )}

@@ -74,7 +74,7 @@ export function PayloadViewer({ url }: { url: string }) {
         <p className="text-xs text-muted-foreground">The payload is empty.</p>
       ) : (
         p && (
-          <div className="min-h-0 flex-1 rounded-md border bg-muted/30 font-mono text-[11px]">
+          <div className="flex min-h-0 flex-1 flex-col rounded-md border bg-muted/30 font-mono text-[11px]">
             {mode === "json" && p.json ? (
               <JsonTree value={p.json.value} />
             ) : mode === "hex" ? (
@@ -160,7 +160,9 @@ function VirtualRows({ count, row, label }: { count: number; row: (i: number) =>
       tabIndex={0}
       role="list"
       aria-label={label}
-      className="h-full overflow-y-auto"
+      className="min-h-0 overflow-y-auto"
+      // As tall as its rows, so the viewer fits a small payload; a container with less room shrinks it and it scrolls.
+      style={{ height: trackHeight(height) }}
       onScroll={(e) => {
         const { scrollTop, clientHeight } = e.currentTarget
         // clientHeight, not vh: a scroll can land before the ResizeObserver first sets vh.
