@@ -87,10 +87,6 @@ go run github.com/wailsapp/wails/v3/cmd/wails3@v3.1.0 updater genkey -out update
 
 Each tagged release then gets an `update-manifest.json` that signs the zipped `.app`, the Windows `.exe` and the AppImage. Apps read `releases/latest/download/update-manifest.json`, so a draft reaches nobody until you publish it.
 
-### AUR
-
-`packaging/aur/PKGBUILD` is the `natter-bin` recipe. It installs the release's Linux tarball. For each release, set `pkgver`, put the tarball's checksum from `checksums-desktop.txt` in `sha256sums`, run `makepkg --printsrcinfo > .SRCINFO`, and push both files to the AUR repository.
-
 ## Third-party licences
 
 `scripts/licenses.sh` writes `THIRD_PARTY_LICENSES.txt` (every linked Go module and production npm package) before each build, and every archive contains it. `packaging/desktop.sh` runs it with `GOFLAGS=-tags=desktop`, so the desktop packages list Wails and its dependencies too.
