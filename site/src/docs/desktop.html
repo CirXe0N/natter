@@ -14,11 +14,11 @@
 </ul>
 
 <h2 id="updates">Updates</h2>
-<p>The macOS app, the Windows install and the Linux AppImage check for updates once a day, and when you choose <strong>Check for Updates…</strong> in the tray menu. They install only updates signed with Natter's release key. A deb, rpm or AUR install is updated by your package manager instead.</p>
+<p>The macOS app, the Windows install and the Linux AppImage check for updates once a day, and when you choose <strong>Check for Updates…</strong> in the tray menu. They install only updates signed with Natter's release key. A deb or rpm install is updated by your package manager instead.</p>
 
 <h2>Linux notes</h2>
 <ul>
-  <li>The app needs GTK 4 and WebKitGTK 6.0. The deb, rpm and AUR packages pull them in; the AppImage expects them on the system.</li>
+  <li>The app needs GTK 4 and WebKitGTK 6.0. The deb and rpm packages pull them in; the AppImage expects them on the system.</li>
   <li>On NVIDIA graphics, WebKitGTK can't draw through the DMA-BUF path, so the app turns that renderer off (<code>WEBKIT_DISABLE_DMABUF_RENDERER=1</code>) before the window opens.</li>
 </ul>
 
