@@ -12,7 +12,6 @@ test("Streams lists the account's streams, filters by subject, and opens one", a
   await expect(table.getByRole("row").filter({ hasText: "KV_config" })).toContainText("KV bucket")
 
   await page.getByLabel("Subject").fill("orders.eu.*")
-  await page.getByRole("button", { name: "Filter" }).click()
   await expect(page).toHaveURL(/subject=orders\.eu\.\*/)
   await expect(table.getByRole("row")).toHaveCount(2) // header plus ORDERS
   const copy = page.getByRole("button", { name: "Copy as CLI: nats stream ls -a --subject 'orders.eu.*'" })

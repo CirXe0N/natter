@@ -240,6 +240,7 @@ function Subjects({ s }: { s: StreamDetail }) {
     <Section id="subjects-heading" title="Subjects">
       <div className="flex flex-wrap items-center gap-2 border-b px-4 py-2 text-xs">
         <FilterForm
+          debounce
           value={filter === ">" ? "" : filter}
           onApply={(f) => setFilter(f || ">")}
           label="Filter"

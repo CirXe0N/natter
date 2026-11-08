@@ -285,6 +285,7 @@ function MessageTable({ stream }: { stream: string }) {
       <section aria-label={`Messages in ${stream}`} className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border bg-card">
         <div className="flex flex-wrap items-center gap-2 border-b px-4 py-2 text-xs">
           <FilterForm
+            debounce
             value={filter}
             onApply={(f) => {
               setFilter(f)

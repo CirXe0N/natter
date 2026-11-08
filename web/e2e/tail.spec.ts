@@ -27,7 +27,6 @@ test("tails a wildcard filter under Read-only mode, opens a row, filters, and pa
     await msg.getByRole("button", { name: "Close message" }).click()
 
     await page.getByLabel("Show rows containing").fill("e2e.tail.1")
-    await page.getByRole("button", { name: "Filter", exact: true }).click()
     await expect(rows.first()).toContainText("e2e.tail.1")
     await expect(rows.filter({ hasText: "e2e.tail.2" })).toHaveCount(0)
     await page.getByRole("button", { name: "Clear filter" }).click()

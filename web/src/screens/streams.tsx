@@ -39,7 +39,7 @@ export function StreamsScreen() {
       </ScreenHeader>
       <div className="space-y-4 px-8 pb-8">
         <FilterForm
-          key={subject}
+          debounce
           value={subject}
           onApply={(s) => void navigate({ search: s ? { subject: s } : {}, replace: true })}
           label="Subject"

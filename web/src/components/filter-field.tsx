@@ -3,7 +3,7 @@
 // input for screen readers; the placeholder is what sighted people read.
 // Focus shows as the box's full-primary border, so the input drops the global
 // focus outline (allowed for this file in scripts/check-styles.js).
-import { useState, type ComponentProps, type ReactNode } from "react"
+import { useEffect, useRef, useState, type ComponentProps, type ReactNode } from "react"
 import type { LucideIcon } from "lucide-react"
 import { cn } from "cn"
 
@@ -30,24 +30,38 @@ export function FilterField({ label, icon: Icon, mono, className, children, ...i
   )
 }
 
-// FilterForm is how every filter works: typing changes nothing until Enter or
-// Filter applies it, and Clear shows while a filter is applied. The form starts
-// from value, so a parent that changes value from outside remounts it with a key.
-export function FilterForm({ value, onApply, ...field }: Omit<Props, "value" | "onChange" | "children"> & { value: string; onApply: (value: string) => void }) {
+const DEBOUNCE_MS = 300
+
+// FilterForm is how every filter works: it applies as you type, and Clear shows
+// while a filter is applied. A filter that fetches passes debounce, so it applies
+// a moment after typing stops; Enter applies at once. The box starts from value
+// and keeps its own text after that.
+export function FilterForm({ value, onApply, debounce, ...field }: Omit<Props, "value" | "onChange" | "children"> & { value: string; onApply: (value: string) => void; debounce?: boolean }) {
   const [draft, setDraft] = useState(value)
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined)
+  useEffect(() => () => clearTimeout(timer.current), [])
+  const apply = (v: string) => {
+    clearTimeout(timer.current)
+    onApply(v.trim())
+  }
   return (
-    <form
-      role="search"
-      className="flex items-center gap-2"
-      onSubmit={(e) => {
-        e.preventDefault()
-        onApply(draft.trim())
-      }}
-    >
-      <FilterField {...field} value={draft} onChange={(e) => setDraft(e.target.value)} />
-      <Button type="submit" variant="outline" size="sm">
-        Filter
-      </Button>
+    <div role="search" className="flex items-center gap-2">
+      <FilterField
+        {...field}
+        value={draft}
+        onChange={(e) => {
+          const v = e.target.value
+          setDraft(v)
+          if (!debounce) apply(v)
+          else {
+            clearTimeout(timer.current)
+            timer.current = setTimeout(() => apply(v), DEBOUNCE_MS)
+          }
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") apply(draft)
+        }}
+      />
       {value && (
         <Button
           type="button"
@@ -56,12 +70,12 @@ export function FilterForm({ value, onApply, ...field }: Omit<Props, "value" | "
           aria-label="Clear filter"
           onClick={() => {
             setDraft("")
-            onApply("")
+            apply("")
           }}
         >
           Clear
         </Button>
       )}
-    </form>
+    </div>
   )
 }
