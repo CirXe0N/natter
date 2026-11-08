@@ -102,6 +102,16 @@ func TestKV(t *testing.T) {
 	want("value of a key with an escaped slash, as the browser sends it", code, body, 200, "slash")
 	code, body = call("GET", "/api/kv/config/keys/app.a?revision="+strconv.FormatUint(r1, 10), "")
 	want("an old revision", code, body, 200, "one")
+	// The payload viewer asks for a value's first bytes and learns its size from Content-Range.
+	ranged := httptest.NewRequest("GET", "/api/kv/config/keys/app.a?revision="+strconv.FormatUint(r1, 10), nil)
+	ranged.Host = "localhost"
+	ranged.AddCookie(session)
+	ranged.Header.Set("Range", "bytes=0-1")
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, ranged)
+	if w.Code != http.StatusPartialContent || w.Body.String() != "on" || w.Header().Get("Content-Range") != "bytes 0-1/3" {
+		t.Errorf("ranged value: %d %q %q", w.Code, w.Body.String(), w.Header().Get("Content-Range"))
+	}
 	code, body = call("GET", "/api/kv/config/keys/app.a", "")
 	want("a deleted key", code, body, 404, "no value for app.a")
 	code, body = call("GET", "/api/kv/config/keys/nope", "")

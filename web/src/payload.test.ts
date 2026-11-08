@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
 
-import { hexRow, jsonRows, parse, WRAP } from "./payload.ts"
+import { hexRow, jsonRows, parse, size, WRAP } from "./payload.ts"
 
 const enc = (s: string) => new TextEncoder().encode(s)
 
@@ -10,6 +10,12 @@ test("a whole JSON payload parses; a truncated chunk of it never does", () => {
   assert.equal(parse(enc('{"a":[1,2]}'), false).json, undefined)
   assert.equal(parse(enc("not json"), true).json, undefined)
   assert.equal(parse(enc(""), true).json, undefined)
+})
+
+test("a payload's size is the total in a 206's Content-Range, or what a 200 sent", () => {
+  assert.equal(size("bytes 0-65535/4194304", 65536), 4194304)
+  assert.equal(size("bytes 0-2/3", 3), 3)
+  assert.equal(size(null, 12), 12)
 })
 
 test("control bytes or invalid UTF-8 make a payload binary; a chunk cut inside a character does not", () => {

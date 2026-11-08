@@ -91,12 +91,8 @@ export const api = {
   kvBuckets: (signal?: AbortSignal) => request<KVBucket[]>("GET", "/api/kv", undefined, signal),
   kvHistory: (bucket: string, key: string, signal?: AbortSignal) =>
     request<KVEntry[]>("GET", `/api/kv/${encodeURIComponent(bucket)}/history/${encodeURIComponent(key)}`, undefined, signal),
-  // The raw bytes of one revision's value.
-  kvValue: async (bucket: string, key: string, revision: number, signal?: AbortSignal) => {
-    const res = await fetch(`/api/kv/${encodeURIComponent(bucket)}/keys/${encodeURIComponent(key)}?revision=${revision}`, { signal })
-    if (!res.ok) throw new Error((await res.text()).trim() || res.statusText)
-    return new Uint8Array(await res.arrayBuffer())
-  },
+  // raw bytes of one revision's value for the PayloadViewer, as payloadUrl
+  kvValueUrl: (bucket: string, key: string, revision: number) => `/api/kv/${encodeURIComponent(bucket)}/keys/${encodeURIComponent(key)}?revision=${revision}`,
   message: (stream: string, seq: number, signal?: AbortSignal) => request<Msg>("GET", `/api/streams/${encodeURIComponent(stream)}/messages/${seq}`, undefined, signal),
   // raw bytes for the PayloadViewer: Range requests work, ?download saves a file
   payloadUrl: (stream: string, seq: number) => `/api/streams/${encodeURIComponent(stream)}/messages/${seq}/payload`,

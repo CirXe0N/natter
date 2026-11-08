@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -52,7 +53,8 @@ func (s *server) listBuckets(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, out)
 }
 
-// kvValue sends a key's value, or ?revision='s, as raw bytes.
+// kvValue sends a key's value, or ?revision='s, as raw bytes. It answers Range
+// requests, as a message payload does, for the payload viewer.
 func (s *server) kvValue(w http.ResponseWriter, r *http.Request) {
 	a, kv := s.bucket(w, r)
 	if kv == nil {
@@ -81,7 +83,7 @@ func (s *server) kvValue(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Disposition", "attachment")
 	w.Header().Set("Content-Security-Policy", "sandbox")
 	w.Header().Set("Cache-Control", "no-store")
-	w.Write(e.Value())
+	http.ServeContent(w, r, "", e.Created(), bytes.NewReader(e.Value()))
 }
 
 // kvPut stores the request body, raw, as the key's new value.

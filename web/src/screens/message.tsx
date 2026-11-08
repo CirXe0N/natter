@@ -112,7 +112,7 @@ function Message({ stream, seq, prev, next, onClose, onDeleted }: Props & { seq:
               <p className="mb-1.5 flex items-center justify-between text-[11px] font-medium tracking-wide text-fg-faint uppercase">
                 Payload <span className="tracking-normal normal-case">{bytes(m.size)}</span>
               </p>
-              <PayloadViewer url={api.payloadUrl(stream, seq)} size={m.size} />
+              <PayloadViewer url={api.payloadUrl(stream, seq)} />
             </section>
           </>
         )}

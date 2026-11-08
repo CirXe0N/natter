@@ -16,12 +16,12 @@ test("put, delete and purge a key, and Read-only blocks all three", async ({ pag
   await dialog.getByRole("button", { name: "Put", exact: true }).click()
   await key("e2e.note").click() // appears without a reload
   const detail = page.getByRole("region", { name: "Key e2e.note" })
-  await expect(detail.locator("pre")).toHaveText("hello")
+  await expect(detail.getByRole("list", { name: "Payload as text" })).toHaveText("hello")
 
   await detail.getByRole("button", { name: "Put value" }).click()
   await page.getByRole("dialog").getByLabel("Value").fill("again")
   await page.getByRole("dialog").getByRole("button", { name: "Put", exact: true }).click()
-  await expect(detail.locator("pre")).toHaveText("again")
+  await expect(detail.getByRole("list", { name: "Payload as text" })).toHaveText("again")
   await expect(detail.getByRole("list", { name: "Revisions" }).getByRole("listitem")).toHaveCount(2)
 
   await detail.getByRole("button", { name: "Delete", exact: true }).click()

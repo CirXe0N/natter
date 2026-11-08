@@ -29,11 +29,14 @@ test("a bucket's keys update live, filter by prefix, and open with value and his
 
   await row("user.1").getByRole("button").click()
   const detail = page.getByRole("region", { name: "Key user.1" })
-  await expect(detail.locator("pre")).toHaveText('{"user":1,"cart":3}')
+  // The value opens in the payload viewer, as a JSON tree since it parses.
+  await expect(detail.getByRole("button", { name: "JSON" })).toHaveAttribute("aria-pressed", "true")
+  await expect(detail.getByRole("list", { name: "Payload as JSON" }).getByRole("listitem")).toHaveText(["{2}", "user: 1", "cart: 3"])
+  await expect(detail.getByText("19 B")).toBeVisible()
   const revisions = detail.getByRole("list", { name: "Revisions" }).getByRole("listitem")
   await expect(revisions).toHaveCount(3)
   await revisions.last().getByRole("button").click() // the oldest
-  await expect(detail.locator("pre")).toHaveText("v1")
+  await expect(detail.getByRole("list", { name: "Payload as text" })).toHaveText("v1")
   await expect(detail.getByRole("button", { name: /Copy as CLI: nats kv get sessions user\.1 --revision \d+/ })).toBeVisible()
 })
 
@@ -44,7 +47,7 @@ test("Key-Value browses under Read-only mode", async ({ page }) => {
   try {
     const keys = await openSessions(page)
     await keys.getByRole("button", { name: "user.1", exact: true }).click()
-    await expect(page.getByRole("region", { name: "Key user.1" }).locator("pre")).toHaveText('{"user":1,"cart":3}')
+    await expect(page.getByRole("region", { name: "Key user.1" }).getByRole("list", { name: "Payload as JSON" })).toContainText("cart: 3")
   } finally {
     await page.request.put(settings, { data: {} })
   }

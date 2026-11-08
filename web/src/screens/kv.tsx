@@ -9,6 +9,7 @@ import { X } from "lucide-react"
 import { api } from "@/api"
 import { Badge } from "@/components/badge"
 import { CopyCli } from "@/components/copy-cli"
+import { PayloadViewer } from "@/components/payload-viewer"
 import { ScreenHeader } from "@/components/screen-header"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -192,12 +193,6 @@ function KeyDetail({ bucket, name, entry, onClose }: { bucket: string; name: str
   const [picked, setPicked] = useState<number>()
   const history = useQuery({ queryKey: ["kv", "history", bucket, name, entry?.revision], queryFn: ({ signal }) => api.kvHistory(bucket, name, signal) })
   const shown = picked ?? entry?.revision
-  const value = useQuery({
-    queryKey: ["kv", "value", bucket, name, shown],
-    queryFn: ({ signal }) => api.kvValue(bucket, name, shown!, signal),
-    enabled: shown !== undefined,
-    staleTime: Infinity, // a revision never changes
-  })
 
   return (
     <section aria-label={`Key ${name}`} className="min-w-0 space-y-4 self-start rounded-xl border bg-card p-4">
@@ -216,16 +211,14 @@ function KeyDetail({ bucket, name, entry, onClose }: { bucket: string; name: str
       {shown !== undefined && <CopyCli cmd={`nats kv get ${shellQuote(bucket)} ${shellQuote(name)}${picked ? ` --revision ${picked}` : ""}`} />}
       <div className="space-y-1.5">
         <h3 className="text-[11px] font-medium text-muted-foreground">
-          {shown === undefined ? "Value" : `Value at revision ${shown}${value.data ? ` · ${bytes(value.data.length)}` : ""}`}
+          {shown === undefined ? "Value" : `Value at revision ${shown}`}
         </h3>
         {shown === undefined ? (
           <p className="text-xs text-muted-foreground">This key has been deleted. Its history is below.</p>
-        ) : value.isError ? (
-          <p className="text-xs text-destructive">{value.error.message}</p>
-        ) : !value.data ? (
-          <p className="text-xs text-muted-foreground">Loading value…</p>
         ) : (
-          <ValueView value={value.data} />
+          <div className="flex h-96 flex-col">
+            <PayloadViewer key={shown} url={api.kvValueUrl(bucket, name, shown)} />
+          </div>
         )}
       </div>
       <div className="space-y-1.5">
@@ -257,10 +250,4 @@ function KeyDetail({ bucket, name, entry, onClose }: { bucket: string; name: str
       </div>
     </section>
   )
-}
-
-// ValueView is the one place a value is drawn.
-// shortcut: plain text, no hex or JSON tree; switch to PayloadViewer once the key list carries each value's size (MetaOnly entries have none).
-function ValueView({ value }: { value: Uint8Array }) {
-  return <pre className="max-h-96 overflow-auto whitespace-pre-wrap break-all rounded-lg border bg-background p-3 font-mono text-xs">{new TextDecoder().decode(value)}</pre>
 }
