@@ -79,8 +79,7 @@ function Message({ stream, seq, prev, next, onClose, onDeleted }: Props & { seq:
           <X />
         </Button>
       </DialogHeader>
-      <div className="flex flex-wrap items-center gap-2 border-b px-5 py-2.5">
-        <span className="flex-1" />
+      <div className="flex flex-wrap items-center justify-end gap-2 border-b px-5 py-2.5">
         {m && <SaveAsExample stream={stream} m={m} headers={headers} />}
         <BlockedButton variant="outline" size="sm" reason={blocked} disabled={!m} onClick={() => setConfirm(true)} className="border-destructive/30 text-destructive hover:bg-destructive/10">
           <Trash2 aria-hidden />

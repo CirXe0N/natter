@@ -1,4 +1,3 @@
-
 // messageSize is what max_payload limits: the payload plus the encoded headers.
 export function messageSize(payload: string, headers: [string, string][]): number {
   const enc = new TextEncoder()

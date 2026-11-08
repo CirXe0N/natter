@@ -30,7 +30,7 @@ const fields = (d: Draft) => JSON.stringify([d.name, d.folder, d.mode, d.subject
 const historyKey = ["send", "history"] as const
 const MAX_HISTORY = 50
 
-// natscli's template functions, inserted verbatim so "copy as CLI" sends the same thing.
+// natscli's template functions, under the same names.
 const placeholders = [
   { insert: "{{Count}}", help: "message number in this run, from 1" },
   { insert: "{{ID}}", help: "a unique ID" },

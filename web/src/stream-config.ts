@@ -37,7 +37,7 @@ export const fields: readonly Field[] = [
   { key: "deny_purge", label: "Deny purge", kind: "bool" },
 ]
 
-// natscli adds streams with allow_direct on, so the form does too and the commands match.
+// natscli adds streams with allow_direct on, so the form does too.
 export const defaults: Config = { storage: "file", retention: "limits", discard: "old", num_replicas: 1, allow_direct: true }
 
 const units: [string, number][] = [["d", 864e11], ["h", 36e11], ["m", 6e10], ["s", 1e9], ["ms", 1e6]]
