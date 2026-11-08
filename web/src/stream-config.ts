@@ -66,10 +66,11 @@ export function formatDuration(ns: number): string {
 
 export type Values = { [key: string]: string | boolean }
 
-// toValues turns a config into form values.
-export function toValues(cfg: Config): Values {
+// toValues turns a config into form values. table is the form's field table,
+// the stream's unless given.
+export function toValues(cfg: Config, table: readonly Field[] = fields): Values {
   const v: Values = {}
-  for (const f of fields) {
+  for (const f of table) {
     const x = cfg[f.key]
     if (f.kind === "bool") v[f.key] = x === true
     else if (f.kind === "list") v[f.key] = Array.isArray(x) ? x.join("\n") : ""
@@ -82,10 +83,10 @@ export function toValues(cfg: Config): Values {
 
 // toConfig lays form values over base. A value that cannot be read is reported
 // against its own key so the form can show it on that field.
-export function toConfig(base: Config, v: Values): { config: Config; errors: { [key: string]: string } } {
+export function toConfig(base: Config, v: Values, table: readonly Field[] = fields): { config: Config; errors: { [key: string]: string } } {
   const config: Config = { ...base }
   const errors: { [key: string]: string } = {}
-  for (const f of fields) {
+  for (const f of table) {
     const x = v[f.key]
     if (f.kind === "bool") config[f.key] = x === true
     else if (f.kind === "list") config[f.key] = String(x).split("\n").map((s) => s.trim()).filter(Boolean)

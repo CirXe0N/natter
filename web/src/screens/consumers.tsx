@@ -10,6 +10,7 @@ import { CopyCli } from "@/components/copy-cli"
 import { Pause, Pencil, Play, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select"
 import { useBlockedReason } from "@/contexts"
 import type { ConsumerSummary } from "@/gen/api"
 import { count } from "@/screens/overview"
@@ -227,13 +228,16 @@ export function ConsumerDetail() {
                   <label htmlFor="pause-for" className="sr-only">
                     Pause for
                   </label>
-                  <select id="pause-for" value={seconds} onChange={(e) => setSeconds(Number(e.target.value))} className="h-7 rounded-md border bg-background px-2 text-xs">
-                    {pauseFor.map((p) => (
-                      <option key={p.seconds} value={p.seconds}>
-                        {p.label}
-                      </option>
-                    ))}
-                  </select>
+                  <Select items={pauseFor.map((p) => ({ value: p.seconds, label: p.label }))} value={seconds} onValueChange={(v) => v !== null && setSeconds(v)}>
+                    <SelectTrigger id="pause-for" className="h-7 w-auto rounded-md text-xs" />
+                    <SelectContent className="text-xs">
+                      {pauseFor.map((p) => (
+                        <SelectItem key={p.seconds} value={p.seconds}>
+                          {p.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <Button variant="outline" size="sm" {...block} disabled={block.disabled || pause.isPending} onClick={() => pause.mutate()}>
                     <Pause aria-hidden />
                     Pause

@@ -89,14 +89,15 @@ export const api = {
   // keepalive so it still goes out while the page unloads
   closeBrowsing: (view: string) => void fetch(`/api/browsing/${encodeURIComponent(view)}`, { method: "DELETE", keepalive: true }),
   kvBuckets: (signal?: AbortSignal) => request<KVBucket[]>("GET", "/api/kv", undefined, signal),
+  createBucket: (config: object) => request<KVBucket>("POST", "/api/kv", config),
+  // nats.go's KeyValueConfig, the shape createBucket and updateBucket take
+  bucketConfig: (bucket: string, signal?: AbortSignal) => request<{ [key: string]: unknown }>("GET", `/api/kv/${encodeURIComponent(bucket)}`, undefined, signal),
+  updateBucket: (bucket: string, config: object) => request<KVBucket>("PUT", `/api/kv/${encodeURIComponent(bucket)}`, config),
+  deleteBucket: (bucket: string) => request<object>("DELETE", `/api/kv/${encodeURIComponent(bucket)}`, { confirm: bucket }),
   kvHistory: (bucket: string, key: string, signal?: AbortSignal) =>
     request<KVEntry[]>("GET", `/api/kv/${encodeURIComponent(bucket)}/history/${encodeURIComponent(key)}`, undefined, signal),
-  // The raw bytes of one revision's value.
-  kvValue: async (bucket: string, key: string, revision: number, signal?: AbortSignal) => {
-    const res = await fetch(`/api/kv/${encodeURIComponent(bucket)}/keys/${encodeURIComponent(key)}?revision=${revision}`, { signal })
-    if (!res.ok) throw new Error((await res.text()).trim() || res.statusText)
-    return new Uint8Array(await res.arrayBuffer())
-  },
+  // raw bytes of one revision's value for the PayloadViewer, as payloadUrl
+  kvValueUrl: (bucket: string, key: string, revision: number) => `/api/kv/${encodeURIComponent(bucket)}/keys/${encodeURIComponent(key)}?revision=${revision}`,
   message: (stream: string, seq: number, signal?: AbortSignal) => request<Msg>("GET", `/api/streams/${encodeURIComponent(stream)}/messages/${seq}`, undefined, signal),
   // raw bytes for the PayloadViewer: Range requests work, ?download saves a file
   payloadUrl: (stream: string, seq: number) => `/api/streams/${encodeURIComponent(stream)}/messages/${seq}/payload`,

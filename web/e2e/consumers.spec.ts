@@ -73,8 +73,11 @@ test("create a consumer with the form, edit it, and see server refusals on their
   // The stream comes first; a taken name comes back from the server and lands on Name.
   await form.getByLabel("Name", { exact: true }).fill("billing")
   await form.getByRole("button", { name: "Create consumer" }).click()
-  await expect(form.getByLabel("Stream", { exact: true })).toHaveAttribute("aria-invalid", "true")
-  await form.getByLabel("Stream", { exact: true }).selectOption("ORDERS")
+  const stream = form.getByRole("combobox", { name: "Stream", exact: true })
+  await expect(stream).toHaveAttribute("aria-invalid", "true")
+  await stream.click()
+  await page.getByRole("option", { name: "ORDERS", exact: true }).click()
+  await expect(stream).toHaveText("ORDERS")
   await form.getByRole("button", { name: "Create consumer" }).click()
   await expect(form.getByRole("alert")).toContainText('A consumer named "billing" already exists')
   await expect(form.getByLabel("Name", { exact: true })).toHaveAttribute("aria-invalid", "true")

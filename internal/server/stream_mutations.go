@@ -9,6 +9,7 @@ import (
 
 	"github.com/nats-io/jsm.go"
 	jsmapi "github.com/nats-io/jsm.go/api"
+	"github.com/nats-io/nats.go/jetstream"
 
 	"github.com/CirXe0N/natter/internal/api"
 )
@@ -80,7 +81,7 @@ func (s *server) writeSummary(w http.ResponseWriter, st *jsm.Stream) {
 // The UI asks for it, and the API asks too so a stray request cannot wipe data.
 func confirmed(w http.ResponseWriter, got, name string) bool {
 	if got != name {
-		http.Error(w, "Type the stream name in confirm to do this.", http.StatusBadRequest)
+		http.Error(w, "Type the name in confirm to do this.", http.StatusBadRequest)
 		return false
 	}
 	return true
@@ -170,7 +171,8 @@ func writeHintedError(w http.ResponseWriter, err error, hints []struct{ word, fi
 		return
 	}
 	msg := err.Error()
-	invalid := len(field) > 0 || errors.As(err, &apiErr) || strings.HasPrefix(msg, "configuration validation failed") || strings.Contains(msg, "is not a valid") || strings.HasPrefix(msg, "The stream config") || strings.HasPrefix(msg, "The consumer config") || strings.Contains(msg, "requires a name")
+	var kvErr *jetstream.APIError // a bucket refusal comes through nats.go, not jsm.go
+	invalid := len(field) > 0 || errors.As(err, &apiErr) || errors.As(err, &kvErr) || strings.HasPrefix(msg, "configuration validation failed") || strings.Contains(msg, "is not a valid") || strings.HasPrefix(msg, "The stream config") || strings.HasPrefix(msg, "The consumer config") || strings.Contains(msg, "requires a name")
 	if !invalid {
 		writeStreamError(w, err)
 		return

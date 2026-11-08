@@ -8,28 +8,26 @@ import { X } from "lucide-react"
 
 import { api } from "@/api"
 import { Badge } from "@/components/badge"
-import { CopyCli } from "@/components/copy-cli"
+import { PayloadViewer } from "@/components/payload-viewer"
 import { ScreenHeader } from "@/components/screen-header"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { TopicKV, type KVEntry, type KVOp } from "@/gen/api"
 import { subscribe, usePaused } from "@/live"
 import { bytes, count } from "@/screens/overview"
 import { Ago, useRefresh } from "@/screens/streams"
-import { KeyActions, PutKey } from "@/screens/kv-actions"
-import { shellQuote } from "@/stream-config"
+import { BucketActions, KeyActions, NewBucketButton, PutKey } from "@/screens/kv-actions"
 
 const th = "px-3 py-2 text-left text-[11px] font-medium text-muted-foreground"
 const td = "h-(--row-h) px-3"
-// shortcut: rows past this are not rendered, virtualise the table when people need to scroll a huge bucket.
+// shortcut: keys past the first SHOWN (in key order) are not shown at all, virtualise the table when buckets that big need browsing.
 const SHOWN = 1000
 
 export function KVScreen() {
   const list = useQuery({ queryKey: ["kv", "buckets"], queryFn: ({ signal }) => api.kvBuckets(signal), refetchInterval: useRefresh(), placeholderData: keepPreviousData })
   return (
     <>
-      <ScreenHeader title="Key-Value">
-        <CopyCli cmd="nats kv ls" />
+      <ScreenHeader title="Key-Value Store">
+        <NewBucketButton />
       </ScreenHeader>
       <div className="px-8 pb-8">
         {list.isError ? (
@@ -109,9 +107,8 @@ function useKeys(bucket: string): Keys {
 function Bucket({ bucket }: { bucket: string }) {
   const { keys, loaded, problem } = useKeys(bucket)
   const paused = usePaused()
-  const [prefix, setPrefix] = useState("")
   const [open, setOpen] = useState<string>()
-  const rows = useMemo(() => [...keys.values()].filter((e) => e.key.startsWith(prefix)).sort((a, b) => (a.key < b.key ? -1 : 1)), [keys, prefix])
+  const rows = useMemo(() => [...keys.values()].sort((a, b) => (a.key < b.key ? -1 : 1)), [keys])
   const now = Date.now() / 1000
 
   return (
@@ -128,22 +125,16 @@ function Bucket({ bucket }: { bucket: string }) {
           All buckets
         </Link>
         <PutKey bucket={bucket} />
-        <CopyCli cmd={`nats kv watch ${shellQuote(bucket)}${prefix ? ` ${shellQuote(`${prefix}>`)}` : ""}`} />
+        <BucketActions bucket={bucket} />
       </ScreenHeader>
       <div className={`grid gap-5 px-8 pb-8 ${open ? "grid-cols-[minmax(0,1fr)_minmax(22rem,32rem)]" : ""}`}>
         <div className="min-w-0 space-y-4">
-          <form role="search" className="flex max-w-lg items-center gap-2" onSubmit={(e) => e.preventDefault()}>
-            <label htmlFor="kv-prefix" className="shrink-0 text-xs text-muted-foreground">
-              Key prefix
-            </label>
-            <Input id="kv-prefix" value={prefix} onChange={(e) => setPrefix(e.target.value)} placeholder="app.checkout." className="font-mono" />
-          </form>
           {problem ? (
             <p className="text-destructive">{problem}</p>
           ) : !loaded ? (
             <p className="text-muted-foreground">Loading keys…</p>
           ) : rows.length === 0 ? (
-            <p className="text-muted-foreground">{prefix ? `No key starts with ${prefix}.` : "This bucket has no keys."}</p>
+            <p className="text-muted-foreground">This bucket has no keys.</p>
           ) : (
             <section aria-label="Keys" className="overflow-x-auto rounded-xl border bg-card">
               <table className="w-full text-xs">
@@ -173,7 +164,7 @@ function Bucket({ bucket }: { bucket: string }) {
                 </tbody>
               </table>
               <p className="border-t px-3 py-2 text-[11px] text-muted-foreground">
-                {rows.length > SHOWN ? `Showing the first ${count(SHOWN)} of ${count(rows.length)} keys. Narrow them with a prefix.` : `${count(rows.length)} keys`}
+                {rows.length > SHOWN ? `Showing the first ${count(SHOWN)} of ${count(rows.length)} keys.` : `${count(rows.length)} keys`}
               </p>
             </section>
           )}
@@ -192,12 +183,6 @@ function KeyDetail({ bucket, name, entry, onClose }: { bucket: string; name: str
   const [picked, setPicked] = useState<number>()
   const history = useQuery({ queryKey: ["kv", "history", bucket, name, entry?.revision], queryFn: ({ signal }) => api.kvHistory(bucket, name, signal) })
   const shown = picked ?? entry?.revision
-  const value = useQuery({
-    queryKey: ["kv", "value", bucket, name, shown],
-    queryFn: ({ signal }) => api.kvValue(bucket, name, shown!, signal),
-    enabled: shown !== undefined,
-    staleTime: Infinity, // a revision never changes
-  })
 
   return (
     <section aria-label={`Key ${name}`} className="min-w-0 space-y-4 self-start rounded-xl border bg-card p-4">
@@ -213,19 +198,16 @@ function KeyDetail({ bucket, name, entry, onClose }: { bucket: string; name: str
           <KeyActions bucket={bucket} name={name} />
         </div>
       )}
-      {shown !== undefined && <CopyCli cmd={`nats kv get ${shellQuote(bucket)} ${shellQuote(name)}${picked ? ` --revision ${picked}` : ""}`} />}
       <div className="space-y-1.5">
         <h3 className="text-[11px] font-medium text-muted-foreground">
-          {shown === undefined ? "Value" : `Value at revision ${shown}${value.data ? ` · ${bytes(value.data.length)}` : ""}`}
+          {shown === undefined ? "Value" : `Value at revision ${shown}`}
         </h3>
         {shown === undefined ? (
           <p className="text-xs text-muted-foreground">This key has been deleted. Its history is below.</p>
-        ) : value.isError ? (
-          <p className="text-xs text-destructive">{value.error.message}</p>
-        ) : !value.data ? (
-          <p className="text-xs text-muted-foreground">Loading value…</p>
         ) : (
-          <ValueView value={value.data} />
+          <div className="flex max-h-96 flex-col">
+            <PayloadViewer key={shown} url={api.kvValueUrl(bucket, name, shown)} />
+          </div>
         )}
       </div>
       <div className="space-y-1.5">
@@ -257,10 +239,4 @@ function KeyDetail({ bucket, name, entry, onClose }: { bucket: string; name: str
       </div>
     </section>
   )
-}
-
-// ValueView is the one place a value is drawn.
-// shortcut: plain text, no hex or JSON tree; switch to PayloadViewer once the key list carries each value's size (MetaOnly entries have none).
-function ValueView({ value }: { value: Uint8Array }) {
-  return <pre className="max-h-96 overflow-auto whitespace-pre-wrap break-all rounded-lg border bg-background p-3 font-mono text-xs">{new TextDecoder().decode(value)}</pre>
 }

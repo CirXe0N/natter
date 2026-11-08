@@ -8,6 +8,7 @@ import { CopyCli } from "@/components/copy-cli"
 import { ScreenHeader } from "@/components/screen-header"
 import { BlockedButton } from "@/components/blocked-button"
 import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { useBlockedReason } from "@/contexts"
 import { cliFor, defaults, fields, toConfig, toValues, type Config, type Field, type Values } from "@/stream-config"
@@ -84,11 +85,10 @@ function StreamForm({ base, editing }: { base: Config; editing?: boolean }) {
   )
 }
 
-function FieldRow({ f, value, disabled, error, onChange }: { f: Field; value: string | boolean; disabled?: boolean; error?: string; onChange: (v: string | boolean) => void }) {
-  const id = `stream-${f.key}`
+export function FieldRow({ f, value, disabled, error, onChange }: { f: Field; value: string | boolean; disabled?: boolean; error?: string; onChange: (v: string | boolean) => void }) {
+  const id = `field-${f.key}`
   const note = `${id}-note`
   const common = { id, disabled, "aria-invalid": error ? true : undefined, "aria-describedby": error || f.help ? note : undefined }
-  const select = "h-8 rounded-lg border border-input bg-transparent px-2 text-sm disabled:opacity-50"
   return (
     <div className="grid grid-cols-[14rem_1fr] items-start gap-4">
       <label htmlFor={id} className="pt-1.5 text-xs text-muted-foreground">
@@ -98,11 +98,16 @@ function FieldRow({ f, value, disabled, error, onChange }: { f: Field; value: st
         {f.kind === "list" ? (
           <Textarea {...common} value={String(value)} onChange={(e) => onChange(e.target.value)} className="font-mono" rows={3} />
         ) : f.kind === "select" ? (
-          <select {...common} value={String(value)} onChange={(e) => onChange(e.target.value)} className={select}>
-            {f.options!.map((o) => (
-              <option key={o}>{o}</option>
-            ))}
-          </select>
+          <Select value={String(value)} onValueChange={(v) => onChange(v ?? "")} disabled={disabled}>
+            <SelectTrigger {...common} className="w-48" />
+            <SelectContent>
+              {f.options!.map((o) => (
+                <SelectItem key={o} value={o}>
+                  {o}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         ) : f.kind === "bool" ? (
           <input {...common} type="checkbox" checked={value === true} onChange={(e) => onChange(e.target.checked)} className="mt-2 size-4" />
         ) : (

@@ -1,29 +1,32 @@
-// Shows a message payload as text, a JSON tree or hex (ADR-0003). url serves
-// the raw bytes: it answers Range requests, and with ?download it adds
-// Content-Disposition. A payload over 64 KB loads its first 64 KB, then in
-// full on request. Every view is virtualised, and nothing renders in an iframe.
+// Shows a message payload or KV value as text, a JSON tree or hex (ADR-0003).
+// url serves the raw bytes: it answers Range requests, and with ?download it
+// adds Content-Disposition. The first request asks for 64 KB and learns the
+// full size from the answer; a larger payload loads in full on request. Every
+// view is virtualised, and nothing renders in an iframe.
 import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { keepPreviousData, useQuery } from "@tanstack/react-query"
 import { ChevronDown, ChevronRight } from "lucide-react"
 
 import { Button, buttonVariants } from "@/components/ui/button"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
-import { hexRow, jsonRows, parse, PREVIEW, type JsonRow } from "@/payload"
+import { hexRow, jsonRows, parse, PREVIEW, totalSize, type JsonRow } from "@/payload"
 import { follow, trackHeight, type Scroll } from "@/scaled-scroll"
 import { bytes as fmtBytes } from "@/screens/overview"
 
 type Mode = "text" | "json" | "hex"
 const ROW = 20
 
-export function PayloadViewer({ url, size }: { url: string; size: number }) {
-  const [whole, setWhole] = useState(size <= PREVIEW)
+export function PayloadViewer({ url }: { url: string }) {
+  const [whole, setWhole] = useState(false)
   const [picked, setPicked] = useState<Mode>()
   const q = useQuery({
     queryKey: ["payload", url, whole],
     queryFn: async ({ signal }) => {
       const res = await fetch(url, { signal, headers: whole ? undefined : { Range: `bytes=0-${PREVIEW - 1}` } })
       if (!res.ok) throw new Error((await res.text()).trim() || res.statusText)
-      return parse(new Uint8Array(await res.arrayBuffer()), whole)
+      const bytes = new Uint8Array(await res.arrayBuffer())
+      const total = totalSize(res.headers.get("Content-Range"), bytes.length)
+      return { ...parse(bytes, bytes.length === total), size: total ?? bytes.length }
     },
     placeholderData: keepPreviousData,
     staleTime: Infinity,
@@ -54,9 +57,10 @@ export function PayloadViewer({ url, size }: { url: string; size: number }) {
           </ToggleGroupItem>
         </ToggleGroup>
         <span className="text-muted-foreground tabular-nums" role="status">
-          {q.isFetching ? "Loading payload…" : p && !p.whole ? `Showing the first ${fmtBytes(PREVIEW)} of ${fmtBytes(size)}.${p.binary ? "" : " Load it in full for the JSON tree."}` : fmtBytes(size)}
+          {q.isFetching ? "Loading payload…" : p && !p.whole ? `Showing the first ${fmtBytes(PREVIEW)} of ${fmtBytes(p.size)}.${p.binary ? "" : " Load it in full for the JSON tree."}` : p && fmtBytes(p.size)}
         </span>
-        {p && !whole && (
+        {/* !whole hides the button while the full load is in flight, since keepPreviousData still shows the preview. */}
+        {p && !p.whole && !whole && (
           <Button variant="outline" size="sm" onClick={() => setWhole(true)}>
             Load full
           </Button>
@@ -66,11 +70,11 @@ export function PayloadViewer({ url, size }: { url: string; size: number }) {
         </a>
       </div>
       {q.error && <p className="text-xs text-destructive">{q.error.message}</p>}
-      {p && size === 0 ? (
+      {p && p.size === 0 ? (
         <p className="text-xs text-muted-foreground">The payload is empty.</p>
       ) : (
         p && (
-          <div className="min-h-0 flex-1 rounded-md border bg-muted/30 font-mono text-[11px]">
+          <div className="flex min-h-0 flex-1 flex-col rounded-md border bg-muted/30 font-mono text-[11px]">
             {mode === "json" && p.json ? (
               <JsonTree value={p.json.value} />
             ) : mode === "hex" ? (
@@ -156,7 +160,9 @@ function VirtualRows({ count, row, label }: { count: number; row: (i: number) =>
       tabIndex={0}
       role="list"
       aria-label={label}
-      className="h-full overflow-y-auto"
+      className="min-h-0 overflow-y-auto"
+      // As tall as its rows, so the viewer fits a small payload; a container with less room shrinks it and it scrolls.
+      style={{ height: trackHeight(height) }}
       onScroll={(e) => {
         const { scrollTop, clientHeight } = e.currentTarget
         // clientHeight, not vh: a scroll can land before the ResizeObserver first sets vh.

@@ -27,7 +27,7 @@ function useCommands(): PaletteCommand[] {
   return [
     ...screens.map((to) => ({ id: `go-${to}`, group: "Go to", label: title(to), run: go(to) })),
     ...(names.data?.streams ?? []).map((n) => ({ id: `stream-${n}`, group: "Streams", label: `Open stream ${n}`, cli: `nats stream info ${n}`, run: () => void navigate({ to: "/streams/$stream", params: { stream: n } }) })),
-    ...(names.data?.buckets ?? []).map((n) => ({ id: `kv-${n}`, group: "Key-Value", label: `Open bucket ${n}`, cli: `nats kv status ${n}`, run: () => void navigate({ to: "/kv/$bucket", params: { bucket: n } }) })),
+    ...(names.data?.buckets ?? []).map((n) => ({ id: `kv-${n}`, group: "Key-Value Store", label: `Open bucket ${n}`, cli: `nats kv status ${n}`, run: () => void navigate({ to: "/kv/$bucket", params: { bucket: n } }) })),
     ...(contexts.data ?? []).map((c) => ({
       id: `ctx-${refKey(c)}`,
       group: "Switch Context",
@@ -37,7 +37,7 @@ function useCommands(): PaletteCommand[] {
       run: () => activate.mutate(c),
     })),
     { id: "a-stream", group: "Actions", label: "Create stream…", cli: "nats stream add", run: go("/streams") },
-    { id: "a-bucket", group: "Actions", label: "Create bucket…", cli: "nats kv add", run: go("/kv") },
+    { id: "a-bucket", group: "Actions", label: "Create bucket…", cli: "nats kv add", run: () => void navigate({ to: "/kv/new" }) },
     { id: "a-publish", group: "Actions", label: "Publish a message…", cli: "nats pub", run: go("/publish") },
     { id: "a-tail", group: "Actions", label: "Tail a subject…", cli: "nats sub", run: go("/tail") },
   ]

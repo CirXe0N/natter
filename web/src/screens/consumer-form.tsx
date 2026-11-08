@@ -12,6 +12,7 @@ import { ScreenHeader } from "@/components/screen-header"
 import { Field, Section, Segmented, Switch } from "@/components/form"
 import { buttonVariants } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { useBlockedReason } from "@/contexts"
 import { cliFor, defaults, fields, toConfig, toValues, visible, type Config, type Field as ConfigField, type Section as SectionKey, type Values } from "@/consumer-config"
@@ -145,21 +146,16 @@ function ConsumerForm({ editStream, base }: { editStream?: string; base: Config 
                     {s.key === "consumer" && !editing && (
                       <Field label="Stream" hint="The stream whose messages it delivers. Fixed after create." error={problems.stream} className="sm:col-span-2 sm:w-1/2 sm:pr-2">
                         {(id, describedBy) => (
-                          <select
-                            id={id}
-                            aria-describedby={describedBy}
-                            aria-invalid={problems.stream ? true : undefined}
-                            value={picked}
-                            onChange={(e) => setPicked(e.target.value)}
-                            className="h-8 w-full rounded-lg border border-input bg-transparent px-2 font-mono text-xs dark:bg-input/30"
-                          >
-                            <option value="">{streams.isPending ? "Loading streams…" : "Choose a stream"}</option>
-                            {streams.data?.streams.map((st) => (
-                              <option key={st.name} value={st.name}>
-                                {st.name}
-                              </option>
-                            ))}
-                          </select>
+                          <Select value={picked || null} onValueChange={(v) => setPicked(v ?? "")}>
+                            <SelectTrigger id={id} aria-describedby={describedBy} aria-invalid={problems.stream ? true : undefined} placeholder={streams.isPending ? "Loading streams…" : "Choose a stream"} className="font-mono text-xs" />
+                            <SelectContent className="font-mono text-xs">
+                              {streams.data?.streams.map((st) => (
+                                <SelectItem key={st.name} value={st.name}>
+                                  {st.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         )}
                       </Field>
                     )}
@@ -214,13 +210,16 @@ function Control({ f, value, onChange, locked, error }: { f: ConfigField; value:
         const common = { id, "aria-describedby": describedBy, "aria-invalid": error ? true : undefined, disabled: locked && f.key !== "name", readOnly: locked && f.key === "name" }
         if (f.kind === "select")
           return (
-            <select {...common} value={String(value)} onChange={(e) => onChange(e.target.value)} className="h-8 w-full rounded-lg border border-input bg-transparent px-2 text-xs disabled:opacity-50 dark:bg-input/30">
-              {f.options!.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
+            <Select items={f.options} value={String(value)} onValueChange={(v) => onChange(v ?? "")} disabled={common.disabled}>
+              <SelectTrigger id={id} aria-describedby={describedBy} aria-invalid={common["aria-invalid"]} className="text-xs" />
+              <SelectContent className="text-xs">
+                {f.options!.map((o) => (
+                  <SelectItem key={o.value} value={o.value}>
+                    {o.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           )
         if (f.kind === "list" || f.kind === "map")
           return <Textarea {...common} rows={f.kind === "map" ? 2 : 3} spellCheck={false} placeholder={f.placeholder} value={String(value)} onChange={(e) => onChange(e.target.value)} className="font-mono text-xs md:text-xs" />
