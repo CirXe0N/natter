@@ -1,7 +1,8 @@
-// KV mutations: Put key in the bucket header, Delete and Purge on an open key.
+// KV mutations: New bucket in the Key-Value header, Put key in the bucket header, Delete and Purge on an open key.
 // Purge drops the key's history, so it asks first; delete leaves a marker and does not.
 import { useId, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
 
 import { api } from "@/api";
 import { BlockedButton } from "@/components/blocked-button";
@@ -18,6 +19,16 @@ import {
 import { Input } from "@/components/ui/input";
 import { useBlockedReason } from "@/contexts";
 import { shellQuote } from "@/stream-config";
+
+export function NewBucketButton() {
+  const navigate = useNavigate();
+  const blocked = useBlockedReason();
+  return (
+    <BlockedButton reason={blocked} onClick={() => void navigate({ to: "/kv/new" })}>
+      New bucket
+    </BlockedButton>
+  );
+}
 
 export function PutKey({ bucket, name }: { bucket: string; name?: string }) {
   const blocked = useBlockedReason();

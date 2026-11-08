@@ -89,6 +89,7 @@ export const api = {
   // keepalive so it still goes out while the page unloads
   closeBrowsing: (view: string) => void fetch(`/api/browsing/${encodeURIComponent(view)}`, { method: "DELETE", keepalive: true }),
   kvBuckets: (signal?: AbortSignal) => request<KVBucket[]>("GET", "/api/kv", undefined, signal),
+  createBucket: (config: object) => request<KVBucket>("POST", "/api/kv", config),
   kvHistory: (bucket: string, key: string, signal?: AbortSignal) =>
     request<KVEntry[]>("GET", `/api/kv/${encodeURIComponent(bucket)}/history/${encodeURIComponent(key)}`, undefined, signal),
   // raw bytes of one revision's value for the PayloadViewer, as payloadUrl

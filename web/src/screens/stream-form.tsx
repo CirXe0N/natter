@@ -84,8 +84,8 @@ function StreamForm({ base, editing }: { base: Config; editing?: boolean }) {
   )
 }
 
-function FieldRow({ f, value, disabled, error, onChange }: { f: Field; value: string | boolean; disabled?: boolean; error?: string; onChange: (v: string | boolean) => void }) {
-  const id = `stream-${f.key}`
+export function FieldRow({ f, value, disabled, error, onChange }: { f: Field; value: string | boolean; disabled?: boolean; error?: string; onChange: (v: string | boolean) => void }) {
+  const id = `field-${f.key}`
   const note = `${id}-note`
   const common = { id, disabled, "aria-invalid": error ? true : undefined, "aria-describedby": error || f.help ? note : undefined }
   const select = "h-8 rounded-lg border border-input bg-transparent px-2 text-sm disabled:opacity-50"

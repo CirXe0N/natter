@@ -37,7 +37,7 @@ function useCommands(): PaletteCommand[] {
       run: () => activate.mutate(c),
     })),
     { id: "a-stream", group: "Actions", label: "Create stream…", cli: "nats stream add", run: go("/streams") },
-    { id: "a-bucket", group: "Actions", label: "Create bucket…", cli: "nats kv add", run: go("/kv") },
+    { id: "a-bucket", group: "Actions", label: "Create bucket…", cli: "nats kv add", run: () => void navigate({ to: "/kv/new" }) },
     { id: "a-publish", group: "Actions", label: "Publish a message…", cli: "nats pub", run: go("/publish") },
     { id: "a-tail", group: "Actions", label: "Tail a subject…", cli: "nats sub", run: go("/tail") },
   ]

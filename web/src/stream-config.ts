@@ -66,10 +66,11 @@ export function formatDuration(ns: number): string {
 
 export type Values = { [key: string]: string | boolean }
 
-// toValues turns a config into form values.
-export function toValues(cfg: Config): Values {
+// toValues turns a config into form values. table is the form's field table,
+// the stream's unless given.
+export function toValues(cfg: Config, table: readonly Field[] = fields): Values {
   const v: Values = {}
-  for (const f of fields) {
+  for (const f of table) {
     const x = cfg[f.key]
     if (f.kind === "bool") v[f.key] = x === true
     else if (f.kind === "list") v[f.key] = Array.isArray(x) ? x.join("\n") : ""
@@ -82,10 +83,10 @@ export function toValues(cfg: Config): Values {
 
 // toConfig lays form values over base. A value that cannot be read is reported
 // against its own key so the form can show it on that field.
-export function toConfig(base: Config, v: Values): { config: Config; errors: { [key: string]: string } } {
+export function toConfig(base: Config, v: Values, table: readonly Field[] = fields): { config: Config; errors: { [key: string]: string } } {
   const config: Config = { ...base }
   const errors: { [key: string]: string } = {}
-  for (const f of fields) {
+  for (const f of table) {
     const x = v[f.key]
     if (f.kind === "bool") config[f.key] = x === true
     else if (f.kind === "list") config[f.key] = String(x).split("\n").map((s) => s.trim()).filter(Boolean)
@@ -114,8 +115,14 @@ export const shellQuote = (s: string) => (/^[\w.,:/@=-]+$/.test(s) ? s : `'${s.r
 export function cliFor(config: Config, before?: Config): string {
   const edit = before !== undefined
   const base = before ?? toConfig({}, toValues(defaults)).config
-  const parts = [edit ? `nats stream edit ${config.name}` : `nats stream add ${config.name || "NAME"}`]
-  for (const f of fields) {
+  const parts = [edit ? `nats stream edit ${config.name}` : `nats stream add ${config.name || "NAME"}`, ...flagsFor(fields, config, base, edit)]
+  return edit ? `${parts.join(" ")} --force` : parts.join(" ")
+}
+
+// flagsFor is the natscli flags for the fields of table whose value differs from base.
+export function flagsFor(table: readonly Field[], config: Config, base: Config, edit = false): string[] {
+  const parts: string[] = []
+  for (const f of table) {
     if (!f.flag || (edit && !f.flag.edit) || JSON.stringify(config[f.key]) === JSON.stringify(base[f.key])) continue
     const now = config[f.key]
     const flag = `--${f.flag.name}`
@@ -125,7 +132,7 @@ export function cliFor(config: Config, before?: Config): string {
     else if (f.key === "retention") parts.push(`${flag} ${now === "workqueue" ? "work" : now}`)
     else parts.push(`${flag} ${shellQuote(String(now))}`)
   }
-  return edit ? `${parts.join(" ")} --force` : parts.join(" ")
+  return parts
 }
 
 export function purgeCli(name: string, p: { subject?: string; keep?: number; sequence?: number }) {

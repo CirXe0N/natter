@@ -17,7 +17,7 @@ import { TopicKV, type KVEntry, type KVOp } from "@/gen/api"
 import { subscribe, usePaused } from "@/live"
 import { bytes, count } from "@/screens/overview"
 import { Ago, useRefresh } from "@/screens/streams"
-import { KeyActions, PutKey } from "@/screens/kv-actions"
+import { KeyActions, NewBucketButton, PutKey } from "@/screens/kv-actions"
 import { shellQuote } from "@/stream-config"
 
 const th = "px-3 py-2 text-left text-[11px] font-medium text-muted-foreground"
@@ -31,6 +31,7 @@ export function KVScreen() {
     <>
       <ScreenHeader title="Key-Value">
         <CopyCli cmd="nats kv ls" />
+        <NewBucketButton />
       </ScreenHeader>
       <div className="px-8 pb-8">
         {list.isError ? (
