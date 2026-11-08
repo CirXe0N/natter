@@ -9,6 +9,7 @@ import (
 
 	"github.com/nats-io/jsm.go"
 	jsmapi "github.com/nats-io/jsm.go/api"
+	"github.com/nats-io/nats.go/jetstream"
 
 	"github.com/CirXe0N/natter/internal/api"
 )
@@ -170,7 +171,8 @@ func writeHintedError(w http.ResponseWriter, err error, hints []struct{ word, fi
 		return
 	}
 	msg := err.Error()
-	invalid := len(field) > 0 || errors.As(err, &apiErr) || strings.HasPrefix(msg, "configuration validation failed") || strings.Contains(msg, "is not a valid") || strings.HasPrefix(msg, "The stream config") || strings.HasPrefix(msg, "The consumer config") || strings.Contains(msg, "requires a name")
+	var kvErr *jetstream.APIError // a bucket refusal comes through nats.go, not jsm.go
+	invalid := len(field) > 0 || errors.As(err, &apiErr) || errors.As(err, &kvErr) || strings.HasPrefix(msg, "configuration validation failed") || strings.Contains(msg, "is not a valid") || strings.HasPrefix(msg, "The stream config") || strings.HasPrefix(msg, "The consumer config") || strings.Contains(msg, "requires a name")
 	if !invalid {
 		writeStreamError(w, err)
 		return

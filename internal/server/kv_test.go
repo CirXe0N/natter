@@ -6,6 +6,7 @@ import (
 	"maps"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -160,12 +161,19 @@ func TestKV(t *testing.T) {
 	if err := wsjson.Read(ctx, c, &f); err != nil {
 		t.Fatal(err)
 	}
-	if f.Topic != "kv:config" || f.KV == nil || !f.KV.Full || len(f.KV.Keys) != 2 || f.KV.Keys[0].Key != "dir/x" || f.KV.Keys[1].Key != "empty" {
-		t.Errorf("first kv frame %+v", f)
+	if f.Topic != "kv:config" || f.KV == nil || !f.KV.Full {
+		t.Fatalf("first kv frame %+v", f)
+	}
+	var live []string // a full frame lists its keys in no set order
+	for _, e := range f.KV.Keys {
+		live = append(live, e.Key)
+	}
+	if slices.Sort(live); !slices.Equal(live, []string{"dir/x", "empty"}) {
+		t.Errorf("first kv frame keys %v, want dir/x and empty", live)
 	}
 
 	// Put, delete and purge are refused under Read-only mode and work without it.
-	for _, m := range []string{"PUT /api/kv/config/keys/m", "DELETE /api/kv/config/keys/m"} {
+	for _, m := range []string{"PUT /api/kv/config/keys/m", "DELETE /api/kv/config/keys/m", "POST /api/kv"} {
 		meth, path, _ := strings.Cut(m, " ")
 		code, body = call(meth, path, "x")
 		want(m+" under Read-only", code, body, 403, "")
@@ -196,4 +204,34 @@ func TestKV(t *testing.T) {
 	want("an invalid key", code, body, 400, "")
 	code, body = call("PUT", "/api/kv/nope/keys/k", "x")
 	want("put to a missing bucket", code, body, 404, "no bucket named nope")
+
+	// Create takes nats.go's KeyValueConfig JSON and answers with the new bucket's row.
+	fresh := `{"bucket":"fresh","description":"for tests","history":5,"ttl":60000000000,"max_value_size":1024,"max_bytes":1048576,"storage":"file","num_replicas":1,"compression":true}`
+	code, body = call("POST", "/api/kv", fresh)
+	var made api.KVBucket
+	if err := json.Unmarshal([]byte(body), &made); code != 200 || err != nil {
+		t.Fatalf("create: %d %s", code, body)
+	}
+	if made != (api.KVBucket{Bucket: "fresh", History: 5, TTL: 60, Storage: "file", Replicas: 1}) {
+		t.Errorf("created %+v", made)
+	}
+	if st, err := js.KeyValue(ctx, "fresh"); err != nil {
+		t.Errorf("open created bucket: %v", err)
+	} else if s, _ := st.Status(ctx); s.Config().Description != "for tests" || s.Config().MaxValueSize != 1024 || s.Config().MaxBytes != 1048576 || !s.IsCompressed() {
+		t.Errorf("created config %+v", s.Config())
+	}
+	// The same config again would be a no-op on the server, so create refuses a taken name itself.
+	code, body = call("POST", "/api/kv", fresh)
+	want("create a bucket that exists", code, body, 400, `"field":"bucket"`)
+	want("create a bucket that exists", code, body, 400, "already exists")
+	code, body = call("POST", "/api/kv", `{"bucket":"config"}`)
+	want("create over a bucket with another config", code, body, 400, `"field":"bucket"`)
+	code, body = call("POST", "/api/kv", `{"bucket":"bad name"}`)
+	want("an invalid bucket name", code, body, 400, `"field":"bucket"`)
+	code, body = call("POST", "/api/kv", `{"bucket":"deep","history":65}`)
+	want("too much history", code, body, 400, `"field":"history"`)
+	code, body = call("POST", "/api/kv", `{"bucket":"many","num_replicas":3}`)
+	want("a server refusal", code, body, 400, `"field":"num_replicas"`)
+	code, body = call("POST", "/api/kv", `{"bucket":"typo","histroy":5}`)
+	want("an unknown key", code, body, 400, "histroy")
 }

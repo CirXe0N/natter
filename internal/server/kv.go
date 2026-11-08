@@ -2,6 +2,7 @@ package server
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -24,7 +25,8 @@ func init() {
 		route{pattern: "GET /api/kv", handle: (*server).listBuckets},
 		route{pattern: "GET /api/kv/{bucket}/keys/{key...}", handle: (*server).kvValue},
 		route{pattern: "GET /api/kv/{bucket}/history/{key...}", handle: (*server).kvHistory},
-		// No allowReadOnly on these two: Read-only mode refuses them.
+		// No allowReadOnly on these three: Read-only mode refuses them.
+		route{pattern: "POST /api/kv", handle: (*server).createBucket},
 		route{pattern: "PUT /api/kv/{bucket}/keys/{key...}", handle: (*server).kvPut},
 		route{pattern: "DELETE /api/kv/{bucket}/keys/{key...}", handle: (*server).kvDelete},
 	)
@@ -39,11 +41,7 @@ func (s *server) listBuckets(w http.ResponseWriter, r *http.Request) {
 	l := a.JS.KeyValueStores(r.Context())
 	out := []api.KVBucket{}
 	for st := range l.Status() {
-		cfg := st.Config()
-		out = append(out, api.KVBucket{
-			Bucket: st.Bucket(), Values: st.Values(), History: st.History(), TTL: int64(st.TTL().Seconds()),
-			Bytes: st.Bytes(), Storage: strings.ToLower(cfg.Storage.String()), Replicas: cfg.Replicas,
-		})
+		out = append(out, bucketRow(st))
 	}
 	if err := l.Error(); err != nil {
 		writeError(w, err)
@@ -51,6 +49,66 @@ func (s *server) listBuckets(w http.ResponseWriter, r *http.Request) {
 	}
 	slices.SortFunc(out, func(x, y api.KVBucket) int { return strings.Compare(x.Bucket, y.Bucket) })
 	writeJSON(w, out)
+}
+
+func bucketRow(st jetstream.KeyValueStatus) api.KVBucket {
+	cfg := st.Config()
+	return api.KVBucket{
+		Bucket: st.Bucket(), Values: st.Values(), History: st.History(), TTL: int64(st.TTL().Seconds()),
+		Bytes: st.Bytes(), Storage: strings.ToLower(cfg.Storage.String()), Replicas: cfg.Replicas,
+	}
+}
+
+// createBucket makes a bucket from nats.go's KeyValueConfig JSON, ttl in
+// nanoseconds. A refusal names the config key it is about, as for streams.
+func (s *server) createBucket(w http.ResponseWriter, r *http.Request) {
+	a := s.jetStream(w)
+	if a == nil {
+		return
+	}
+	var cfg jetstream.KeyValueConfig
+	dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxBody))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&cfg); err != nil {
+		writeFieldError(w, fmt.Errorf("The bucket config is not valid JSON: %w", err), "")
+		return
+	}
+	// The server takes a create with an existing bucket's exact config as a no-op, so check first.
+	if _, err := a.JS.KeyValue(r.Context(), cfg.Bucket); err == nil {
+		writeFieldError(w, fmt.Errorf("A bucket named %s already exists.", cfg.Bucket), "bucket")
+		return
+	}
+	kv, err := a.JS.CreateKeyValue(r.Context(), cfg)
+	switch {
+	case errors.Is(err, jetstream.ErrBucketExists):
+		writeFieldError(w, fmt.Errorf("A bucket named %s already exists.", cfg.Bucket), "bucket")
+		return
+	case errors.Is(err, jetstream.ErrInvalidBucketName):
+		writeFieldError(w, errors.New("A bucket name is letters, numbers, - and _."), "bucket")
+		return
+	case errors.Is(err, jetstream.ErrHistoryTooLarge):
+		writeFieldError(w, errors.New("A bucket keeps at most 64 revisions per key."), "history")
+		return
+	case err != nil:
+		writeHintedError(w, err, bucketHints)
+		return
+	}
+	st, err := kv.Status(r.Context())
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, bucketRow(st))
+}
+
+// bucketHints maps words in a server refusal to the KeyValueConfig key it is about.
+var bucketHints = []struct{ word, field string }{
+	{"replicas", "num_replicas"}, {"peers", "num_replicas"},
+	{"storage", "storage"}, {"compression", "compression"},
+	{"max bytes", "max_bytes"}, {"max_bytes", "max_bytes"},
+	{"max msg size", "max_value_size"}, {"max_msg_size", "max_value_size"}, {"message size", "max_value_size"},
+	{"max age", "ttl"}, {"max_age", "ttl"},
+	{"description", "description"},
 }
 
 // kvValue sends a key's value, or ?revision='s, as raw bytes. It answers Range
