@@ -23,6 +23,9 @@ test("lists Connections, sorts, filters, shows subscriptions, and kicks after a 
   await expect(names).toHaveCount(1)
   await filter.fill("no-such-thing")
   await expect(page.getByText("No Connections.")).toBeVisible()
+  await page.getByRole("button", { name: "Clear filter" }).click()
+  await expect(filter).toHaveValue("")
+  await expect(page.getByText("No Connections.")).toHaveCount(0)
   await filter.fill("APP")
   await expect(page.getByRole("link", { name: "orders-service" })).toBeVisible()
 

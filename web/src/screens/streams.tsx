@@ -1,16 +1,15 @@
 // Streams: every stream in the active Context's account, filterable by
 // subject. Shared pieces for the stream detail screen live here too.
-import { useState } from "react"
 import { keepPreviousData, useQuery } from "@tanstack/react-query"
 import { Link, useNavigate, useSearch } from "@tanstack/react-router"
+import { Funnel } from "lucide-react"
 
 import { api } from "@/api"
 import { Badge } from "@/components/badge"
 import { CopyCli } from "@/components/copy-cli"
+import { FilterForm } from "@/components/filter-field"
 import { shellQuote } from "@/stream-config"
 import { ScreenHeader } from "@/components/screen-header"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import type { StreamHealth, StreamKind, StreamSummary } from "@/gen/api"
 import { usePaused } from "@/live"
 import { bytes, count, uptime } from "@/screens/overview"
@@ -23,6 +22,7 @@ export function useRefresh() {
 
 export function StreamsScreen() {
   const { subject = "" } = useSearch({ from: "/streams" })
+  const navigate = useNavigate({ from: "/streams" })
   const list = useQuery({
     queryKey: ["streams", "list", subject],
     queryFn: ({ signal }) => api.streams(subject, signal),
@@ -38,7 +38,18 @@ export function StreamsScreen() {
         <NewStreamButton />
       </ScreenHeader>
       <div className="space-y-4 px-8 pb-8">
-        <SubjectFilter key={subject} value={subject} />
+        <FilterForm
+          debounce
+          value={subject}
+          onApply={(s) => void navigate({ search: s ? { subject: s } : {}, replace: true })}
+          label="Subject"
+          icon={Funnel}
+          mono
+          placeholder="Filter by subject, e.g. orders.> or orders.*.new"
+          autoComplete="off"
+          spellCheck={false}
+          className="w-80"
+        />
         {list.isError ? (
           <p className="text-destructive">{list.error.message}</p>
         ) : !list.data ? (
@@ -53,34 +64,6 @@ export function StreamsScreen() {
   )
 }
 
-function SubjectFilter({ value }: { value: string }) {
-  const navigate = useNavigate({ from: "/streams" })
-  const [draft, setDraft] = useState(value)
-  const apply = (subject: string) => void navigate({ search: subject ? { subject } : {}, replace: true })
-  return (
-    <form
-      role="search"
-      className="flex max-w-lg items-center gap-2"
-      onSubmit={(e) => {
-        e.preventDefault()
-        apply(draft.trim())
-      }}
-    >
-      <label htmlFor="stream-subject" className="shrink-0 text-xs text-muted-foreground">
-        Subject
-      </label>
-      <Input id="stream-subject" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="orders.> or orders.*.new" className="font-mono" />
-      <Button type="submit" variant="outline">
-        Filter
-      </Button>
-      {value && (
-        <Button type="button" variant="ghost" onClick={() => apply("")}>
-          Clear
-        </Button>
-      )}
-    </form>
-  )
-}
 
 const th = "px-3 py-2 text-left text-[11px] font-medium text-muted-foreground"
 const td = "h-(--row-h) px-3"

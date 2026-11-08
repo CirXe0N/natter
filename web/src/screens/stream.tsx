@@ -3,14 +3,13 @@
 import { useState, type ReactNode } from "react"
 import { keepPreviousData, useQuery } from "@tanstack/react-query"
 import { Link, Outlet, useParams } from "@tanstack/react-router"
-import { ChevronDown, ChevronRight } from "lucide-react"
+import { ChevronDown, ChevronRight, Funnel } from "lucide-react"
 
 import { api } from "@/api"
 import { CopyCli } from "@/components/copy-cli"
+import { FilterForm } from "@/components/filter-field"
 import { shellQuote } from "@/stream-config"
 import { ScreenHeader } from "@/components/screen-header"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import type { StreamDetail } from "@/gen/api"
 import { bytes, count } from "@/screens/overview"
 import { Ago, HealthDot, KindBadge, useRefresh } from "@/screens/streams"
@@ -231,7 +230,6 @@ function Sources({ s }: { s: StreamDetail }) {
 
 function Subjects({ s }: { s: StreamDetail }) {
   const [filter, setFilter] = useState(">")
-  const [draft, setDraft] = useState(">")
   const subs = useQuery({
     queryKey: ["streams", "subjects", s.name, filter],
     queryFn: ({ signal }) => api.streamSubjects(s.name, filter, signal),
@@ -240,22 +238,19 @@ function Subjects({ s }: { s: StreamDetail }) {
   const tree = subs.data ? subjectTree(subs.data.subjects) : []
   return (
     <Section id="subjects-heading" title="Subjects">
-      <div className="flex flex-wrap items-center gap-2 border-b px-4 py-2.5">
-        <form
-          className="flex items-center gap-2"
-          onSubmit={(e) => {
-            e.preventDefault()
-            setFilter(draft.trim() || ">")
-          }}
-        >
-          <label htmlFor="subject-filter" className="text-xs text-muted-foreground">
-            Filter
-          </label>
-          <Input id="subject-filter" value={draft} onChange={(e) => setDraft(e.target.value)} className="w-64 font-mono" />
-          <Button type="submit" variant="outline">
-            Show
-          </Button>
-        </form>
+      <div className="flex flex-wrap items-center gap-2 border-b px-4 py-2 text-xs">
+        <FilterForm
+          debounce
+          value={filter === ">" ? "" : filter}
+          onApply={(f) => setFilter(f || ">")}
+          label="Filter"
+          icon={Funnel}
+          mono
+          placeholder="Filter by subject, e.g. orders.>"
+          autoComplete="off"
+          spellCheck={false}
+          className="w-64"
+        />
         <span className="flex-1" />
         <CopyCli cmd={`nats stream subjects ${s.name}${filter === ">" ? "" : ` ${shellQuote(filter)}`}`} />
       </div>

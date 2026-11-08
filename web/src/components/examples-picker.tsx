@@ -8,6 +8,7 @@ import { ArrowLeftRight, BookOpen, Check, ChevronDown, ChevronRight, Import, Plu
 
 import { api } from "@/api"
 import { Badge } from "@/components/badge"
+import { FilterField } from "@/components/filter-field"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { useContexts } from "@/contexts"
@@ -50,15 +51,7 @@ export function ExamplesPicker({ context, examples, selected, onPick, onNew, onI
         <Popover.Positioner side="bottom" align="start" sideOffset={6} className="isolate z-50">
           <Popover.Popup aria-label="Example messages" className="flex max-h-115 w-110 flex-col overflow-hidden rounded-xl border bg-popover text-popover-foreground shadow-2xl">
             <div className="flex items-center gap-2 border-b px-3 py-2">
-              <Search size={13} aria-hidden className="text-fg-faint" />
-              <input
-                autoFocus
-                aria-label="Search examples"
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder="Search examples by name, subject or folder"
-                className="h-7 flex-1 bg-transparent text-xs placeholder:text-fg-faint"
-              />
+              <FilterField autoFocus label="Search examples" icon={Search} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search examples by name, subject or folder" className="flex-1" />
             </div>
             <div className="min-h-0 flex-1 overflow-auto py-1">
               {[...folders].map(([folder, items]) => (

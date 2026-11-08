@@ -12,7 +12,6 @@ test("Streams lists the account's streams, filters by subject, and opens one", a
   await expect(table.getByRole("row").filter({ hasText: "KV_config" })).toContainText("KV bucket")
 
   await page.getByLabel("Subject").fill("orders.eu.*")
-  await page.getByRole("button", { name: "Filter" }).click()
   await expect(page).toHaveURL(/subject=orders\.eu\.\*/)
   await expect(table.getByRole("row")).toHaveCount(2) // header plus ORDERS
   const copy = page.getByRole("button", { name: "Copy as CLI: nats stream ls -a --subject 'orders.eu.*'" })
@@ -20,6 +19,18 @@ test("Streams lists the account's streams, filters by subject, and opens one", a
   await expect(copy.getByRole("status")).toHaveText("Copied")
   // WebKit lets only a user's paste read the clipboard back.
   if (browserName === "chromium") expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("nats stream ls -a --subject 'orders.eu.*'")
+
+  // A filter changed from outside (here the sidebar's plain /streams) shows in the box.
+  await page.getByRole("navigation", { name: "Screens" }).getByRole("link", { name: "Streams" }).click()
+  await expect(page).not.toHaveURL(/subject=/)
+  await expect(page.getByLabel("Subject")).toHaveValue("")
+  // Clear hands focus back to the box rather than dropping it on the page.
+  await page.getByLabel("Subject").fill("orders.eu.*")
+  await page.getByRole("button", { name: "Clear filter" }).click()
+  await expect(page.getByLabel("Subject")).toBeFocused()
+  await expect(page.getByLabel("Subject")).toHaveValue("")
+  await page.getByLabel("Subject").fill("orders.eu.*")
+  await expect(table.getByRole("row")).toHaveCount(2)
 
   await orders.getByRole("link", { name: "ORDERS" }).click()
   await expect(page).toHaveURL(/\/streams\/ORDERS$/)

@@ -15,6 +15,7 @@ import { cn } from "cn"
 import { api } from "@/api"
 import { Badge } from "@/components/badge"
 import { CopyCli } from "@/components/copy-cli"
+import { FilterField, FilterForm } from "@/components/filter-field"
 import { ScreenHeader } from "@/components/screen-header"
 import { shellQuote } from "@/stream-config"
 import { Button } from "@/components/ui/button"
@@ -283,12 +284,20 @@ function MessageTable({ stream }: { stream: string }) {
     <>
       <section aria-label={`Messages in ${stream}`} className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border bg-card">
         <div className="flex flex-wrap items-center gap-2 border-b px-4 py-2 text-xs">
-          <SubjectFilter
+          <FilterForm
+            debounce
             value={filter}
             onApply={(f) => {
               setFilter(f)
               setAnchor({ pin: true })
             }}
+            label="Subject"
+            icon={Funnel}
+            mono
+            placeholder="Subject filter, e.g. orders.paid, orders.*, orders.>"
+            autoComplete="off"
+            spellCheck={false}
+            className="w-80"
           />
           <JumpTo onJump={(a) => setAnchor({ ...a, pin: true })} />
           <span className="flex-1" />
@@ -434,98 +443,41 @@ function Row({ index, m, selected, onOpen }: { index: number; m?: MsgMeta; selec
   )
 }
 
-// SubjectFilter applies on Enter. The Filter button shows while the typed
-// filter differs from the applied one; the cross clears it.
-function SubjectFilter({ value, onApply }: { value: string; onApply: (filter: string) => void }) {
-  const [draft, setDraft] = useState(value)
-  return (
-    <form
-      role="search"
-      className="flex items-center gap-2"
-      onSubmit={(e) => {
-        e.preventDefault()
-        onApply(draft.trim())
-      }}
-    >
-      <Funnel size={13} aria-hidden className="shrink-0 text-fg-faint" />
-      <label htmlFor="messages-subject" className="sr-only">
-        Subject
-      </label>
-      <input
-        id="messages-subject"
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        placeholder="Subject filter, e.g. orders.paid, orders.*, orders.>"
-        spellCheck={false}
-        className="h-7 w-80 rounded-md bg-transparent px-1 font-mono placeholder:font-sans placeholder:text-fg-faint"
-      />
-      {draft.trim() !== value && (
-        <Button type="submit" variant="outline" size="sm">
-          Filter
-        </Button>
-      )}
-      {value && (
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          aria-label="Clear filter"
-          onClick={() => {
-            setDraft("")
-            onApply("")
-          }}
-        >
-          <X aria-hidden />
-        </Button>
-      )}
-    </form>
-  )
-}
-
 // JumpTo: a sequence box, and a time box behind "Jump to time…".
 function JumpTo({ onJump }: { onJump: (to: { seq?: number; time?: string }) => void }) {
   const [seq, setSeq] = useState("")
   const [time, setTime] = useState("")
   const [byTime, setByTime] = useState(false)
-  const pill = "flex h-7 items-center gap-1.5 rounded-md border pl-2"
   return (
     <>
       <form
-        className={pill}
         onSubmit={(e) => {
           e.preventDefault()
           const n = Number(seq.replace(/[,_\s]/g, ""))
           if (n >= 1) onJump({ seq: Math.floor(n) })
         }}
       >
-        <Hash size={12} aria-hidden className="text-fg-faint" />
-        <label htmlFor="jump-seq" className="sr-only">
-          Sequence
-        </label>
-        <input id="jump-seq" inputMode="numeric" value={seq} onChange={(e) => setSeq(e.target.value)} placeholder="Jump to seq" className="h-full w-24 bg-transparent font-mono placeholder:font-sans placeholder:text-fg-faint" />
-        <Button type="submit" variant="ghost" size="icon-xs" aria-label="Jump to sequence">
-          <ArrowRight aria-hidden />
-        </Button>
+        <FilterField label="Sequence" icon={Hash} mono inputMode="numeric" value={seq} onChange={(e) => setSeq(e.target.value)} placeholder="Jump to seq" className="w-38">
+          <Button type="submit" variant="ghost" size="icon-xs" aria-label="Jump to sequence">
+            <ArrowRight aria-hidden />
+          </Button>
+        </FilterField>
       </form>
       {byTime ? (
         <form
-          className={pill}
           onSubmit={(e) => {
             e.preventDefault()
             if (time) onJump({ time: new Date(`${time}Z`).toISOString() })
           }}
         >
-          <Clock size={12} aria-hidden className="text-fg-faint" />
-          <label htmlFor="jump-time" className="sr-only">
-            Time (UTC)
-          </label>
-          <input id="jump-time" type="datetime-local" step={1} autoFocus value={time} onChange={(e) => setTime(e.target.value)} className="h-full bg-transparent font-mono" />
-          <Button type="submit" variant="ghost" size="icon-xs" aria-label="Jump to time">
-            <ArrowRight aria-hidden />
-          </Button>
-          <Button type="button" variant="ghost" size="icon-xs" aria-label="Close time jump" onClick={() => setByTime(false)}>
-            <X aria-hidden />
-          </Button>
+          <FilterField label="Time (UTC)" icon={Clock} mono type="datetime-local" step={1} autoFocus value={time} onChange={(e) => setTime(e.target.value)} className="w-72">
+            <Button type="submit" variant="ghost" size="icon-xs" aria-label="Jump to time">
+              <ArrowRight aria-hidden />
+            </Button>
+            <Button type="button" variant="ghost" size="icon-xs" aria-label="Close time jump" onClick={() => setByTime(false)}>
+              <X aria-hidden />
+            </Button>
+          </FilterField>
         </form>
       ) : (
         <Button type="button" variant="outline" size="sm" onClick={() => setByTime(true)}>

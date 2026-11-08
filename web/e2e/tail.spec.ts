@@ -29,7 +29,8 @@ test("tails a wildcard filter under Read-only mode, opens a row, filters, and pa
     await page.getByLabel("Show rows containing").fill("e2e.tail.1")
     await expect(rows.first()).toContainText("e2e.tail.1")
     await expect(rows.filter({ hasText: "e2e.tail.2" })).toHaveCount(0)
-    await page.getByLabel("Show rows containing").fill("")
+    await page.getByRole("button", { name: "Clear filter" }).click()
+    await expect(page.getByLabel("Show rows containing")).toHaveValue("")
 
     await page.getByRole("button", { name: "Pause live updates" }).click()
     await expect(page.getByRole("button", { name: "Resume live updates" })).toBeVisible()
