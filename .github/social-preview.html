@@ -1,0 +1,86 @@
+<!doctype html>
+<!-- Source of social-preview.png, the repository's social preview (1280x640).
+     Render from the repo root:
+       chromium --headless --hide-scrollbars --force-device-scale-factor=1 \
+         --window-size=1280,640 --screenshot=.github/social-preview.png \
+         .github/social-preview.html
+     Then upload it in Settings > General > Social preview. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Natter social preview</title>
+<style>
+  @font-face { font-family: "Inter"; src: url("../site/src/assets/fonts/inter-latin-wght-normal.woff2") format("woff2"); font-weight: 100 900; }
+  @font-face { font-family: "Geist Mono"; src: url("../site/src/assets/fonts/geist-mono-latin-wght-normal.woff2") format("woff2"); font-weight: 100 900; }
+  :root {
+    --bg: oklch(15.5% 0.007 271);
+    --bg-2: oklch(18.7% 0.011 268);
+    --line: oklch(27.3% 0.019 268);
+    --line-soft: oklch(23% 0.016 268);
+    --fg: oklch(93.4% 0.007 269);
+    --muted: oklch(72% 0.027 265);
+    --teal: oklch(78.5% 0.133 182);
+    --blue: oklch(71.4% 0.143 255);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; width: 1280px; height: 640px; overflow: hidden; }
+  body {
+    position: relative;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: "Inter", sans-serif;
+    isolation: isolate;
+  }
+  .grid {
+    position: absolute; inset: 0; z-index: -2;
+    background-image:
+      linear-gradient(oklch(27.3% 0.019 268 / 0.55) 1px, transparent 1px),
+      linear-gradient(90deg, oklch(27.3% 0.019 268 / 0.55) 1px, transparent 1px);
+    background-size: 56px 56px;
+    mask-image: radial-gradient(ellipse 60% 75% at 30% 45%, #000 25%, transparent 75%);
+  }
+  .glow {
+    position: absolute; z-index: -1; left: 620px; top: 300px;
+    width: 900px; height: 600px;
+    background: radial-gradient(closest-side, oklch(78.5% 0.133 182 / 0.24), transparent);
+  }
+  .copy { position: absolute; left: 80px; top: 92px; width: 560px; }
+  .brand { display: flex; align-items: center; gap: 18px; }
+  .brand img { width: 64px; height: 64px; }
+  .brand span { font-size: 40px; font-weight: 650; letter-spacing: -0.03em; }
+  h1 {
+    margin: 52px 0 26px;
+    font-size: 64px; font-weight: 680; line-height: 1.04; letter-spacing: -0.045em;
+  }
+  .grad {
+    background: linear-gradient(100deg, var(--teal) 10%, oklch(85% 0.11 200) 50%, var(--blue) 95%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  p { margin: 0; color: var(--muted); font-size: 25px; line-height: 1.4; }
+  .meta {
+    margin-top: 40px; color: var(--teal);
+    font: 500 19px "Geist Mono", monospace; letter-spacing: 0.04em;
+  }
+  .window {
+    position: absolute; left: 700px; top: 110px; width: 900px;
+    border: 1px solid var(--line); border-radius: 16px; overflow: hidden;
+    background: var(--bg-2);
+    box-shadow: 0 40px 100px oklch(0% 0 0 / 0.55), 0 0 0 1px oklch(78.5% 0.133 182 / 0.08);
+  }
+  .bar { display: flex; gap: 8px; align-items: center; height: 34px; padding: 0 14px; border-bottom: 1px solid var(--line-soft); }
+  .bar i { width: 11px; height: 11px; border-radius: 50%; background: var(--line); }
+  .window img { display: block; width: 100%; }
+</style>
+</head>
+<body>
+  <div class="grid"></div>
+  <div class="glow"></div>
+  <div class="copy">
+    <div class="brand"><img src="../site/src/assets/icon.svg" alt=""><span>Natter</span></div>
+    <h1>See inside your <span class="grad">NATS™</span> deployment.</h1>
+    <p>A fast desktop app for NATS and JetStream, running on your own machine.</p>
+    <div class="meta">macOS · Windows · Linux</div>
+  </div>
+  <div class="window"><div class="bar"><i></i><i></i><i></i></div><img src="../site/src/assets/screens/overview.webp" alt=""></div>
+</body>
+</html>
