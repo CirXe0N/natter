@@ -6,6 +6,7 @@ import { Link, useNavigate, useParams } from "@tanstack/react-router"
 
 import { ApiError, api } from "@/api"
 import { BlockedButton } from "@/components/blocked-button"
+import { buttonVariants } from "@/components/ui/button"
 import { ScreenHeader } from "@/components/screen-header"
 import { useBlockedReason } from "@/contexts"
 import { bucketDefaults, bucketFields, toBucket } from "@/kv-config"
@@ -89,6 +90,15 @@ function BucketForm({ base, editing }: { base: Config; editing?: boolean }) {
         </p>
       )}
       <div className="flex flex-wrap items-center gap-3 pt-2">
+        {editing ? (
+          <Link to="/kv/$bucket" params={{ bucket: name }} className={buttonVariants({ variant: "outline" })}>
+            Cancel
+          </Link>
+        ) : (
+          <Link to="/kv" className={buttonVariants({ variant: "outline" })}>
+            Cancel
+          </Link>
+        )}
         <BlockedButton type="submit" reason={blocked} disabled={save.isPending}>
           {editing ? "Save changes" : "Create bucket"}
         </BlockedButton>

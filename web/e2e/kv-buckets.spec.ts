@@ -74,6 +74,25 @@ test("create a bucket from Key-Value Store, see a bad name refused on its field,
   }
 })
 
+test("Cancel leaves the bucket form without saving", async ({ page }) => {
+  await page.request.put("/api/contexts/active", { data: { source: "cli", name: "app" } })
+  await page.goto("/kv")
+  await page.getByRole("button", { name: "New bucket" }).click()
+  await page.getByLabel("Name", { exact: true }).fill("cancelled_kv")
+  await page.getByRole("link", { name: "Cancel" }).click()
+  await expect(page).toHaveURL(/\/kv$/)
+  await expect(page.getByRole("region", { name: "Buckets" }).getByRole("row").filter({ hasText: "sessions" })).toBeVisible()
+  await expect(page.getByRole("region", { name: "Buckets" }).getByRole("row").filter({ hasText: "cancelled_kv" })).toHaveCount(0)
+  expect((await page.request.get("/api/kv/cancelled_kv")).status()).toBe(404)
+
+  // On Edit bucket it returns to that bucket.
+  await page.goto("/kv/sessions/edit")
+  await page.getByLabel("History", { exact: true }).fill("9")
+  await page.getByRole("link", { name: "Cancel" }).click()
+  await expect(page).toHaveURL(/\/kv\/sessions$/)
+  expect((await (await page.request.get("/api/kv/sessions")).json()).history).toBe(5)
+})
+
 test("Read-only mode disables New bucket, and a bucket's Edit and Delete", async ({ page }) => {
   await page.request.put("/api/contexts/active", { data: { source: "cli", name: "app" } })
   const settings = "/api/contexts/cli/app/settings"
@@ -84,6 +103,9 @@ test("Read-only mode disables New bucket, and a bucket's Edit and Delete", async
     await page.goto("/kv/sessions")
     await expect(page.getByRole("button", { name: "Edit" })).toBeDisabled()
     await expect(page.getByRole("button", { name: "Delete…" })).toBeDisabled()
+    await page.goto("/kv/new") // Cancel changes nothing, so it still works
+    await page.getByRole("link", { name: "Cancel" }).click()
+    await expect(page).toHaveURL(/\/kv$/)
   } finally {
     await page.request.put(settings, { data: {} })
   }
