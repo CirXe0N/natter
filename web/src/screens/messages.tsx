@@ -15,7 +15,7 @@ import { cn } from "cn"
 import { api } from "@/api"
 import { Badge } from "@/components/badge"
 import { CopyCli } from "@/components/copy-cli"
-import { FilterField } from "@/components/filter-field"
+import { FilterField, FilterForm } from "@/components/filter-field"
 import { ScreenHeader } from "@/components/screen-header"
 import { shellQuote } from "@/stream-config"
 import { Button } from "@/components/ui/button"
@@ -284,12 +284,19 @@ function MessageTable({ stream }: { stream: string }) {
     <>
       <section aria-label={`Messages in ${stream}`} className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border bg-card">
         <div className="flex flex-wrap items-center gap-2 border-b px-4 py-2 text-xs">
-          <SubjectFilter
+          <FilterForm
             value={filter}
             onApply={(f) => {
               setFilter(f)
               setAnchor({ pin: true })
             }}
+            label="Subject"
+            icon={Funnel}
+            mono
+            placeholder="Subject filter, e.g. orders.paid, orders.*, orders.>"
+            autoComplete="off"
+            spellCheck={false}
+            className="w-80"
           />
           <JumpTo onJump={(a) => setAnchor({ ...a, pin: true })} />
           <span className="flex-1" />
@@ -432,53 +439,6 @@ function Row({ index, m, selected, onOpen }: { index: number; m?: MsgMeta; selec
         </>
       )}
     </div>
-  )
-}
-
-// SubjectFilter applies on Enter. The Filter button shows while the typed
-// filter differs from the applied one; the cross clears it.
-function SubjectFilter({ value, onApply }: { value: string; onApply: (filter: string) => void }) {
-  const [draft, setDraft] = useState(value)
-  return (
-    <form
-      role="search"
-      className="flex items-center gap-2"
-      onSubmit={(e) => {
-        e.preventDefault()
-        onApply(draft.trim())
-      }}
-    >
-      <FilterField
-        label="Subject"
-        icon={Funnel}
-        mono
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        placeholder="Subject filter, e.g. orders.paid, orders.*, orders.>"
-        autoComplete="off"
-        spellCheck={false}
-        className="w-80"
-      />
-      {draft.trim() !== value && (
-        <Button type="submit" variant="outline" size="sm">
-          Filter
-        </Button>
-      )}
-      {value && (
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          aria-label="Clear filter"
-          onClick={() => {
-            setDraft("")
-            onApply("")
-          }}
-        >
-          <X aria-hidden />
-        </Button>
-      )}
-    </form>
   )
 }
 

@@ -3,9 +3,11 @@
 // input for screen readers; the placeholder is what sighted people read.
 // Focus shows as the box's full-primary border, so the input drops the global
 // focus outline (allowed for this file in scripts/check-styles.js).
-import type { ComponentProps, ReactNode } from "react"
+import { useState, type ComponentProps, type ReactNode } from "react"
 import type { LucideIcon } from "lucide-react"
 import { cn } from "cn"
+
+import { Button } from "@/components/ui/button"
 
 type Props = ComponentProps<"input"> & {
   label: string
@@ -25,5 +27,41 @@ export function FilterField({ label, icon: Icon, mono, className, children, ...i
       </label>
       {children}
     </div>
+  )
+}
+
+// FilterForm is how every filter works: typing changes nothing until Enter or
+// Filter applies it, and Clear shows while a filter is applied. The form starts
+// from value, so a parent that changes value from outside remounts it with a key.
+export function FilterForm({ value, onApply, ...field }: Omit<Props, "value" | "onChange" | "children"> & { value: string; onApply: (value: string) => void }) {
+  const [draft, setDraft] = useState(value)
+  return (
+    <form
+      role="search"
+      className="flex items-center gap-2"
+      onSubmit={(e) => {
+        e.preventDefault()
+        onApply(draft.trim())
+      }}
+    >
+      <FilterField {...field} value={draft} onChange={(e) => setDraft(e.target.value)} />
+      <Button type="submit" variant="outline" size="sm">
+        Filter
+      </Button>
+      {value && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          aria-label="Clear filter"
+          onClick={() => {
+            setDraft("")
+            onApply("")
+          }}
+        >
+          Clear
+        </Button>
+      )}
+    </form>
   )
 }

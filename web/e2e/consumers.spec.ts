@@ -140,6 +140,8 @@ test("the Consumers screen lists every stream's consumers, filters them, and ope
   await expect(table.getByText("natter_browse_e2e")).toBeVisible()
 
   await page.getByLabel("Filter consumers").fill("bill")
+  await expect(table.getByText("natter_browse_e2e")).toBeVisible() // typing alone filters nothing
+  await page.getByLabel("Filter consumers").press("Enter")
   await expect(table.getByRole("link", { name: "billing", exact: true })).toBeVisible()
   await expect(table.getByText("natter_browse_e2e")).toHaveCount(0)
 

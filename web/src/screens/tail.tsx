@@ -9,7 +9,7 @@ import { CircleAlert, Funnel, X } from "lucide-react"
 import { api } from "@/api"
 import { Badge } from "@/components/badge"
 import { CopyCli } from "@/components/copy-cli"
-import { FilterField } from "@/components/filter-field"
+import { FilterField, FilterForm } from "@/components/filter-field"
 import { ScreenHeader } from "@/components/screen-header"
 import { Button } from "@/components/ui/button"
 import { refKey, useActiveContext } from "@/contexts"
@@ -122,9 +122,9 @@ function TailView({ filter, form }: { filter: string; form: ReactNode }) {
           {form}
           <PauseLive />
           <Button variant="ghost" size="sm" onClick={() => setRing((r) => ({ ...r, entries: [] }))}>
-            Clear
+            Clear rows
           </Button>
-          <FilterField label="Show rows containing" icon={Funnel} value={show} onChange={(e) => setShow(e.target.value)} placeholder="Show rows containing…" className="w-48" />
+          <FilterForm label="Show rows containing" icon={Funnel} value={show} onApply={setShow} placeholder="Show rows containing…" className="w-48" />
           <span className="flex-1" />
           {stats && <Meter t={stats} />}
           <CopyCli cmd={`nats sub ${shellQuote(filter)}`} compact />

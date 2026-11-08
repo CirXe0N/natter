@@ -9,7 +9,7 @@ import { ArrowDown, ArrowUp, Funnel, X } from "lucide-react"
 
 import { api } from "@/api"
 import { BlockedButton } from "@/components/blocked-button"
-import { FilterField } from "@/components/filter-field"
+import { FilterForm } from "@/components/filter-field"
 import { NotAvailable, sourceLabel } from "@/components/not-available"
 import { ScreenHeader } from "@/components/screen-header"
 import { Button } from "@/components/ui/button"
@@ -103,7 +103,7 @@ export function ConnectionsScreen() {
                     </Button>
                   ))}
                 </div>
-                <FilterField label="Filter by account, user, name or subject" icon={Funnel} placeholder="Filter by account, user, name or subject" value={filter} onChange={(e) => setFilter(e.target.value)} className="w-80" />
+                <FilterForm label="Filter by account, user, name or subject" icon={Funnel} placeholder="Filter by account, user, name or subject" value={filter} onApply={setFilter} className="w-80" />
                 <span role="status" className="text-xs text-muted-foreground">
                   {rows.length === data.connections.length ? `${rows.length} Connections` : `${rows.length} of ${data.connections.length} Connections`}
                 </span>

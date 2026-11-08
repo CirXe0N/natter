@@ -20,10 +20,16 @@ test("lists Connections, sorts, filters, shows subscriptions, and kicks after a 
 
   const filter = page.getByRole("textbox", { name: /Filter by/ })
   await filter.fill("orders.")
+  await page.getByRole("button", { name: "Filter", exact: true }).click()
   await expect(names).toHaveCount(1)
   await filter.fill("no-such-thing")
+  await filter.press("Enter")
   await expect(page.getByText("No Connections.")).toBeVisible()
+  await page.getByRole("button", { name: "Clear filter" }).click()
+  await expect(filter).toHaveValue("")
+  await expect(page.getByText("No Connections.")).toHaveCount(0)
   await filter.fill("APP")
+  await filter.press("Enter")
   await expect(page.getByRole("link", { name: "orders-service" })).toBeVisible()
 
   await page.getByRole("link", { name: "orders-service" }).click()

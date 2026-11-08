@@ -9,7 +9,7 @@ import { Funnel, Plus } from "lucide-react"
 import { api } from "@/api"
 import { Badge } from "@/components/badge"
 import { BlockedButton } from "@/components/blocked-button"
-import { FilterField } from "@/components/filter-field"
+import { FilterForm } from "@/components/filter-field"
 import { ScreenHeader } from "@/components/screen-header"
 import { useActiveContext, useBlockedReason } from "@/contexts"
 import { count, LagBar, useAllConsumers } from "@/screens/overview"
@@ -50,7 +50,7 @@ export function ConsumersScreen() {
         ) : (
           <>
             <div className="flex flex-wrap items-center gap-3">
-              <FilterField label="Filter consumers" icon={Funnel} placeholder="Filter by stream, consumer or subject" value={q} onChange={(e) => setQ(e.target.value)} className="w-72" />
+              <FilterForm label="Filter consumers" icon={Funnel} placeholder="Filter by stream, consumer or subject" value={q} onApply={setQ} className="w-72" />
               <label className="flex items-center gap-2 text-xs text-muted-foreground">
                 <input type="checkbox" checked={natter} onChange={(e) => setNatter(e.target.checked)} />
                 Show Natter's browsing consumers
