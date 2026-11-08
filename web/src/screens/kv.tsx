@@ -11,7 +11,6 @@ import { Badge } from "@/components/badge"
 import { PayloadViewer } from "@/components/payload-viewer"
 import { ScreenHeader } from "@/components/screen-header"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { TopicKV, type KVEntry, type KVOp } from "@/gen/api"
 import { subscribe, usePaused } from "@/live"
 import { bytes, count } from "@/screens/overview"
@@ -20,7 +19,7 @@ import { BucketActions, KeyActions, NewBucketButton, PutKey } from "@/screens/kv
 
 const th = "px-3 py-2 text-left text-[11px] font-medium text-muted-foreground"
 const td = "h-(--row-h) px-3"
-// shortcut: rows past this are not rendered, virtualise the table when people need to scroll a huge bucket.
+// shortcut: keys past the first SHOWN (in key order) are not shown at all, virtualise the table when buckets that big need browsing.
 const SHOWN = 1000
 
 export function KVScreen() {
@@ -108,9 +107,8 @@ function useKeys(bucket: string): Keys {
 function Bucket({ bucket }: { bucket: string }) {
   const { keys, loaded, problem } = useKeys(bucket)
   const paused = usePaused()
-  const [prefix, setPrefix] = useState("")
   const [open, setOpen] = useState<string>()
-  const rows = useMemo(() => [...keys.values()].filter((e) => e.key.startsWith(prefix)).sort((a, b) => (a.key < b.key ? -1 : 1)), [keys, prefix])
+  const rows = useMemo(() => [...keys.values()].sort((a, b) => (a.key < b.key ? -1 : 1)), [keys])
   const now = Date.now() / 1000
 
   return (
@@ -131,18 +129,12 @@ function Bucket({ bucket }: { bucket: string }) {
       </ScreenHeader>
       <div className={`grid gap-5 px-8 pb-8 ${open ? "grid-cols-[minmax(0,1fr)_minmax(22rem,32rem)]" : ""}`}>
         <div className="min-w-0 space-y-4">
-          <form role="search" className="flex max-w-lg items-center gap-2" onSubmit={(e) => e.preventDefault()}>
-            <label htmlFor="kv-prefix" className="shrink-0 text-xs text-muted-foreground">
-              Key prefix
-            </label>
-            <Input id="kv-prefix" value={prefix} onChange={(e) => setPrefix(e.target.value)} placeholder="app.checkout." className="font-mono" />
-          </form>
           {problem ? (
             <p className="text-destructive">{problem}</p>
           ) : !loaded ? (
             <p className="text-muted-foreground">Loading keys…</p>
           ) : rows.length === 0 ? (
-            <p className="text-muted-foreground">{prefix ? `No key starts with ${prefix}.` : "This bucket has no keys."}</p>
+            <p className="text-muted-foreground">This bucket has no keys.</p>
           ) : (
             <section aria-label="Keys" className="overflow-x-auto rounded-xl border bg-card">
               <table className="w-full text-xs">
@@ -172,7 +164,7 @@ function Bucket({ bucket }: { bucket: string }) {
                 </tbody>
               </table>
               <p className="border-t px-3 py-2 text-[11px] text-muted-foreground">
-                {rows.length > SHOWN ? `Showing the first ${count(SHOWN)} of ${count(rows.length)} keys. Narrow them with a prefix.` : `${count(rows.length)} keys`}
+                {rows.length > SHOWN ? `Showing the first ${count(SHOWN)} of ${count(rows.length)} keys.` : `${count(rows.length)} keys`}
               </p>
             </section>
           )}

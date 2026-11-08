@@ -11,7 +11,7 @@ async function openSessions(page: Page) {
   return page.getByRole("region", { name: "Keys" })
 }
 
-test("a bucket's keys update live, filter by prefix, and open with value and history", async ({ page }) => {
+test("a bucket's keys update live and open with value and history", async ({ page }) => {
   await page.request.put("/api/contexts/active", { data: { source: "cli", name: "app" } })
   const keys = await openSessions(page)
   const row = (key: string) => keys.getByRole("row").filter({ has: page.getByRole("button", { name: key, exact: true }) })
@@ -23,8 +23,7 @@ test("a bucket's keys update live, filter by prefix, and open with value and his
   await expect(row("blink")).toHaveCount(1)
   await expect(row("blink")).toHaveCount(0)
 
-  await page.getByLabel("Key prefix").fill("user.")
-  await expect(keys.getByRole("row")).toHaveCount(2) // header plus user.1
+  await expect(page.getByLabel("Key prefix")).toHaveCount(0) // the list has no filter
 
   await row("user.1").getByRole("button").click()
   const detail = page.getByRole("region", { name: "Key user.1" })
