@@ -34,14 +34,23 @@ func init() { windowApp = openWindow }
 
 // noContextMenuJS hides the webview's own right-click menu (Back, Reload,
 // Inspect) everywhere but in text fields, which keep Cut, Copy and Paste.
-// Wails runs WebviewWindowOptions.JS again on every page load, so the flag
-// keeps a reload from stacking a second listener. DefaultContextMenuDisabled
-// is no use: only Windows reads it, and there it also kills the menu in text
-// fields.
+// DefaultContextMenuDisabled is no use: only Windows reads it, and there it
+// also kills the menu in text fields.
+//
+// Wails runs WebviewWindowOptions.JS after each page load on Linux and macOS,
+// but on Windows only for HTML windows, so openWindow also runs the script on
+// every Windows navigation. That event fires for same-document navigations
+// too, so the flag keeps one document from collecting several listeners.
 const noContextMenuJS = `if (!window.__natterNoContextMenu) {
   window.__natterNoContextMenu = true;
+  const textInput = /^(text|search|email|url|tel|password|number)$/;
   document.addEventListener('contextmenu', (e) => {
-    if (!(e.target instanceof Element && e.target.closest('input, textarea')) && !(e.target && e.target.isContentEditable)) e.preventDefault();
+    const t = e.target;
+    const inTextField = t instanceof Element && (
+      t.closest('textarea') !== null ||
+      t.isContentEditable ||
+      (t.closest('input') !== null && textInput.test(t.closest('input').type)));
+    if (!inTextField) e.preventDefault();
   }, true);
 }`
 
@@ -90,6 +99,9 @@ func openWindow(vaultKey string) error {
 		MinWidth:  720,
 		MinHeight: 480,
 		JS:        noContextMenuJS,
+	})
+	win.OnWindowEvent(events.Windows.WebViewNavigationCompleted, func(*application.WindowEvent) {
+		win.ExecJS(noContextMenuJS)
 	})
 	// Closing hides the window, so the server, its live updates and the
 	// webview stay up until Quit. Natter comes back from the tray or the launcher.
