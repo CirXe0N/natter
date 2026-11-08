@@ -13,8 +13,12 @@ test("Key-Value Store sits in the sidebar's JetStream group, after Message brows
   await expect(nav.getByRole("link", { name: "Key-Value Store" })).toHaveAttribute("aria-current", "page")
 
   // The palette's Create bucket opens the same form.
+  const palette = page.getByRole("dialog", { name: "Command palette" })
   await page.keyboard.press("Control+k")
+  await expect(palette.getByRole("combobox")).toBeFocused()
   await page.keyboard.type("create bucket")
+  // Enter runs the highlighted option, so wait until filtering has highlighted this one.
+  await expect(palette.getByRole("option", { name: /Create bucket/ })).toHaveAttribute("aria-selected", "true")
   await page.keyboard.press("Enter")
   await expect(page).toHaveURL(/\/kv\/new$/)
 })
