@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
 
-import { cliFor, defaults, goDuration, toConfig, toValues } from "./consumer-config.ts"
+import { defaults, toConfig, toValues } from "./consumer-config.ts"
 
 test("a new consumer is durable, pull, explicit ack, from the first message", () => {
   const { config, errors } = toConfig(defaults, { ...toValues(defaults), name: "billing" })
@@ -42,13 +42,4 @@ test("an ephemeral consumer has no durable_name, and a start sequence is require
   const { config } = toConfig(defaults, { ...v, opt_start_seq: "42" })
   assert.equal(config.durable_name, undefined)
   assert.equal(config.opt_start_seq, 42)
-})
-
-test("the CLI command", () => {
-  const { config } = toConfig(defaults, { ...toValues(defaults), name: "billing", filter_subjects: "orders.eu.>\norders.us.>", ack_wait: "2d", max_deliver: "5", metadata: "team=ops" })
-  assert.equal(cliFor("ORDERS", config), "nats consumer add ORDERS billing --pull --ack explicit --replay instant --deliver all --metadata team=ops --filter 'orders.eu.>' --filter 'orders.us.>' --wait 48h --max-deliver 5 --defaults")
-  assert.equal(cliFor("ORDERS", { ...config, max_deliver: 9, description: "new" }, config), "nats consumer edit ORDERS billing --description new --max-deliver 9 --force")
-  const fromServer = { ...config, metadata: { team: "ops", "_nats.ver": "2.12.0" } }
-  assert.equal(cliFor("ORDERS", { ...config, max_deliver: 9 }, fromServer), "nats consumer edit ORDERS billing --max-deliver 9 --force")
-  assert.equal(goDuration(90e9), "1m30s")
 })

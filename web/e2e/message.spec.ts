@@ -30,7 +30,6 @@ test("opening a 4 MB message shows 64 KB first, then the whole payload as a JSON
   await expect(drawer.getByRole("list", { name: "Payload as text" })).toContainText('{"items":[{"id":0,"name":"item-0"')
   await expect(drawer.getByRole("button", { name: "JSON" })).toBeDisabled()
   await expect(drawer.getByRole("button", { name: "Text" })).toHaveAttribute("aria-pressed", "true")
-  await expect(drawer.getByRole("button", { name: "Copy as CLI: nats stream get BLOBS 1" })).toBeVisible()
 
   // The whole payload switches to the JSON tree, which draws only what is in view.
   const full = page.waitForResponse((r) => r.url().endsWith("/api/streams/BLOBS/messages/1/payload") && r.status() === 200)
@@ -131,7 +130,6 @@ test("Delete asks first, can erase, drops the row, and is blocked under Read-onl
   await drawer.getByRole("button", { name: "Delete…" }).click()
   const confirm = page.getByRole("dialog", { name: `Delete message #${last}` })
   await confirm.getByLabel(/Erase/).check()
-  await expect(confirm.getByRole("button", { name: `Copy as CLI: nats stream rmm BLOBS ${last} --force` })).toBeVisible()
   await confirm.getByRole("button", { name: "Delete message" }).click()
   // The last message has no next, so the drawer closes.
   await expect(page.getByRole("dialog")).toHaveCount(0)

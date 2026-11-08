@@ -7,7 +7,6 @@ import { cn } from "cn"
 
 import { ApiError, api } from "@/api"
 import { BlockedButton } from "@/components/blocked-button"
-import { CopyCli } from "@/components/copy-cli"
 import { ScreenHeader } from "@/components/screen-header"
 import { Field, Section, Segmented, Switch } from "@/components/form"
 import { buttonVariants } from "@/components/ui/button"
@@ -15,7 +14,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { useBlockedReason } from "@/contexts"
-import { cliFor, defaults, fields, toConfig, toValues, visible, type Config, type Field as ConfigField, type Section as SectionKey, type Values } from "@/consumer-config"
+import { defaults, fields, toConfig, toValues, visible, type Config, type Field as ConfigField, type Section as SectionKey, type Values } from "@/consumer-config"
 
 const sections: { key: SectionKey; title: string; description: string }[] = [
   { key: "consumer", title: "Consumer", description: "What it is called, and whether it outlives the clients that use it." },
@@ -180,9 +179,6 @@ function ConsumerForm({ editStream, base }: { editStream?: string; base: Config 
           </p>
         )}
         <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
-          <div className="mr-auto min-w-0">
-            <CopyCli cmd={cliFor(stream || "STREAM", config, editing ? base : undefined)} />
-          </div>
           {back}
           <BlockedButton type="submit" reason={blocked} disabled={save.isPending}>
             {save.isPending ? "Saving…" : editing ? "Save changes" : "Create consumer"}

@@ -2,7 +2,7 @@
 // one entry per config key, named as the server's JSON names it, so a refusal
 // that names a key lands on its field. Keys the table does not list
 // (pause_until…) are carried over untouched when editing.
-import { formatDuration, parseDuration, shellQuote } from "./stream-config.ts"
+import { formatDuration, parseDuration } from "./stream-config.ts"
 
 export type Config = { [key: string]: unknown }
 export type Values = { [key: string]: string | boolean }
@@ -26,8 +26,6 @@ export type Field = {
   when?: (v: Values) => boolean
   // What an empty number or duration sends; without it the key is left out and the server picks.
   empty?: number
-  // natscli flag; `edit` is false for flags only `nats consumer add` takes.
-  flag?: { name: string; edit: boolean }
 }
 
 const pull = (v: Values) => v.mode === "pull"
@@ -36,11 +34,11 @@ const push = (v: Values) => v.mode === "push"
 export const fields: readonly Field[] = [
   { key: "name", label: "Name", section: "consumer", kind: "text", fixed: true, required: true, placeholder: "billing", help: "Letters, numbers, - and _." },
   { key: "durable", label: "Durable", section: "consumer", kind: "bool", virtual: true, fixed: true, help: "Stays until deleted. An ephemeral consumer is removed once idle for its inactive threshold." },
-  { key: "description", label: "Description", section: "consumer", kind: "text", flag: { name: "description", edit: true } },
-  { key: "metadata", label: "Metadata", section: "consumer", kind: "map", placeholder: "team=billing", help: "One key=value per line.", flag: { name: "metadata", edit: true } },
+  { key: "description", label: "Description", section: "consumer", kind: "text" },
+  { key: "metadata", label: "Metadata", section: "consumer", kind: "map", placeholder: "team=billing", help: "One key=value per line." },
 
   { key: "mode", label: "Type", section: "delivery", kind: "select", virtual: true, fixed: true, options: [{ value: "pull", label: "Pull" }, { value: "push", label: "Push" }] },
-  { key: "filter_subjects", label: "Filter subjects", section: "delivery", kind: "list", placeholder: "orders.eu.>", help: "One per line. Empty delivers every subject in the stream.", flag: { name: "filter", edit: true } },
+  { key: "filter_subjects", label: "Filter subjects", section: "delivery", kind: "list", placeholder: "orders.eu.>", help: "One per line. Empty delivers every subject in the stream." },
   {
     key: "deliver_policy",
     label: "Start from",
@@ -55,24 +53,23 @@ export const fields: readonly Field[] = [
       { value: "by_start_sequence", label: "A sequence" },
       { value: "by_start_time", label: "A time" },
     ],
-    flag: { name: "deliver", edit: false },
   },
   { key: "opt_start_seq", label: "Start sequence", section: "delivery", kind: "number", fixed: true, required: true, when: (v) => v.deliver_policy === "by_start_sequence" },
   { key: "opt_start_time", label: "Start time", section: "delivery", kind: "datetime", fixed: true, required: true, when: (v) => v.deliver_policy === "by_start_time" },
-  { key: "replay_policy", label: "Replay", section: "delivery", kind: "select", fixed: true, options: [{ value: "instant", label: "Instant" }, { value: "original", label: "Original timing" }], flag: { name: "replay", edit: false } },
-  { key: "headers_only", label: "Headers only", section: "delivery", kind: "bool", help: "Deliver headers and the payload size, not the payload.", flag: { name: "headers-only", edit: true } },
-  { key: "sample_freq", label: "Sample frequency", section: "delivery", kind: "text", placeholder: "100%", help: "Share of acks published as advisories for latency monitoring.", flag: { name: "sample", edit: true } },
+  { key: "replay_policy", label: "Replay", section: "delivery", kind: "select", fixed: true, options: [{ value: "instant", label: "Instant" }, { value: "original", label: "Original timing" }] },
+  { key: "headers_only", label: "Headers only", section: "delivery", kind: "bool", help: "Deliver headers and the payload size, not the payload." },
+  { key: "sample_freq", label: "Sample frequency", section: "delivery", kind: "text", placeholder: "100%", help: "Share of acks published as advisories for latency monitoring." },
 
-  { key: "ack_policy", label: "Ack policy", section: "ack", kind: "select", fixed: true, options: [{ value: "explicit", label: "Explicit" }, { value: "all", label: "All" }, { value: "none", label: "None" }], flag: { name: "ack", edit: false } },
-  { key: "ack_wait", label: "Ack wait", section: "ack", kind: "duration", placeholder: "30s", help: "Redeliver when no ack comes back in this time. Empty is 30s.", flag: { name: "wait", edit: true } },
-  { key: "max_deliver", label: "Max deliveries", section: "ack", kind: "number", empty: -1, help: "Empty is unlimited.", flag: { name: "max-deliver", edit: true } },
+  { key: "ack_policy", label: "Ack policy", section: "ack", kind: "select", fixed: true, options: [{ value: "explicit", label: "Explicit" }, { value: "all", label: "All" }, { value: "none", label: "None" }] },
+  { key: "ack_wait", label: "Ack wait", section: "ack", kind: "duration", placeholder: "30s", help: "Redeliver when no ack comes back in this time. Empty is 30s." },
+  { key: "max_deliver", label: "Max deliveries", section: "ack", kind: "number", empty: -1, help: "Empty is unlimited." },
   { key: "backoff", label: "Backoff", section: "ack", kind: "durations", placeholder: "1s, 5s, 30s", help: "Redelivery delays, one per attempt; replaces Ack wait for redeliveries." },
-  { key: "max_ack_pending", label: "Max ack pending", section: "ack", kind: "number", help: "Unacked messages before delivery stops. Empty is the server default (1,000); -1 is unlimited.", flag: { name: "max-pending", edit: true } },
+  { key: "max_ack_pending", label: "Max ack pending", section: "ack", kind: "number", help: "Unacked messages before delivery stops. Empty is the server default (1,000); -1 is unlimited." },
 
-  { key: "max_waiting", label: "Max waiting pulls", section: "pull", kind: "number", fixed: true, when: pull, help: "Empty is the server default (512).", flag: { name: "max-waiting", edit: false } },
-  { key: "max_batch", label: "Max batch", section: "pull", kind: "number", when: pull, help: "Largest batch a pull may ask for. Empty is unlimited.", flag: { name: "max-pull-batch", edit: true } },
-  { key: "max_expires", label: "Max expires", section: "pull", kind: "duration", when: pull, help: "Longest a pull may wait. Empty is unlimited.", flag: { name: "max-pull-expire", edit: true } },
-  { key: "max_bytes", label: "Max bytes per pull", section: "pull", kind: "number", when: pull, help: "Empty is unlimited.", flag: { name: "max-pull-bytes", edit: true } },
+  { key: "max_waiting", label: "Max waiting pulls", section: "pull", kind: "number", fixed: true, when: pull, help: "Empty is the server default (512)." },
+  { key: "max_batch", label: "Max batch", section: "pull", kind: "number", when: pull, help: "Largest batch a pull may ask for. Empty is unlimited." },
+  { key: "max_expires", label: "Max expires", section: "pull", kind: "duration", when: pull, help: "Longest a pull may wait. Empty is unlimited." },
+  { key: "max_bytes", label: "Max bytes per pull", section: "pull", kind: "number", when: pull, help: "Empty is unlimited." },
   {
     key: "priority_policy",
     label: "Priority groups",
@@ -87,17 +84,17 @@ export const fields: readonly Field[] = [
     ],
   },
   { key: "priority_groups", label: "Group names", section: "pull", kind: "list", required: true, when: (v) => pull(v) && v.priority_policy !== "none", help: "One per line." },
-  { key: "priority_timeout", label: "Pinned TTL", section: "pull", kind: "duration", when: (v) => pull(v) && v.priority_policy === "pinned_client", help: "How long a pinned client may go without pulling.", flag: { name: "pinned-ttl", edit: false } },
+  { key: "priority_timeout", label: "Pinned TTL", section: "pull", kind: "duration", when: (v) => pull(v) && v.priority_policy === "pinned_client", help: "How long a pinned client may go without pulling." },
 
-  { key: "deliver_subject", label: "Deliver subject", section: "push", kind: "text", required: true, when: push, placeholder: "billing.deliver", flag: { name: "target", edit: true } },
-  { key: "deliver_group", label: "Deliver group", section: "push", kind: "text", when: push, help: "Queue group that shares the messages.", flag: { name: "deliver-group", edit: false } },
-  { key: "idle_heartbeat", label: "Idle heartbeat", section: "push", kind: "duration", fixed: true, when: push, help: "Empty sends none.", flag: { name: "heartbeat", edit: false } },
-  { key: "flow_control", label: "Flow control", section: "push", kind: "bool", fixed: true, when: push, help: "Lets slow subscribers push back. Needs an idle heartbeat.", flag: { name: "flow-control", edit: false } },
-  { key: "rate_limit_bps", label: "Rate limit (bits/s)", section: "push", kind: "number", when: push, help: "Empty is unlimited.", flag: { name: "bps", edit: false } },
+  { key: "deliver_subject", label: "Deliver subject", section: "push", kind: "text", required: true, when: push, placeholder: "billing.deliver" },
+  { key: "deliver_group", label: "Deliver group", section: "push", kind: "text", when: push, help: "Queue group that shares the messages." },
+  { key: "idle_heartbeat", label: "Idle heartbeat", section: "push", kind: "duration", fixed: true, when: push, help: "Empty sends none." },
+  { key: "flow_control", label: "Flow control", section: "push", kind: "bool", fixed: true, when: push, help: "Lets slow subscribers push back. Needs an idle heartbeat." },
+  { key: "rate_limit_bps", label: "Rate limit (bits/s)", section: "push", kind: "number", when: push, help: "Empty is unlimited." },
 
-  { key: "num_replicas", label: "Replicas", section: "storage", kind: "number", empty: 0, help: "Empty inherits the stream's.", flag: { name: "replicas", edit: true } },
-  { key: "inactive_threshold", label: "Inactive threshold", section: "storage", kind: "duration", help: "Remove the consumer after this long without activity. Empty: never for durable, 5s for ephemeral.", flag: { name: "inactive-threshold", edit: true } },
-  { key: "mem_storage", label: "Memory storage", section: "storage", kind: "bool", fixed: true, help: "Keep its state in memory, not on disk.", flag: { name: "memory", edit: false } },
+  { key: "num_replicas", label: "Replicas", section: "storage", kind: "number", empty: 0, help: "Empty inherits the stream's." },
+  { key: "inactive_threshold", label: "Inactive threshold", section: "storage", kind: "duration", help: "Remove the consumer after this long without activity. Empty: never for durable, 5s for ephemeral." },
+  { key: "mem_storage", label: "Memory storage", section: "storage", kind: "bool", fixed: true, help: "Keep its state in memory, not on disk." },
 ]
 
 // natscli's `--defaults`: durable, pull, explicit ack, from the first message.
@@ -208,57 +205,4 @@ export function toConfig(base: Config, v: Values): { config: Config; errors: { [
   if (v.durable) config.durable_name = name
   else delete config.durable_name
   return { config, errors }
-}
-
-// goDuration writes nanoseconds the way Go's time.ParseDuration reads them,
-// which natscli's duration flags use: hours, not days.
-export function goDuration(ns: number): string {
-  const d = Math.floor(ns / 864e11)
-  return d > 0 ? `${d * 24 + Math.floor((ns % 864e11) / 36e11)}h${formatDuration(ns % 36e11)}` : formatDuration(ns)
-}
-
-const deliverFlag: { [policy: string]: string } = { all: "all", new: "new", last: "last", last_per_subject: "subject" }
-const groupFlag: { [policy: string]: string } = { overflow: "overflow-groups", pinned_client: "pinned-groups", prioritized: "prioritized-groups" }
-
-// own drops the server's _nats.* metadata keys, which the form leaves alone.
-const own = (key: string, x: unknown) =>
-  key === "metadata" && x && typeof x === "object" ? Object.fromEntries(Object.entries(x).filter(([k]) => !k.startsWith("_nats."))) : x
-
-// cliFor is the `nats` command that makes the same consumer, or the same edit:
-// the flags that differ from `before`. Backoff and a start time have no flag.
-export function cliFor(stream: string, config: Config, before?: Config): string {
-  const edit = before !== undefined
-  const name = String(config.name || "NAME")
-  const base: Config = before ?? {}
-  const parts = [edit ? `nats consumer edit ${stream} ${name}` : `nats consumer add ${stream} ${name}`]
-  const same = (k: string) => JSON.stringify(own(k, config[k])) === JSON.stringify(own(k, base[k]))
-  if (!edit) {
-    parts.push(config.deliver_subject ? "" : "--pull")
-    if (!("durable_name" in config)) parts.push("--ephemeral")
-    parts.push(`--ack ${config.ack_policy}`, `--replay ${config.replay_policy}`)
-    const policy = String(config.deliver_policy)
-    if (deliverFlag[policy]) parts.push(`--deliver ${deliverFlag[policy]}`)
-    else if (policy === "by_start_sequence") parts.push(`--deliver ${config.opt_start_seq}`)
-  }
-  for (const f of fields) {
-    if (!f.flag || (edit && !f.flag.edit) || f.key === "ack_policy" || f.key === "replay_policy" || f.key === "deliver_policy" || same(f.key)) continue
-    const now = config[f.key]
-    const flag = `--${f.flag.name}`
-    if (!edit && now === f.empty) continue // the flag's own default
-    if (now === undefined) {
-      if (f.kind === "bool" && f.key === "headers_only") parts.push("--no-headers-only")
-      continue
-    }
-    if (f.kind === "bool") parts.push(now ? flag : f.key === "headers_only" ? "--no-headers-only" : "")
-    else if (f.kind === "list") for (const s of now as string[]) parts.push(`${flag} ${shellQuote(s)}`)
-    else if (f.kind === "map") for (const [k, s] of Object.entries(now as object)) parts.push(`${flag} ${shellQuote(`${k}=${s}`)}`)
-    else if (f.kind === "duration") parts.push(`${flag} ${goDuration(now as number)}`)
-    else if (f.key === "sample_freq") parts.push(`${flag} ${String(now).replace("%", "")}`)
-    else parts.push(`${flag} ${shellQuote(String(now))}`)
-  }
-  const groups = config.priority_groups as string[] | undefined
-  if (!edit && groups && groupFlag[String(config.priority_policy)]) for (const g of groups) parts.push(`--${groupFlag[String(config.priority_policy)]} ${shellQuote(g)}`)
-  if (!edit) parts.push("--defaults")
-  else parts.push("--force")
-  return parts.filter(Boolean).join(" ")
 }

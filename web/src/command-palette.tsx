@@ -11,7 +11,7 @@ import { api } from "@/api"
 import { Command, CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { refKey, useActivateContext, useContexts } from "@/contexts"
 
-export type PaletteCommand = { id: string; label: string; group: string; hint?: string; cli?: string; run: () => void }
+export type PaletteCommand = { id: string; label: string; group: string; hint?: string; run: () => void }
 
 const screens = ["/overview", "/connections", "/streams", "/consumers", "/messages", "/kv", "/publish", "/tail", "/contexts"] as const
 
@@ -26,20 +26,19 @@ function useCommands(): PaletteCommand[] {
   const title = (to: (typeof screens)[number]) => routesByPath[to].options.staticData?.title ?? to
   return [
     ...screens.map((to) => ({ id: `go-${to}`, group: "Go to", label: title(to), run: go(to) })),
-    ...(names.data?.streams ?? []).map((n) => ({ id: `stream-${n}`, group: "Streams", label: `Open stream ${n}`, cli: `nats stream info ${n}`, run: () => void navigate({ to: "/streams/$stream", params: { stream: n } }) })),
-    ...(names.data?.buckets ?? []).map((n) => ({ id: `kv-${n}`, group: "Key-Value Store", label: `Open bucket ${n}`, cli: `nats kv status ${n}`, run: () => void navigate({ to: "/kv/$bucket", params: { bucket: n } }) })),
+    ...(names.data?.streams ?? []).map((n) => ({ id: `stream-${n}`, group: "Streams", label: `Open stream ${n}`, run: () => void navigate({ to: "/streams/$stream", params: { stream: n } }) })),
+    ...(names.data?.buckets ?? []).map((n) => ({ id: `kv-${n}`, group: "Key-Value Store", label: `Open bucket ${n}`, run: () => void navigate({ to: "/kv/$bucket", params: { bucket: n } }) })),
     ...(contexts.data ?? []).map((c) => ({
       id: `ctx-${refKey(c)}`,
       group: "Switch Context",
       label: `Use ${c.name}`,
       hint: c.description,
-      cli: c.source === "cli" ? `nats context select ${c.name}` : undefined, // natscli cannot see Natter's own Contexts
       run: () => activate.mutate(c),
     })),
-    { id: "a-stream", group: "Actions", label: "Create stream…", cli: "nats stream add", run: go("/streams") },
-    { id: "a-bucket", group: "Actions", label: "Create bucket…", cli: "nats kv add", run: () => void navigate({ to: "/kv/new" }) },
-    { id: "a-publish", group: "Actions", label: "Publish a message…", cli: "nats pub", run: go("/publish") },
-    { id: "a-tail", group: "Actions", label: "Tail a subject…", cli: "nats sub", run: go("/tail") },
+    { id: "a-stream", group: "Actions", label: "Create stream…", run: go("/streams") },
+    { id: "a-bucket", group: "Actions", label: "Create bucket…", run: () => void navigate({ to: "/kv/new" }) },
+    { id: "a-publish", group: "Actions", label: "Publish a message…", run: go("/publish") },
+    { id: "a-tail", group: "Actions", label: "Tail a subject…", run: go("/tail") },
   ]
 }
 
@@ -81,7 +80,7 @@ export function CommandPalette() {
                 {items.map((c) => (
                   <CommandItem
                     key={c.id}
-                    value={`${c.group} ${c.label} ${c.cli ?? ""}`}
+                    value={`${c.group} ${c.label}`}
                     onSelect={() => {
                       setOpen(false)
                       c.run()
@@ -91,7 +90,6 @@ export function CommandPalette() {
                       {c.label}
                       {c.hint && <span className="ml-2 text-xs text-muted-foreground">{c.hint}</span>}
                     </span>
-                    {c.cli && <span className="truncate font-mono text-[11px] text-muted-foreground">{c.cli}</span>}
                   </CommandItem>
                 ))}
               </CommandGroup>

@@ -14,10 +14,8 @@ import { cn } from "cn"
 
 import { api } from "@/api"
 import { Badge } from "@/components/badge"
-import { CopyCli } from "@/components/copy-cli"
 import { FilterField, FilterForm } from "@/components/filter-field"
 import { ScreenHeader } from "@/components/screen-header"
-import { shellQuote } from "@/stream-config"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select"
 import { useActiveContext } from "@/contexts"
@@ -277,7 +275,6 @@ function MessageTable({ stream }: { stream: string }) {
     const m = i >= start && i < end ? rows[i - start] : undefined
     inView.push(<Row key={i} index={i} m={m} selected={m !== undefined && m.seq === open} onOpen={setOpen} />)
   }
-  const topRow = first >= start && first < end ? rows[first - start] : undefined
 
   const cachedRows = rows.length
   return (
@@ -314,7 +311,6 @@ function MessageTable({ stream }: { stream: string }) {
               </>
             )}
           </span>
-          <CopyCli compact cmd={`nats stream view ${stream}${topRow && topRow.seq > 1 ? ` --id ${topRow.seq}` : ""}${filter ? ` --subject ${shellQuote(filter)}` : ""}`} />
         </div>
         {lastPage?.direct && (
           <p role="note" className="border-b border-warning/20 bg-warning/5 px-4 py-1.5 text-[11px] text-warning">

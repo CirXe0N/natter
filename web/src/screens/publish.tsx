@@ -10,7 +10,6 @@ import { ArrowLeftRight, Braces, CircleAlert, CircleCheck, Clock, Copy, Eye, Loc
 import { api } from "@/api"
 import { Badge } from "@/components/badge"
 import { CodeEditor } from "@/components/code-editor"
-import { CopyCli } from "@/components/copy-cli"
 import { examplesKey, ExamplesPicker, ModeTag, TransferDialog } from "@/components/examples-picker"
 import { ScreenHeader } from "@/components/screen-header"
 import { Button } from "@/components/ui/button"
@@ -18,7 +17,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { useActiveContext, useSetSettings } from "@/contexts"
 import type { Example, SendPreview, SendRequest, SendResult, SendStatus } from "@/gen/api"
 import { bytes } from "@/screens/overview"
-import { messageSize, sendCli } from "@/send"
+import { messageSize } from "@/send"
 
 type Draft = Omit<Example, "id" | "context">
 type Entry = { id: number; at: Date; request: SendRequest; result?: SendResult; refused?: string }
@@ -31,7 +30,7 @@ const fields = (d: Draft) => JSON.stringify([d.name, d.folder, d.mode, d.subject
 const historyKey = ["send", "history"] as const
 const MAX_HISTORY = 50
 
-// natscli's template functions, inserted verbatim so "copy as CLI" sends the same thing.
+// natscli's template functions, under the same names.
 const placeholders = [
   { insert: "{{Count}}", help: "message number in this run, from 1" },
   { insert: "{{ID}}", help: "a unique ID" },
@@ -152,7 +151,6 @@ export function PublishScreen() {
     v.dispatch({ changes: { from, to, insert: token }, selection: { anchor: from + token.length } })
     v.focus()
   }
-  const cliContext = active?.context?.source === "cli" ? active.context.name : undefined
   const sel = entries.find((e) => e.id === shown) ?? entries[0]
   const recentExamples = recent.map((id) => mine.find((e) => e.id === id)).filter((e) => !!e)
   const problems = [
@@ -230,7 +228,6 @@ export function PublishScreen() {
               spellCheck={false}
               className="h-10 min-w-0 flex-1 rounded-lg border bg-background px-3.5 font-mono text-sm placeholder:text-fg-faint focus-visible:border-primary/60"
             />
-            <CopyCli cmd={sendCli(request, cliContext)} compact />
             <Button
               className="h-10 gap-2 px-5"
               disabled={invalid || readOnly || send.isPending}
@@ -375,7 +372,7 @@ export function PublishScreen() {
                     ms for each reply
                   </>
                 )}
-                <span className="basis-full pt-1 text-fg-faint">{"{{Count}}"} runs from 1 to the count, as in nats pub --count.</span>
+                <span className="basis-full pt-1 text-fg-faint">{"{{Count}}"} runs from 1 to the count.</span>
               </div>
             )}
           </div>

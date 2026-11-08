@@ -13,7 +13,6 @@
   <li>Add headers on the <strong>Headers</strong> tab if you need them.</li>
   <li>Press <strong>Publish</strong> or <strong>Send</strong>, or <kbd>Ctrl</kbd>/<kbd>⌘</kbd> <kbd>Enter</kbd>.</li>
 </ol>
-<p>The copy button next to the subject gives the matching <code>nats pub</code> or <code>nats req</code> command.</p>
 
 <h2>Requests and replies</h2>
 <p>A request shows its reply payload on the <strong>Response</strong> tab. The other outcomes read differently so you can tell them apart: <strong>no responders</strong> (nothing is subscribed to the subject), <strong>timed out</strong> after the timeout you set, or refused by the server. The <strong>History</strong> tab lists what you sent with the active Context while Natter is open in this tab.</p>
@@ -22,7 +21,7 @@
 <p>On the <strong>Repeat</strong> tab, set a <strong>count</strong> to send the message that many times, publishes and requests alike, and the request <strong>timeout</strong> in milliseconds. The result says how many were sent.</p>
 
 <h2 id="placeholders">Placeholders</h2>
-<p>A placeholder in the subject, a header value or the payload is replaced with a fresh value on every send. They use the same names as the <code>nats</code> CLI's templates, so the command Natter shows does the same.</p>
+<p>A placeholder in the subject, a header value or the payload is replaced with a fresh value on every send. They use the same names as the <code>nats</code> CLI's templates.</p>
 <table>
   <thead><tr><th>Placeholder</th><th>Becomes</th></tr></thead>
   <tbody>

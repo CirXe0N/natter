@@ -45,7 +45,7 @@
   <div class="wrap">
     <p class="eyebrow">Features</p>
     <h2 class="section-title">Everything you reach for <code>nats</code> to check, on one screen.</h2>
-    <p class="section-lede">Natter talks to NATS from a small Go server on localhost, and its window only talks to Natter. Every action shows the <code>nats</code> command that does the same, so the CLI is never more than a click away.</p>
+    <p class="section-lede">Natter talks to NATS from a small Go server on localhost, and its window only talks to Natter.</p>
 
     <div class="bento">
       <article class="card card-wide">
@@ -115,13 +115,13 @@
       </article>
 
       <article class="card">
-        <div class="mini cli" aria-hidden="true">
-          <p><span class="prompt">$</span> nats consumer add ORDERS billing --pull --filter 'orders.eu.&gt;'</p>
-          <p class="copied">✓ Copied as CLI</p>
+        <div class="mini code" aria-hidden="true">
+          <p><span class="k">region</span> = <span class="s">"eu-west"</span></p>
+          <p><span class="k">orders.max</span> = <span class="p">500</span></p>
+          <p><span class="k">flags.beta</span> = <span class="s">"on"</span></p>
         </div>
-        <h3>The <code>nats</code> command, always</h3>
-        <p>Every screen and form shows the CLI command that does the same thing. Copy it into a script, or learn the CLI as you go.</p>
-        <a class="more" href="{{ROOT}}docs/streams/#create-a-stream">See it on Streams →</a>
+        <h3>Key-Value buckets, key by key</h3>
+        <p>Create, edit and delete buckets. Read every key with its full history, and put, delete or purge keys.</p>
       </article>
     </div>
   </div>

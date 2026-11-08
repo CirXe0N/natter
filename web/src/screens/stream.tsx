@@ -6,9 +6,7 @@ import { Link, Outlet, useParams } from "@tanstack/react-router"
 import { ChevronDown, ChevronRight, Funnel } from "lucide-react"
 
 import { api } from "@/api"
-import { CopyCli } from "@/components/copy-cli"
 import { FilterForm } from "@/components/filter-field"
-import { shellQuote } from "@/stream-config"
 import { ScreenHeader } from "@/components/screen-header"
 import type { StreamDetail } from "@/gen/api"
 import { bytes, count } from "@/screens/overview"
@@ -88,9 +86,6 @@ export function StreamOverview() {
         <>
           {s.problem && <p className="rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-warning">{s.problem}</p>}
           {s.description && <p className="text-xs text-muted-foreground">{s.description}</p>}
-          <div>
-            <CopyCli cmd={`nats stream info ${s.name}`} />
-          </div>
           <Stats s={s} />
           <Replicas s={s} />
           <Sources s={s} />
@@ -251,8 +246,6 @@ function Subjects({ s }: { s: StreamDetail }) {
           spellCheck={false}
           className="w-64"
         />
-        <span className="flex-1" />
-        <CopyCli cmd={`nats stream subjects ${s.name}${filter === ">" ? "" : ` ${shellQuote(filter)}`}`} />
       </div>
       {subs.isError ? (
         <p className="px-4 py-3 text-xs text-destructive">{subs.error.message}</p>
@@ -332,9 +325,6 @@ export function StreamConfig() {
     <Loaded>
       {(s) => (
         <>
-          <div>
-            <CopyCli cmd={`nats stream info ${s.name} --json`} />
-          </div>
           <dl className="divide-y overflow-hidden rounded-xl border bg-card text-xs">
             {Object.entries(s.config).map(([k, v]) => (
               <div key={k} className="grid grid-cols-[14rem_1fr] gap-4 px-4 py-2">

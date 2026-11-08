@@ -37,7 +37,6 @@ test("a bucket's keys update live and open with value and history", async ({ pag
   await expect(revisions).toHaveCount(3)
   await revisions.last().getByRole("button").click() // the oldest
   await expect(detail.getByRole("list", { name: "Payload as text" })).toHaveText("v1")
-  await expect(page.getByRole("button", { name: /Copy as CLI/ })).toHaveCount(0) // Key-Value screens show no nats commands
 })
 
 test("Key-Value Store browses under Read-only mode", async ({ page }) => {

@@ -11,7 +11,7 @@ test("the command palette switches Context, opens a stream, and returns focus", 
   await page.keyboard.press("Control+k")
   await expect(input).toBeFocused()
   await page.keyboard.type("use app")
-  await expect(palette.getByRole("option", { name: /Use app/ })).toContainText("nats context select app")
+  await expect(palette.getByRole("option", { name: /Use app/ })).toHaveAttribute("aria-selected", "true")
   await page.keyboard.press("Enter")
   await expect(palette).toHaveCount(0)
   await expect(switcher).toHaveAccessibleName("Context: app. Switch Context")
@@ -22,7 +22,7 @@ test("the command palette switches Context, opens a stream, and returns focus", 
   await page.keyboard.press("Control+k")
   await expect(input).toBeFocused()
   await page.keyboard.type("orders")
-  await expect(palette.getByRole("option", { name: /Open stream ORDERS/ })).toContainText("nats stream info ORDERS")
+  await expect(palette.getByRole("option", { name: /Open stream ORDERS/ })).toHaveAttribute("aria-selected", "true")
   await page.keyboard.press("Enter")
   await expect(page).toHaveURL(/\/streams\/ORDERS$/)
   await expect(palette).toHaveCount(0)
@@ -30,11 +30,11 @@ test("the command palette switches Context, opens a stream, and returns focus", 
   await page.keyboard.press("Control+k")
   await expect(input).toBeFocused()
   await page.keyboard.type("config")
-  await expect(palette.getByRole("option", { name: /Open bucket config/ })).toContainText("nats kv status config")
+  await expect(palette.getByRole("option", { name: /Open bucket config/ })).toHaveAttribute("aria-selected", "true")
   await page.keyboard.press("Escape")
   await expect(palette).toHaveCount(0)
 
-  // Natter's own Contexts are invisible to natscli, so they get no CLI hint; the description shows instead.
+  // A Context's description shows beside it.
   const made = await page.request.post("/api/contexts", { data: { name: "palette-own", description: "made in Natter", urls: "nats://127.0.0.1:1" } })
   expect(made.ok(), await made.text()).toBe(true)
   await page.reload()
@@ -44,5 +44,4 @@ test("the command palette switches Context, opens a stream, and returns focus", 
   await page.keyboard.type("use palette-own")
   const own = palette.getByRole("option", { name: /Use palette-own/ })
   await expect(own).toContainText("made in Natter")
-  await expect(own).not.toContainText("nats context select")
 })

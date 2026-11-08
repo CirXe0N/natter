@@ -49,7 +49,6 @@ test("the Messages tab scrolls a large stream with gaps, jumps, filters, and lea
   await page.getByLabel("Sequence", { exact: true }).fill("120")
   await page.getByRole("button", { name: "Jump to sequence" }).click()
   await expect(top()).toContainText("#151")
-  await expect(page.getByRole("button", { name: "Copy as CLI: nats stream view EVENTS --id 151" })).toBeVisible()
 
   await page.getByLabel("Subject", { exact: true }).fill("events.a")
   await expect(status).toContainText(`of ${100_000 - 25} matching events.a`)
