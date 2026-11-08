@@ -59,6 +59,7 @@ export function PayloadViewer({ url }: { url: string }) {
         <span className="text-muted-foreground tabular-nums" role="status">
           {q.isFetching ? "Loading payload…" : p && !p.whole ? `Showing the first ${fmtBytes(PREVIEW)} of ${fmtBytes(p.size)}.${p.binary ? "" : " Load it in full for the JSON tree."}` : p && fmtBytes(p.size)}
         </span>
+        {/* !whole hides the button while the full load is in flight, since keepPreviousData still shows the preview. */}
         {p && !p.whole && !whole && (
           <Button variant="outline" size="sm" onClick={() => setWhole(true)}>
             Load full
