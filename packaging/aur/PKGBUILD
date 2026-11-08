@@ -1,7 +1,7 @@
 # AUR recipe for the desktop build. Set pkgver and the checksum from the
 # release's checksums, then publish it as natter-bin (docs/releasing.md).
 pkgname=natter-bin
-pkgver=0.2.0
+pkgver=0.2.1
 pkgrel=1
 pkgdesc="A UI for NATS™, in a window of its own"
 arch=(x86_64)
@@ -10,7 +10,7 @@ depends=(gtk4 webkitgtk-6.0)
 provides=(natter)
 conflicts=(natter)
 source=("$url/releases/download/v$pkgver/natter-desktop_linux_amd64.tar.gz")
-sha256sums=('1191a082fb7991c4a8a662872bcc2643049f3bbfa77eef39b2976ec5c39bace9')
+sha256sums=('a35fd41af38fa78a36d49f71ff164202e6d4defb0b83ea5af3ad8b4c04520219')
 
 package() {
 	install -Dm755 natter "$pkgdir/usr/bin/natter"
