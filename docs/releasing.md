@@ -32,7 +32,7 @@ Use `--skip=sign` instead if `syft` is installed. Signing needs a CI identity an
 
 ## Verify a download
 
-Each checksum file has a cosign signature next to it, `<file>.sigstore.json`. v0.1.0 and v0.2.0 have none: they were released while the repository was private.
+Each checksum file has a cosign signature next to it, `<file>.sigstore.json`.
 
 ```sh
 sha256sum -c checksums.txt --ignore-missing

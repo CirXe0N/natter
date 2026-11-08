@@ -22,7 +22,7 @@ body:
     attributes:
       label: Natter version
       description: Shown at the bottom of the sidebar.
-      placeholder: v0.1.0
+      placeholder: v0.2.2
     validations:
       required: true
   - type: dropdown

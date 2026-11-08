@@ -5,7 +5,7 @@
 // so the site works under any base path, such as GitHub Pages' /natter/.
 //
 //   node site/build.mjs          writes site/dist
-//   NATTER_VERSION=0.2.0 …       overrides the version
+//   NATTER_VERSION=0.2.2 …       overrides the version
 //
 // The version is the latest published GitHub release when the build runs in
 // Actions (or with NATTER_FETCH_LATEST=1), so a release can rebuild the site.
@@ -45,7 +45,7 @@ const version = await (async () => {
   try {
     return execSync("git describe --tags --abbrev=0 --match 'v*'", { cwd: here, stdio: ["ignore", "pipe", "ignore"] }).toString().trim().replace(/^v/, "")
   } catch {
-    return "0.1.0"
+    return "0.2.2"
   }
 })()
 
