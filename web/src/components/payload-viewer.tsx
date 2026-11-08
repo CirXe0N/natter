@@ -9,7 +9,7 @@ import { ChevronDown, ChevronRight } from "lucide-react"
 
 import { Button, buttonVariants } from "@/components/ui/button"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
-import { hexRow, jsonRows, parse, PREVIEW, size, type JsonRow } from "@/payload"
+import { hexRow, jsonRows, parse, PREVIEW, totalSize, type JsonRow } from "@/payload"
 import { follow, trackHeight, type Scroll } from "@/scaled-scroll"
 import { bytes as fmtBytes } from "@/screens/overview"
 
@@ -25,8 +25,8 @@ export function PayloadViewer({ url }: { url: string }) {
       const res = await fetch(url, { signal, headers: whole ? undefined : { Range: `bytes=0-${PREVIEW - 1}` } })
       if (!res.ok) throw new Error((await res.text()).trim() || res.statusText)
       const bytes = new Uint8Array(await res.arrayBuffer())
-      const total = size(res.headers.get("Content-Range"), bytes.length)
-      return { ...parse(bytes, bytes.length === total), size: total }
+      const total = totalSize(res.headers.get("Content-Range"), bytes.length)
+      return { ...parse(bytes, bytes.length === total), size: total ?? bytes.length }
     },
     placeholderData: keepPreviousData,
     staleTime: Infinity,

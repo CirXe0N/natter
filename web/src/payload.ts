@@ -41,10 +41,13 @@ export function parse(bytes: Uint8Array, whole: boolean): Payload {
   return { bytes, whole, binary, rows, json }
 }
 
-// size is a payload's full length in bytes: the total after the slash in a
-// 206's Content-Range, else the length of the 200 that sent all of it.
-export function size(contentRange: string | null, received: number): number {
-  return contentRange ? Number(contentRange.split("/")[1]) : received
+// totalSize is a payload's full length in bytes: the total after the slash in
+// a 206's Content-Range, else the length of the 200 that sent all of it.
+// undefined when the Content-Range gives no total ("bytes 0-1/*").
+export function totalSize(contentRange: string | null, received: number): number | undefined {
+  if (!contentRange) return received
+  const total = /\/(\d+)$/.exec(contentRange)
+  return total ? Number(total[1]) : undefined
 }
 
 // hexRow is row r of the hex view: offset, 16 bytes, and their printable ASCII.
