@@ -83,7 +83,8 @@ test("the Message browser screen picks a stream, browses it, and opens a message
   await expect(page).toHaveURL(/\/messages$/)
   await expect(page.getByText("Nothing to show here yet")).toHaveCount(0)
 
-  await page.getByLabel("Stream", { exact: true }).selectOption("EVENTS")
+  await page.getByRole("combobox", { name: "Stream", exact: true }).click()
+  await page.getByRole("option", { name: "EVENTS", exact: true }).click()
   await expect(page).toHaveURL(/\/messages\?stream=EVENTS$/)
   const body = page.getByRole("rowgroup", { name: "Message rows" })
   await expect(body.getByRole("row").first()).toContainText("#1")

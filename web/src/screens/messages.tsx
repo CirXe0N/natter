@@ -18,6 +18,7 @@ import { CopyCli } from "@/components/copy-cli"
 import { ScreenHeader } from "@/components/screen-header"
 import { shellQuote } from "@/stream-config"
 import { Button } from "@/components/ui/button"
+import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select"
 import { useActiveContext } from "@/contexts"
 import type { MessagePage, MsgMeta } from "@/gen/api"
 import { follow, scrollTopFor, trackHeight, type Scroll } from "@/scaled-scroll"
@@ -68,19 +69,16 @@ export function MessageBrowserScreen() {
             <label htmlFor="browse-stream" className="text-xs text-muted-foreground">
               Stream
             </label>
-            <select
-              id="browse-stream"
-              value={stream}
-              onChange={(e) => void navigate({ to: "/messages", search: { stream: e.target.value } })}
-              className="h-8 rounded-lg border border-input bg-card px-2 font-mono text-xs"
-            >
-              {picked && !names.includes(picked) && <option value={picked}>{picked}</option>}
-              {names.map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-            </select>
+            <Select value={stream} onValueChange={(v) => v && void navigate({ to: "/messages", search: { stream: v } })}>
+              <SelectTrigger id="browse-stream" className="w-auto max-w-64 font-mono text-xs" />
+              <SelectContent className="font-mono text-xs">
+                {(picked && !names.includes(picked) ? [picked, ...names] : names).map((n) => (
+                  <SelectItem key={n} value={n}>
+                    {n}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             {stream && (
               <Link to="/streams/$stream" params={{ stream }} className="text-xs text-muted-foreground hover:text-foreground hover:underline">
                 Open stream
