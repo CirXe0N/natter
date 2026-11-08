@@ -78,6 +78,7 @@ jobs:
     runs-on: ubuntu-24.04
     permissions:
       contents: write # upload to the draft release GoReleaser made
+      id-token: write # cosign keyless signing
     env:
       UPDATER_SIGNING_KEY: ${{ secrets.UPDATER_SIGNING_KEY }} # job level: a step's if can't see its own env
     steps:
@@ -101,9 +102,14 @@ jobs:
             dist/desktop/natter-desktop_windows_amd64.exe \
             dist/desktop/natter-desktop_linux_amd64.AppImage
           rm "$key"
+      - name: Checksums
+        run: cd dist/desktop && sha256sum * >checksums-desktop.txt
+      - uses: sigstore/cosign-installer@v3
+        if: ${{ !github.event.repository.private }}
+      - name: Sign checksums
+        if: ${{ !github.event.repository.private }} # same reason as the goreleaser job's --skip=sign
+        run: cosign sign-blob --bundle=dist/desktop/checksums-desktop.txt.sigstore.json dist/desktop/checksums-desktop.txt --yes
       - name: Upload
-        run: |
-          (cd dist/desktop && sha256sum * >checksums-desktop.txt)
-          gh release upload "$GITHUB_REF_NAME" dist/desktop/* --clobber
+        run: gh release upload "$GITHUB_REF_NAME" dist/desktop/* --clobber
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
