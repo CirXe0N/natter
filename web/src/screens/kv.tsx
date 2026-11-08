@@ -27,7 +27,7 @@ export function KVScreen() {
   const list = useQuery({ queryKey: ["kv", "buckets"], queryFn: ({ signal }) => api.kvBuckets(signal), refetchInterval: useRefresh(), placeholderData: keepPreviousData })
   return (
     <>
-      <ScreenHeader title="Key-Value">
+      <ScreenHeader title="Key-Value Store">
         <NewBucketButton />
       </ScreenHeader>
       <div className="px-8 pb-8">

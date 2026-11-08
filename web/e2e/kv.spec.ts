@@ -41,7 +41,7 @@ test("a bucket's keys update live, filter by prefix, and open with value and his
   await expect(page.getByRole("button", { name: /Copy as CLI/ })).toHaveCount(0) // Key-Value screens show no nats commands
 })
 
-test("Key-Value browses under Read-only mode", async ({ page }) => {
+test("Key-Value Store browses under Read-only mode", async ({ page }) => {
   await page.request.put("/api/contexts/active", { data: { source: "cli", name: "app" } })
   const settings = "/api/contexts/cli/app/settings"
   await page.request.put(settings, { data: { readOnly: true } })
