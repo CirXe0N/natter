@@ -113,13 +113,6 @@ type Active struct {
 	MaxPayload int `json:"maxPayload,omitempty"`
 }
 
-// JetStreamNames feeds the command palette: the active Context's streams and
-// KV buckets, without the KV_ prefix on buckets.
-type JetStreamNames struct {
-	Streams []string `json:"streams"`
-	Buckets []string `json:"buckets"`
-}
-
 // Secret is a password, token, creds file or nkey seed the browser sends once.
 // It formats and encodes as [REDACTED], so fmt, slog and JSON never show it;
 // only string(s) reveals it.

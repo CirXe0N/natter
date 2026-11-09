@@ -128,14 +128,6 @@ export interface Active {
   maxPayload?: number /* int */;
 }
 /**
- * JetStreamNames feeds the command palette: the active Context's streams and
- * KV buckets, without the KV_ prefix on buckets.
- */
-export interface JetStreamNames {
-  streams: string[];
-  buckets: string[];
-}
-/**
  * Secret is a password, token, creds file or nkey seed the browser sends once.
  * It formats and encodes as [REDACTED], so fmt, slog and JSON never show it;
  * only string(s) reveals it.
