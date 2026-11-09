@@ -11,11 +11,11 @@ tool github.com/gzuidhof/tygo
 require (
 	filippo.io/age v1.3.2
 	github.com/coder/websocket v1.8.15
-	github.com/godbus/dbus/v5 v5.2.2
+	github.com/godbus/dbus/v5 v5.2.4
 	github.com/nats-io/jsm.go v0.5.1
 	github.com/nats-io/nats-server/v2 v2.15.2
 	github.com/nats-io/nats.go v1.55.0
-	github.com/nats-io/nkeys v0.4.16
+	github.com/nats-io/nkeys v0.4.17
 	github.com/nats-io/nuid v1.0.1
 	github.com/wailsapp/wails/v3 v3.1.0
 	github.com/zalando/go-keyring v0.2.8
