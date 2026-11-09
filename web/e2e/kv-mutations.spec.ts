@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test"
 
-// Works on keys of its own: sessions' clock and blink are rewritten by the seed.
+// Works on keys of its own: sessions' clock and wink are rewritten by the seed.
 test("put, delete and purge a key, and Read-only blocks all three", async ({ page }) => {
   await page.request.put("/api/contexts/active", { data: { source: "cli", name: "app" } })
   const settings = "/api/contexts/cli/app/settings"

@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test"
 
 // sessions (internal/e2eserver) holds user.1 at three revisions, and a writer
-// puts clock every 300 ms and puts or deletes blink every 700 ms.
+// puts clock every 300 ms and puts or deletes wink every 700 ms.
 async function openSessions(page: Page) {
   await page.goto("/kv")
   const buckets = page.getByRole("region", { name: "Buckets" })
@@ -20,8 +20,8 @@ test("a bucket's keys update live and open with value and history", async ({ pag
   const clock = row("clock").getByRole("cell").first()
   const rev = await clock.textContent()
   await expect(clock).not.toHaveText(rev!)
-  await expect(row("blink")).toHaveCount(1)
-  await expect(row("blink")).toHaveCount(0)
+  await expect(row("wink")).toHaveCount(1)
+  await expect(row("wink")).toHaveCount(0)
 
   await expect(page.getByLabel("Key prefix")).toHaveCount(0) // the list has no filter
 

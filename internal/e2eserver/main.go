@@ -193,8 +193,9 @@ func seedEvents(ctx context.Context, js jetstream.JetStream) error {
 
 // seedSessions makes the KV bucket sessions: user.1 with three revisions,
 // and a writer that keeps changing it, so the KV spec sees live changes
-// the UI did not make. clock is put every 300 ms; blink is put
-// and deleted in turn every 700 ms.
+// the UI did not make. clock is put every 300 ms; wink is put
+// and deleted in turn every 700 ms. wink sorts after user.1, so the
+// user.1 row never moves under a click.
 func seedSessions(url string) error {
 	nc, err := nats.Connect(url, nats.UserInfo("app", "app"))
 	if err != nil {
@@ -215,17 +216,17 @@ func seedSessions(url string) error {
 		}
 	}
 	go func() {
-		clock, blink := time.NewTicker(300*time.Millisecond), time.NewTicker(700*time.Millisecond)
+		clock, wink := time.NewTicker(300*time.Millisecond), time.NewTicker(700*time.Millisecond)
 		on := false
 		for {
 			select {
 			case t := <-clock.C:
 				kv.PutString(ctx, "clock", t.UTC().Format(time.TimeOnly))
-			case <-blink.C:
+			case <-wink.C:
 				if on = !on; on {
-					kv.PutString(ctx, "blink", "on")
+					kv.PutString(ctx, "wink", "on")
 				} else {
-					kv.Delete(ctx, "blink")
+					kv.Delete(ctx, "wink")
 				}
 			}
 		}
