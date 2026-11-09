@@ -1,6 +1,6 @@
 // The hand-written REST client. Response shapes come from Go via tygo (src/gen).
 // Add one function per endpoint to `api`; screens call them from TanStack Query.
-import type { Active, Context, ContextUpdate, Health, Info, JetStreamNames, NewContext, PassphraseChange, Ref, Settings, Vault } from "@/gen/api"
+import type { Active, Context, ContextUpdate, Health, Info, NewContext, PassphraseChange, Ref, Settings, Vault } from "@/gen/api"
 import type { StreamDetail, StreamList, StreamSubjects } from "@/gen/api"
 import type { Connections, ConnectionState, KickRequest } from "@/gen/api"
 import type { FieldError, StreamPurge, StreamPurged, StreamSummary } from "@/gen/api"
@@ -43,7 +43,6 @@ export const api = {
   activeContext: (signal?: AbortSignal) => request<Active>("GET", "/api/contexts/active", undefined, signal),
   activateContext: (ref: Ref) => request<Active>("PUT", "/api/contexts/active", { source: ref.source, name: ref.name }),
   health: (signal?: AbortSignal) => request<Health>("GET", "/api/health", undefined, signal),
-  jetStreamNames: (signal?: AbortSignal) => request<JetStreamNames>("GET", "/api/jetstream/names", undefined, signal),
   setContextSettings: (ref: Ref, settings: Settings) =>
     request<Context>("PUT", `/api/contexts/${encodeURIComponent(ref.source)}/${encodeURIComponent(ref.name)}/settings`, settings),
   createContext: (c: NewContext) => request<Context>("POST", "/api/contexts", c),

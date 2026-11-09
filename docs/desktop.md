@@ -18,7 +18,6 @@ On Linux it needs GTK 4 and WebKitGTK 6.0, which the packages pull in. The AppIm
 - **No terminal, no token to copy.** The app starts Natter's normal server on a free loopback port and opens the window signed in. The Launch token is never printed or put on a command line. Like `natter`, the app keeps its Launch token URL in natter's own config folder, so `natter open` can attach to it.
 - **Updates.** The macOS app, the Windows install and the AppImage check for updates once a day, and when you choose **Check for Updates…** in the tray. They install only updates signed with Natter's release key. A deb or rpm install updates through your package manager.
 - **Right-click** opens a menu only in text fields, with Cut, Copy and Paste. Elsewhere in the window there is no menu.
-- **Ctrl+K / Cmd+K** opens the command palette, as in the browser. No menu claims it.
 - **NVIDIA on Linux.** WebKitGTK cannot draw through NVIDIA's DMA-BUF path, so on NVIDIA the app turns that renderer off (`WEBKIT_DISABLE_DMABUF_RENDERER=1`) before the window opens.
 
 Each install method brings its own launcher entry, so you get one Natter in your launcher:

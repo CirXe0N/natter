@@ -5,7 +5,6 @@ import { Activity, Boxes, Cable, ChevronRight, Database, KeyRound, Layers, Radio
 
 import { api } from "@/api"
 import { ConnectionStatus, ContextSwitcher, ReadOnlyBadge, useActiveContext } from "@/contexts"
-import { CommandPalette } from "@/command-palette"
 import { LiveRegion } from "@/live"
 
 type NavItem = { to: NonNullable<LinkProps["to"]>; Icon: ComponentType<{ size?: number }> }
@@ -35,7 +34,6 @@ export function Shell() {
       <div className="flex min-w-0 flex-1 flex-col">
         <header className={`flex h-12 shrink-0 items-center gap-4 border-b px-6 ${ro ? "border-warning/25 bg-warning/5" : "bg-card/40"}`}>
           <Breadcrumb />
-          <CommandPalette />
           <div className="flex min-w-0 flex-1 items-center justify-end gap-3 text-xs">
             <ConnectionStatus />
             <ReadOnlyBadge />

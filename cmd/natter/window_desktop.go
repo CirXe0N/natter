@@ -111,8 +111,7 @@ func openWindow(vaultKey string) error {
 	})
 
 	// macOS needs an application menu for Cmd+C, Cmd+V and Cmd+Q to reach
-	// the webview. None of these roles binds Cmd+K: the page's command
-	// palette owns it. Elsewhere the window has no menu bar.
+	// the webview. Elsewhere the window has no menu bar.
 	if runtime.GOOS == "darwin" {
 		menu := app.NewMenu()
 		menu.AddRole(application.AppMenu)
