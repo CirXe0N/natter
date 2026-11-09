@@ -26,7 +26,9 @@ python3 -m http.server -d site/dist 8099  # preview at http://127.0.0.1:8099
   them all; name some (`node site/capture.mjs tail publish`) to redo only
   those. It needs Go, ImageMagick and `npm ci` plus `npx playwright install
   chromium` in `web`. The overview graphs span 2 minutes, so the overview is
-  captured last, after 2 minutes of live traffic have filled them.
+  captured last, after 2 minutes of live traffic have filled them. The
+  sidebar footer (name and version) is left blank, so the screenshots don't
+  date with each release.
 
 ## Publish
 

@@ -9,8 +9,6 @@ const root = fileURLToPath(new URL("..", import.meta.url))
 const out = fileURLToPath(new URL("src/assets/screens/", import.meta.url))
 const only = process.argv.slice(2)
 const { chromium } = createRequire(`${root}web/package.json`)("@playwright/test")
-// The e2e build reports version "e2e"; show the release a user would have.
-const version = process.env.NATTER_VERSION ?? execFileSync("git", ["describe", "--tags", "--abbrev=0", "--match", "v*"], { cwd: root, encoding: "utf8" }).trim()
 
 execFileSync("npm", ["run", "build"], { cwd: `${root}web`, stdio: "inherit" }) // the server embeds web/dist
 const server = spawn("go", ["run", "./internal/e2eserver"], { cwd: root, stdio: ["ignore", "pipe", "inherit"], detached: true })
@@ -83,7 +81,8 @@ async function shot(name, go, height) {
   await go()
   await page.mouse.move(0, 899)
   await page.evaluate(() => document.activeElement instanceof HTMLElement && document.activeElement.blur())
-  await page.evaluate((v) => { for (const el of document.querySelectorAll("*")) if (el.children.length === 0 && el.textContent === "Natter e2e") el.textContent = `Natter ${v}` }, version)
+  // Blank the sidebar footer ("Natter e2e"), so the screenshots don't date with each release.
+  await page.evaluate(() => { for (const el of document.querySelectorAll("*")) if (el.children.length === 0 && el.textContent === "Natter e2e") el.textContent = " " })
   const png = await page.screenshot({ clip: height ? { x: 0, y: 0, width: 1440, height } : undefined })
   execFileSync("magick", ["png:-", "-quality", "82", "-define", "webp:method=6", `${out}${name}.webp`], { input: png })
   console.log("shot", name)
