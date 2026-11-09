@@ -26,6 +26,7 @@ Run `natter -h` for flags.
 ```sh
 npm --prefix web ci && npm --prefix web run build
 go run ./cmd/natter
+uvx pre-commit install   # gofmt, go vet, web lint and Conventional Commits on every commit
 ```
 
 Release steps are in [docs/releasing.md](docs/releasing.md); the landing page and docs live in [site/](site/).

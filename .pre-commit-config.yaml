@@ -1,0 +1,39 @@
+# Install once: pre-commit install  (or uvx pre-commit install)
+default_install_hook_types: [pre-commit, commit-msg]
+exclude: ^(web/dist|site/dist|internal/placeholders/testdata)/
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-merge-conflict
+      - id: check-added-large-files
+
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v4.5.0
+    hooks:
+      - id: conventional-pre-commit
+        stages: [commit-msg]
+
+  - repo: local
+    hooks:
+      - id: gofmt
+        name: gofmt
+        entry: gofmt -l -w
+        language: system
+        types: [go]
+      - id: go-vet
+        name: go vet
+        entry: go vet ./...
+        language: system
+        types: [go]
+        pass_filenames: false
+      - id: web-lint
+        name: web typecheck and style check
+        entry: npm --prefix web run lint
+        language: system
+        files: ^web/
+        pass_filenames: false

@@ -330,4 +330,3 @@ function Choice({ name, checked, onChange, title, path, disabledReason, children
     </label>
   )
 }
-
