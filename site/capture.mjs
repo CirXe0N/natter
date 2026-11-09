@@ -75,6 +75,7 @@ await api.post("/api/examples", {
 // Live traffic, about 8 a second, for the rates and the tail.
 let live = true
 ;(async () => { while (live) { await send().catch(() => {}); await new Promise((r) => setTimeout(r, 120)) } })()
+const liveSince = Date.now()
 
 const settle = (ms = 1500) => page.waitForTimeout(ms)
 async function shot(name, go, height) {
@@ -88,7 +89,6 @@ async function shot(name, go, height) {
   console.log("shot", name)
 }
 
-await shot("overview", async () => { await page.goto("/overview"); await settle(7000) })
 await shot("streams", async () => { await page.goto("/streams"); await settle() })
 await shot("messages", async () => {
   await page.goto("/messages?stream=ORDERS")
@@ -120,6 +120,12 @@ await shot("publish", async () => {
 })
 await shot("tail", async () => { await page.goto(`/tail?subject=${encodeURIComponent("orders.>")}`); await settle(5000) })
 await shot("contexts", async () => { await page.goto("/contexts"); await settle() })
+// Last: the Overview's graphs span 2 minutes, so wait until live traffic fills them.
+await shot("overview", async () => {
+  await page.waitForTimeout(Math.max(0, liveSince + 125_000 - Date.now()))
+  await page.goto("/overview")
+  await settle(3000)
+})
 
 live = false
 await browser.close()
